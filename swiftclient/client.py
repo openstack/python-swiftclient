@@ -169,13 +169,17 @@ def _get_auth_v1_0(url, user, key, snet):
     conn.request('GET', parsed.path, '',
                  {'X-Auth-User': user, 'X-Auth-Key': key})
     resp = conn.getresponse()
-    resp.read()
-    if resp.status < 200 or resp.status >= 300:
+    body = resp.read()
+    url = resp.getheader('x-storage-url')
+
+    # There is a side-effect on current Rackspace 1.0 server where a
+    # bad URL would get you that document page and a 200. We error out
+    # if we don't have a x-storage-url header and if we get a body.
+    if resp.status < 200 or resp.status >= 300 or (body and not url):
         raise ClientException('Auth GET failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port,
                 http_path=parsed.path, http_status=resp.status,
                 http_reason=resp.reason)
-    url = resp.getheader('x-storage-url')
     if snet:
         parsed = list(urlparse(url))
         # Second item in the list is the netloc
