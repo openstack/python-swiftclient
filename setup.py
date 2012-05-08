@@ -5,7 +5,7 @@ import sys
 
 # TODO: Figuring out how we are going to do the versionning (and if
 # any).
-version = '0.1'
+version = '1.0'
 name = 'python-swiftclient'
 requires = []
 
