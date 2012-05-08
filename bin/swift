@@ -937,12 +937,14 @@ def parse_args(parser, args, enforce_requires=True):
     if (not (options.auth and options.user and options.key) or
         options.os_auth_url):
         # Use 2.0 auth if none of the old args are present
-        options.auth_version = "2.0"
+        options.auth_version = '2.0'
 
-    if options.auth_version == "2.0" and not options.os_tenant_name and \
-            options.os_username and options.os_username.find(':'):
+    if options.auth_version in ('2.0', '2') and not \
+            options.os_tenant_name and options.user and \
+            ':' in options.user:
         (options.os_tenant_name,
-         options.os_username) = options.os_username.split(':')
+         options.os_username) = options.user.split(':')
+        options.user = options.os_username
 
     # Use new-style args if old ones not present
     if not options.auth and options.os_auth_url:
