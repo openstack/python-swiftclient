@@ -18,6 +18,10 @@ Cloud Files client library used internally
 """
 
 import socket
+import os
+import logging
+import httplib
+
 from urllib import quote as _quote
 from urlparse import urlparse, urlunparse, urljoin
 
@@ -39,6 +43,39 @@ except ImportError:
         from eventlet.green.httplib import HTTPConnection
     except ImportError:
         from httplib import HTTPConnection
+
+logger = logging.getLogger("swiftclient")
+
+
+def http_log(args, kwargs, resp, body):
+    if os.environ.get('SWIFTCLIENT_DEBUG', False):
+        ch = logging.StreamHandler()
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(ch)
+    elif not logger.isEnabledFor(logging.DEBUG):
+        return
+
+    string_parts = ['curl -i']
+    for element in args:
+        if element in ('GET', 'POST', 'PUT', 'HEAD'):
+            string_parts.append(' -X %s' % element)
+        else:
+            string_parts.append(' %s' % element)
+
+    if 'headers' in kwargs:
+        for element in kwargs['headers']:
+            header = ' -H "%s: %s"' % (element, kwargs['headers'][element])
+            string_parts.append(header)
+
+    logger.debug("REQ: %s\n" % "".join(string_parts))
+    if 'raw_body' in kwargs:
+        logger.debug("REQ BODY (RAW): %s\n" % (kwargs['raw_body']))
+    if 'body' in kwargs:
+        logger.debug("REQ BODY: %s\n" % (kwargs['body']))
+
+    logger.debug("RESP STATUS: %s\n", resp.status)
+    if body:
+        logger.debug("RESP BODY: %s\n", body)
 
 
 def quote(value, safe='/'):
@@ -149,6 +186,7 @@ def json_request(method, url, **kwargs):
     conn.request(method, parsed.path, **kwargs)
     resp = conn.getresponse()
     body = resp.read()
+    http_log((url, method,), kwargs, resp, body)
     if body:
         try:
             body = json_loads(body)
@@ -166,11 +204,13 @@ def json_request(method, url, **kwargs):
 
 def _get_auth_v1_0(url, user, key, snet):
     parsed, conn = http_connection(url)
-    conn.request('GET', parsed.path, '',
+    method = 'GET'
+    conn.request(method, parsed.path, '',
                  {'X-Auth-User': user, 'X-Auth-Key': key})
     resp = conn.getresponse()
     body = resp.read()
     url = resp.getheader('x-storage-url')
+    http_log((url, method,), {}, resp, body)
 
     # There is a side-effect on current Rackspace 1.0 server where a
     # bad URL would get you that document page and a 200. We error out
@@ -285,22 +325,26 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
         qs += '&limit=%d' % limit
     if prefix:
         qs += '&prefix=%s' % quote(prefix)
-    conn.request('GET', '%s?%s' % (parsed.path, qs), '',
-                 {'X-Auth-Token': token})
+    full_path = '%s?%s' % (parsed.path, qs)
+    headers = {'X-Auth-Token': token}
+    conn.request('GET', full_path, '',
+                 headers)
     resp = conn.getresponse()
+    body = resp.read()
+    http_log(("%s?%s" % (url, qs), 'GET',), {'headers': headers}, resp, body)
+
     resp_headers = {}
     for header, value in resp.getheaders():
         resp_headers[header.lower()] = value
     if resp.status < 200 or resp.status >= 300:
-        body = resp.read()
         raise ClientException('Account GET failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port,
                 http_path=parsed.path, http_query=qs, http_status=resp.status,
                 http_reason=resp.reason, http_response_content=body)
     if resp.status == 204:
-        resp.read()
+        body
         return resp_headers, []
-    return resp_headers, json_loads(resp.read())
+    return resp_headers, json_loads(body)
 
 
 def head_account(url, token, http_conn=None):
@@ -319,9 +363,12 @@ def head_account(url, token, http_conn=None):
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
-    conn.request('HEAD', parsed.path, '', {'X-Auth-Token': token})
+    method = "HEAD"
+    headers = {'X-Auth-Token': token}
+    conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log((url, method,), {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Account HEAD failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port,
@@ -348,10 +395,12 @@ def post_account(url, token, headers, http_conn=None):
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+    method = 'POST'
     headers['X-Auth-Token'] = token
-    conn.request('POST', parsed.path, '', headers)
+    conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log((url, method,), {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Account POST failed',
                               http_scheme=parsed.scheme,
@@ -411,10 +460,14 @@ def get_container(url, token, container, marker=None, limit=None,
         qs += '&prefix=%s' % quote(prefix)
     if delimiter:
         qs += '&delimiter=%s' % quote(delimiter)
-    conn.request('GET', '%s?%s' % (path, qs), '', {'X-Auth-Token': token})
+    headers = {'X-Auth-Token': token}
+    method = 'GET'
+    conn.request(method, '%s?%s' % (path, qs), '', headers)
     resp = conn.getresponse()
+    body = resp.read()
+    http_log(('%s?%s' % (url, qs), method,), {'headers': headers}, resp, body)
+
     if resp.status < 200 or resp.status >= 300:
-        body = resp.read()
         raise ClientException('Container GET failed',
                 http_scheme=parsed.scheme, http_host=conn.host,
                 http_port=conn.port, http_path=path, http_query=qs,
@@ -424,9 +477,8 @@ def get_container(url, token, container, marker=None, limit=None,
     for header, value in resp.getheaders():
         resp_headers[header.lower()] = value
     if resp.status == 204:
-        resp.read()
         return resp_headers, []
-    return resp_headers, json_loads(resp.read())
+    return resp_headers, json_loads(body)
 
 
 def head_container(url, token, container, http_conn=None, headers=None):
@@ -447,12 +499,16 @@ def head_container(url, token, container, http_conn=None, headers=None):
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
+    method = 'HEAD'
     req_headers = {'X-Auth-Token': token}
     if headers:
         req_headers.update(headers)
-    conn.request('HEAD', path, '', req_headers)
+    conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), method,),
+             {'headers': req_headers}, resp, body)
+
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container HEAD failed',
                 http_scheme=parsed.scheme, http_host=conn.host,
@@ -481,12 +537,15 @@ def put_container(url, token, container, headers=None, http_conn=None):
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
+    method = 'PUT'
     if not headers:
         headers = {}
     headers['X-Auth-Token'] = token
-    conn.request('PUT', path, '', headers)
+    conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), method,),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container PUT failed',
                 http_scheme=parsed.scheme, http_host=conn.host,
@@ -511,10 +570,13 @@ def post_container(url, token, container, headers, http_conn=None):
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
+    method = 'POST'
     headers['X-Auth-Token'] = token
-    conn.request('POST', path, '', headers)
+    conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), method,),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container POST failed',
                 http_scheme=parsed.scheme, http_host=conn.host,
@@ -538,9 +600,13 @@ def delete_container(url, token, container, http_conn=None):
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
-    conn.request('DELETE', path, '', {'X-Auth-Token': token})
+    headers = {'X-Auth-Token': token}
+    method = 'DELETE'
+    conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), method,),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container DELETE failed',
                 http_scheme=parsed.scheme, http_host=conn.host,
@@ -572,10 +638,14 @@ def get_object(url, token, container, name, http_conn=None,
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
-    conn.request('GET', path, '', {'X-Auth-Token': token})
+    method = 'GET'
+    headers = {'X-Auth-Token': token}
+    conn.request(method, path, '', headers)
     resp = conn.getresponse()
     if resp.status < 200 or resp.status >= 300:
         body = resp.read()
+        http_log(('%s?%s' % (url, path), 'POST',),
+                 {'headers': headers}, resp, body)
         raise ClientException('Object GET failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port, http_path=path,
                 http_status=resp.status, http_reason=resp.reason,
@@ -593,6 +663,8 @@ def get_object(url, token, container, name, http_conn=None,
     resp_headers = {}
     for header, value in resp.getheaders():
         resp_headers[header.lower()] = value
+    http_log(('%s?%s' % (url, path), 'POST',),
+             {'headers': headers}, resp, object_body)
     return resp_headers, object_body
 
 
@@ -615,9 +687,13 @@ def head_object(url, token, container, name, http_conn=None):
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
-    conn.request('HEAD', path, '', {'X-Auth-Token': token})
+    method = 'HEAD'
+    headers = {'X-Auth-Token': token}
+    conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), 'POST',),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object HEAD failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port, http_path=path,
@@ -713,6 +789,9 @@ def put_object(url, token=None, container=None, name=None, contents=None,
         conn.request('PUT', path, contents, headers)
     resp = conn.getresponse()
     body = resp.read()
+    headers = {'X-Auth-Token': token}
+    http_log(('%s?%s' % (url, path), 'PUT',),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object PUT failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port, http_path=path,
@@ -743,6 +822,8 @@ def post_object(url, token, container, name, headers, http_conn=None):
     conn.request('POST', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), 'POST',),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object POST failed', http_scheme=parsed.scheme,
                 http_host=conn.host, http_port=conn.port, http_path=path,
@@ -786,6 +867,8 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
     conn.request('DELETE', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    http_log(('%s?%s' % (url, path), 'POST',),
+             {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object DELETE failed',
                 http_scheme=parsed.scheme, http_host=conn.host,
