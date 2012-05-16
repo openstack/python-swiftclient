@@ -1,3 +1,7 @@
+AUTHORS
+ChangeLog
+dist/
+.tox
 *.egg-info
 *.py[co]
 .DS_Store
