@@ -6,3 +6,4 @@ nosexcover
 openstack.nose_plugin
 pep8>=1.0
 sphinx>=1.1.2
+eventlet

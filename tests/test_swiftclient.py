@@ -19,7 +19,7 @@ import unittest
 from urlparse import urlparse
 
 # TODO: mock http connection class with more control over headers
-from test.unit.proxy.test_server import fake_http_connect
+from utils import fake_http_connect
 
 from swiftclient import client as c
 
