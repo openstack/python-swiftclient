@@ -20,10 +20,11 @@ import setuptools
 import sys
 
 from swiftclient.openstack.common import setup
+from swiftclient import version
 
 # TODO: Figuring out how we are going to do the versioning (and if
 # any).
-version = '1.1'
+version = version
 name = 'python-swiftclient'
 
 requires = setup.parse_requirements()
