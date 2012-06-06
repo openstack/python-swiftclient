@@ -245,7 +245,7 @@ def _get_auth_v2_0(url, user, tenant_name, key, snet):
                 url = service['endpoints'][0]['publicURL']
         token_id = body['access']['token']['id']
         if not url:
-            raise ClientException("There is no object-store endpoint " \
+            raise ClientException("There is no object-store endpoint "
                                   "on this auth server.")
     except(KeyError, IndexError):
         raise ClientException("Error while getting answers from auth server")
@@ -285,6 +285,9 @@ def get_auth(url, user, key, snet=False, tenant_name=None, auth_version="1.0"):
         if not tenant_name:
             raise ClientException('No tenant specified')
         return _get_auth_v2_0(url, user, tenant_name, key, snet)
+    else:
+        raise ClientException('Unknown auth_version %s specified.' %
+                             auth_version)
 
 
 def get_account(url, token, marker=None, limit=None, prefix=None,
