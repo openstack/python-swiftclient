@@ -1035,9 +1035,12 @@ Example:
     print_thread = QueueFunctionThread(print_queue, _print)
     print_thread.start()
 
+    error_count = 0
     error_queue = Queue(10000)
 
     def _error(item):
+        global error_count
+        error_count += 1
         if isinstance(item, unicode):
             item = item.encode('utf8')
         print >> stderr, item
@@ -1062,6 +1065,8 @@ Example:
         error_thread.abort = True
         while error_thread.isAlive():
             error_thread.join(0.01)
+        if error_count:
+            exit(1)
     except (SystemExit, Exception):
         for thread in threading_enumerate():
             thread.abort = True
