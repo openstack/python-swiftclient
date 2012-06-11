@@ -12,12 +12,19 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import swiftclient
+import sys, os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.append(os.path.abspath('.'))
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
+
+sys.path.insert(0, ROOT)
+
+import swiftclient
 
 # -- General configuration ----------------------------------------------------
 

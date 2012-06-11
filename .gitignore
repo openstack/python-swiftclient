@@ -6,3 +6,4 @@ dist/
 *.py[co]
 .DS_Store
 *.log
+build
