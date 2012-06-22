@@ -17,7 +17,7 @@ import socket
 
 from errno import EEXIST, ENOENT
 from hashlib import md5
-from optparse import OptionParser, SUPPRESS_HELP
+from optparse import OptionParser
 from os import environ, listdir, makedirs, utime
 from os.path import basename, dirname, getmtime, getsize, isdir, join
 from Queue import Empty, Queue
@@ -961,8 +961,12 @@ def parse_args(parser, args, enforce_requires=True):
     if enforce_requires and \
             not (options.auth and options.user and options.key):
         exit('''
-Requires ST_AUTH, ST_USER, and ST_KEY environment variables be set or
-overridden with -A, -U, or -K.'''.strip('\n'))
+Auth version 1.0 requires ST_AUTH, ST_USER, and ST_KEY environment variables
+to be set or overridden with -A, -U, or -K.
+
+Auth version 2.0 requires OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, and
+OS_TENANT_NAME to be set or overridden with --os_auth_url, --os_username,
+--os_password, or --os_tenant_name.'''.strip('\n'))
     return options, args
 
 
@@ -1004,16 +1008,17 @@ Example:
                       help='Key for obtaining an auth token')
     parser.add_option('--os_auth_url', dest='os_auth_url',
                       default=environ.get('OS_AUTH_URL'),
-                      help=SUPPRESS_HELP)
+                      help='Openstack auth URL. Defaults to env[OS_AUTH_URL].')
     parser.add_option('--os_username', dest='os_username',
                       default=environ.get('OS_USERNAME'),
-                      help=SUPPRESS_HELP)
+                      help='Openstack username. Defaults to env[OS_USERNAME].')
     parser.add_option('--os_tenant_name', dest='os_tenant_name',
                       default=environ.get('OS_TENANT_NAME'),
-                      help=SUPPRESS_HELP)
+                      help='Openstack tenant name.' \
+                           'Defaults to env[OS_TENANT_NAME].')
     parser.add_option('--os_password', dest='os_password',
                       default=environ.get('OS_PASSWORD'),
-                      help=SUPPRESS_HELP)
+                      help='Openstack password. Defaults to env[OS_PASSWORD].')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
