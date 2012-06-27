@@ -13,16 +13,17 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import signal
 import socket
 
 from errno import EEXIST, ENOENT
 from hashlib import md5
 from optparse import OptionParser
-from os import environ, listdir, makedirs, utime
+from os import environ, listdir, makedirs, utime, _exit as os_exit
 from os.path import basename, dirname, getmtime, getsize, isdir, join
 from Queue import Empty, Queue
 from sys import argv, exc_info, exit, stderr, stdout
-from threading import enumerate as threading_enumerate, Thread
+from threading import current_thread, enumerate as threading_enumerate, Thread
 from time import sleep
 from traceback import format_exception
 
@@ -65,6 +66,29 @@ def put_errors_from_threads(threads, error_queue):
             else:
                 error_queue.put(''.join(format_exception(*info)))
     return was_error
+
+
+def attempt_graceful_exit(signum, frame):
+    """
+    Try to gracefully shut down. Sets abort=True on all non-main threads.
+
+    More importantly, installs the immediate_exit handler on the
+    signal that triggered this handler. If this function is installed
+    as a signal handler for SIGINT, then pressing Ctrl-C once will
+    cause this program to finish operations in progress, then exit.
+    Pressing it again will cause an immediate exit; no cleanup
+    handlers will get called.
+    """
+    stderr.write("Attempting graceful exit. "
+                 "Press Ctrl-C again to exit immediately.\n")
+    main_thread = current_thread()
+    for thread in [t for t in threading_enumerate() if t is not main_thread]:
+        thread.abort = True
+    signal.signal(signum, immediate_exit)
+
+
+def immediate_exit(signum, frame):
+    os_exit(2)
 
 
 class QueueFunctionThread(Thread):
@@ -1052,6 +1076,8 @@ Example:
         if args:
             exit('no such command: %s' % args[0])
         exit()
+
+    signal.signal(signal.SIGINT, attempt_graceful_exit)
 
     print_queue = Queue(10000)
 
