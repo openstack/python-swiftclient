@@ -282,6 +282,8 @@ def get_auth(url, user, key, snet=False, tenant_name=None, auth_version="1.0"):
     if auth_version in ["1.0", "1"]:
         return _get_auth_v1_0(url, user, key, snet)
     elif auth_version in ["2.0", "2"]:
+        if not tenant_name and ':' in user:
+            (tenant_name, user) = user.split(':')
         if not tenant_name:
             raise ClientException('No tenant specified')
         return _get_auth_v2_0(url, user, tenant_name, key, snet)
