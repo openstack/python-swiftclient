@@ -83,20 +83,21 @@ class QueueFunctionThread(Thread):
         self.exc_infos = []
 
     def run(self):
-        try:
-            while True:
+        while True:
+            try:
+                item = self.queue.get_nowait()
+            except Empty:
+                if self.abort:
+                    break
+                sleep(0.01)
+            else:
                 try:
-                    item = self.queue.get_nowait()
                     if not self.abort:
                         self.func(item, *self.args, **self.kwargs)
+                except Exception:
+                    self.exc_infos.append(exc_info())
+                finally:
                     self.queue.task_done()
-                except Empty:
-                    if self.abort:
-                        break
-                    sleep(0.01)
-        except Exception:
-            self.exc_infos.append(exc_info())
-
 
 st_delete_help = '''
 delete --all OR delete container [--leave-segments] [object] [object] ...
