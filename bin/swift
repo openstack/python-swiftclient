@@ -26,6 +26,7 @@ from sys import argv, exc_info, exit, stderr, stdout
 from threading import current_thread, enumerate as threading_enumerate, Thread
 from time import sleep
 from traceback import format_exception
+from urllib import quote, unquote
 
 from swiftclient import Connection, ClientException, HTTPException
 
@@ -176,6 +177,8 @@ def st_delete(parser, args, print_queue, error_queue):
             if old_manifest:
                 segment_queue = Queue(10000)
                 scontainer, sprefix = old_manifest.split('/', 1)
+                scontainer = unquote(scontainer)
+                sprefix = unquote(sprefix)
                 for delobj in conn.get_container(scontainer,
                                                  prefix=sprefix)[1]:
                     segment_queue.put((scontainer, delobj['name']))
@@ -856,8 +859,8 @@ def st_upload(parser, args, print_queue, error_queue):
                             'because not all segments could be uploaded. %s/%s'
                             % (container, obj))
                     new_object_manifest = '%s_segments/%s/%s/%s/' % (
-                        container, obj, put_headers['x-object-meta-mtime'],
-                        full_size)
+                        quote(container), quote(obj),
+                        put_headers['x-object-meta-mtime'], full_size)
                     if old_manifest == new_object_manifest:
                         old_manifest = None
                     put_headers['x-object-manifest'] = new_object_manifest
@@ -869,6 +872,8 @@ def st_upload(parser, args, print_queue, error_queue):
                 if old_manifest:
                     segment_queue = Queue(10000)
                     scontainer, sprefix = old_manifest.split('/', 1)
+                    scontainer = unquote(scontainer)
+                    sprefix = unquote(sprefix)
                     for delobj in conn.get_container(scontainer,
                                                      prefix=sprefix)[1]:
                         segment_queue.put({'delete': True,
