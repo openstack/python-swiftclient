@@ -20,11 +20,7 @@ import setuptools
 import sys
 
 from swiftclient.openstack.common import setup
-from swiftclient import version
 
-# TODO: Figuring out how we are going to do the versioning (and if
-# any).
-version = version
 name = 'python-swiftclient'
 
 requires = setup.parse_requirements()
@@ -36,7 +32,7 @@ def read(fname):
 
 setuptools.setup(
     name=name,
-    version=version,
+    version=setup.get_post_version('swiftclient'),
     description='Client Library for OpenStack Object Storage API',
     long_description=read('README.rst'),
     url='https://github.com/openstack/python-swiftclient',
