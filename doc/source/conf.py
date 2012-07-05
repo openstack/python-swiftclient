@@ -46,7 +46,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Swiftclient Web'
+project = u'Swiftclient'
 copyright = u'2012 OpenStack, LLC.'
 
 # The version info for the project you're documenting, acts as replacement for
