@@ -19,7 +19,7 @@ import unittest
 from urlparse import urlparse
 
 # TODO: mock http connection class with more control over headers
-from utils import fake_http_connect
+from utils import fake_http_connect, fake_get_keystoneclient_2_0
 
 from swiftclient import client as c
 
@@ -175,42 +175,33 @@ class TestGetAuth(MockHttpTest):
         self.assertEquals(token, None)
 
     def test_auth_v2(self):
-        def read(*args, **kwargs):
-            acct_url = 'http://127.0.01/AUTH_FOO'
-            body = {'access': {'serviceCatalog':
-                                   [{u'endpoints': [{'publicURL': acct_url}],
-                                     'type': 'object-store'}],
-                               'token': {'id': 'XXXXXXX'}}}
-            return c.json_dumps(body)
-        c.http_connection = self.fake_http_connection(200, return_read=read)
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
-                                tenant_name='asdf', auth_version="2.0")
+                                os_options={'tenant_name': 'asdf'},
+                                auth_version="2.0")
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)
 
     def test_auth_v2_no_tenant_name(self):
-        def read(*args, **kwargs):
-            acct_url = 'http://127.0.01/AUTH_FOO'
-            body = {'access': {'serviceCatalog':
-                                   [{u'endpoints': [{'publicURL': acct_url}],
-                                     'type': 'object-store'}],
-                               'token': {'id': 'XXXXXXX'}}}
-            return c.json_dumps(body)
-        c.http_connection = self.fake_http_connection(200, return_read=read)
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0
         self.assertRaises(c.ClientException, c.get_auth,
                           'http://www.tests.com', 'asdf', 'asdf',
+                          os_options={},
                           auth_version='2.0')
 
     def test_auth_v2_with_tenant_user_in_user(self):
-        def read(*args, **kwargs):
-            acct_url = 'http://127.0.01/AUTH_FOO'
-            body = {'access': {'serviceCatalog':
-                                   [{u'endpoints': [{'publicURL': acct_url}],
-                                     'type': 'object-store'}],
-                               'token': {'id': 'XXXXXXX'}}}
-            return c.json_dumps(body)
-        c.http_connection = self.fake_http_connection(200, return_read=read)
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0
         url, token = c.get_auth('http://www.test.com', 'foo:bar', 'asdf',
+                                os_options={},
+                                auth_version="2.0")
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+    def test_auth_v2_tenant_name_no_os_options(self):
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                tenant_name='asdf',
+                                os_options={},
                                 auth_version="2.0")
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)

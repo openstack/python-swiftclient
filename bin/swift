@@ -38,9 +38,9 @@ def get_conn(options):
     return Connection(options.auth,
                       options.user,
                       options.key,
-                      snet=options.snet,
-                      tenant_name=options.os_tenant_name,
-                      auth_version=options.auth_version)
+                      auth_version=options.auth_version,
+                      os_options=options.os_options,
+                      snet=options.snet)
 
 
 def mkdirs(path):
@@ -991,13 +991,6 @@ def parse_args(parser, args, enforce_requires=True):
         # Use 2.0 auth if none of the old args are present
         options.auth_version = '2.0'
 
-    if options.auth_version in ('2.0', '2') and not \
-            options.os_tenant_name and options.user and \
-            ':' in options.user:
-        (options.os_tenant_name,
-         options.os_username) = options.user.split(':')
-        options.user = options.os_username
-
     # Use new-style args if old ones not present
     if not options.auth and options.os_auth_url:
         options.auth = options.os_auth_url
@@ -1005,6 +998,15 @@ def parse_args(parser, args, enforce_requires=True):
         options.user = options.os_username
     if not options.key and options.os_password:
         options.key = options.os_password
+
+    # Specific OpenStack options
+    options.os_options = {
+        'tenant_id': options.os_tenant_id,
+        'tenant_name': options.os_tenant_name,
+        'service_type': options.os_service_type,
+        'auth_token': options.os_auth_token,
+        'object_storage_url': options.os_storage_url,
+    }
 
     # Handle trailing '/' in URL
     if options.auth and not options.auth.endswith('/'):
@@ -1017,8 +1019,8 @@ Auth version 1.0 requires ST_AUTH, ST_USER, and ST_KEY environment variables
 to be set or overridden with -A, -U, or -K.
 
 Auth version 2.0 requires OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, and
-OS_TENANT_NAME to be set or overridden with --os_auth_url, --os_username,
---os_password, or --os_tenant_name.'''.strip('\n'))
+OS_TENANT_NAME OS_TENANT_ID to be set or overridden with --os-auth_url,
+--os_username, --os_password, --os_tenant_name or os_tenant_id.'''.strip('\n'))
     return options, args
 
 
@@ -1051,26 +1053,43 @@ Example:
                       default=environ.get('ST_AUTH_VERSION', '1.0'),
                       type=str,
                       help='Specify a version for authentication'\
-                          '(default: 1.0)')
+                           '(default: 1.0)')
     parser.add_option('-U', '--user', dest='user',
                       default=environ.get('ST_USER'),
                       help='User name for obtaining an auth token')
     parser.add_option('-K', '--key', dest='key',
                       default=environ.get('ST_KEY'),
                       help='Key for obtaining an auth token')
-    parser.add_option('--os_auth_url', dest='os_auth_url',
-                      default=environ.get('OS_AUTH_URL'),
-                      help='Openstack auth URL. Defaults to env[OS_AUTH_URL].')
     parser.add_option('--os_username', dest='os_username',
                       default=environ.get('OS_USERNAME'),
                       help='Openstack username. Defaults to env[OS_USERNAME].')
+    parser.add_option('--os_password', dest='os_password',
+                      default=environ.get('OS_PASSWORD'),
+                      help='Openstack password. Defaults to env[OS_PASSWORD].')
+    parser.add_option('--os_tenant_id',
+                      default=environ.get('OS_TENANT_ID'),
+                      help='OpenStack tenant ID.' \
+                           'Defaults to env[OS_TENANT_ID]')
     parser.add_option('--os_tenant_name', dest='os_tenant_name',
                       default=environ.get('OS_TENANT_NAME'),
                       help='Openstack tenant name.' \
                            'Defaults to env[OS_TENANT_NAME].')
-    parser.add_option('--os_password', dest='os_password',
-                      default=environ.get('OS_PASSWORD'),
-                      help='Openstack password. Defaults to env[OS_PASSWORD].')
+    parser.add_option('--os_auth_url', dest='os_auth_url',
+                      default=environ.get('OS_AUTH_URL'),
+                      help='Openstack auth URL. Defaults to env[OS_AUTH_URL].')
+    parser.add_option('--os_auth_token', dest='os_auth_token',
+                      default=environ.get('OS_AUTH_TOKEN'),
+                      help='Openstack token. Defaults to env[OS_AUTH_TOKEN]')
+    parser.add_option('--os_storage_url',
+                      dest='os_storage_url',
+                      default=environ.get('OS_STORAGE_URL'),
+                      help='Openstack storage URL.' \
+                           'Defaults to env[OS_STORAGE_URL]')
+    parser.add_option('--os_service_type',
+                      dest='os_service_type',
+                      default=environ.get('OS_SERVICE_TYPE'),
+                      help='Openstack Service type.' \
+                           'Defaults to env[OS_SERVICE_TYPE]')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
