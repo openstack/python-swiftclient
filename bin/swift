@@ -215,16 +215,20 @@ def st_delete(parser, args, print_queue, error_queue):
     def _delete_container(container, conn):
         try:
             marker = ''
+            had_objects = False
             while True:
                 objects = [o['name'] for o in
                            conn.get_container(container, marker=marker)[1]]
                 if not objects:
                     break
+                had_objects = True
                 for obj in objects:
                     object_queue.put((container, obj))
                 marker = objects[-1]
-            while not object_queue.empty():
-                sleep(0.01)
+            if had_objects:
+                # By using join() instead of empty() we should avoid most
+                # occurrences of 409 below.
+                object_queue.join()
             attempts = 1
             while True:
                 try:
