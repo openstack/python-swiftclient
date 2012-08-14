@@ -242,9 +242,10 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options):
                                 tenant_id=os_options.get('tenant_id'),
                                 auth_url=auth_url)
     service_type = os_options.get('service_type') or 'object-store'
+    endpoint_type = os_options.get('endpoint_type') or 'publicURL'
     endpoint = _ksclient.service_catalog.url_for(
         service_type=service_type,
-        endpoint_type='publicURL')
+        endpoint_type=endpoint_type)
     return (endpoint, _ksclient.auth_token)
 
 
