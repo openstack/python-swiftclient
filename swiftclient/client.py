@@ -556,6 +556,8 @@ def put_container(url, token, container, headers=None, http_conn=None):
     if not headers:
         headers = {}
     headers['X-Auth-Token'] = token
+    if not 'content-length' in (k.lower() for k in headers):
+        headers['Content-Length'] = 0
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -588,6 +590,8 @@ def post_container(url, token, container, headers, http_conn=None):
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'POST'
     headers['X-Auth-Token'] = token
+    if not 'content-length' in (k.lower() for k in headers):
+        headers['Content-Length'] = 0
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
