@@ -329,6 +329,9 @@ def st_download(parser, args, print_queue, error_queue):
     parser.add_option('', '--container-threads', type=int,
                       default=10, help='Number of threads to use for '
                       'listing containers')
+    parser.add_option('', '--no-download', action='store_true',
+                      default=False, help="Perform download(s), but don't "
+                      "actually write anything to disk")
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
@@ -365,7 +368,7 @@ def st_download(parser, args, print_queue, error_queue):
             if path[:1] in ('/', '\\'):
                 path = path[1:]
             md5sum = None
-            make_dir = out_file != "-"
+            make_dir = not options.no_download and out_file != "-"
             if content_type.split(';', 1)[0] == 'text/directory':
                 if make_dir and not isdir(path):
                     mkdirs(path)
@@ -380,28 +383,33 @@ def st_download(parser, args, print_queue, error_queue):
                 dirpath = dirname(path)
                 if make_dir and dirpath and not isdir(dirpath):
                     mkdirs(dirpath)
-                if out_file == "-":
-                    fp = stdout
-                elif out_file:
-                    fp = open(out_file, 'wb')
-                else:
-                    fp = open(path, 'wb')
+                if not options.no_download:
+                    if out_file == "-":
+                        fp = stdout
+                    elif out_file:
+                        fp = open(out_file, 'wb')
+                    else:
+                        fp = open(path, 'wb')
                 read_length = 0
                 if 'x-object-manifest' not in headers:
                     md5sum = md5()
                 for chunk in body:
-                    fp.write(chunk)
+                    if not options.no_download:
+                        fp.write(chunk)
                     read_length += len(chunk)
                     if md5sum:
                         md5sum.update(chunk)
-                fp.close()
+                if not options.no_download:
+                    fp.close()
             if md5sum and md5sum.hexdigest() != etag:
                 error_queue.put('%s: md5sum != etag, %s != %s' %
                                 (path, md5sum.hexdigest(), etag))
             if content_length is not None and read_length != content_length:
                 error_queue.put('%s: read_length != content_length, %d != %d' %
                                 (path, read_length, content_length))
-            if 'x-object-meta-mtime' in headers and not options.out_file:
+            if 'x-object-meta-mtime' in headers and not options.out_file \
+                    and not options.no_download:
+
                 mtime = float(headers['x-object-meta-mtime'])
                 utime(path, (mtime, mtime))
             if options.verbose:
