@@ -24,7 +24,7 @@ from os.path import basename, dirname, getmtime, getsize, isdir, join
 from Queue import Empty, Queue
 from sys import argv, exc_info, exit, stderr, stdout
 from threading import current_thread, enumerate as threading_enumerate, Thread
-from time import sleep
+from time import sleep, time
 from traceback import format_exception
 from urllib import quote, unquote
 
@@ -350,8 +350,10 @@ def st_download(parser, args, print_queue, error_queue):
         else:
             raise Exception("Invalid queue_arg length of %s" % len(queue_arg))
         try:
+            start_time = time()
             headers, body = \
                 conn.get_object(container, obj, resp_chunk_size=65536)
+            header_receipt = time()
             content_type = headers.get('content-type')
             if 'content-length' in headers:
                 content_length = int(headers.get('content-length'))
@@ -402,11 +404,15 @@ def st_download(parser, args, print_queue, error_queue):
                 mtime = float(headers['x-object-meta-mtime'])
                 utime(path, (mtime, mtime))
             if options.verbose:
+                finish_time = time()
+                time_str = 'headers %.3fs, total %.3fs, %.3fs MB/s' % (
+                    header_receipt - start_time, finish_time - start_time,
+                    float(read_length) / (finish_time - start_time) / 1000000)
                 if conn.attempts > 1:
-                    print_queue.put('%s [after %d attempts' %
-                                    (path, conn.attempts))
+                    print_queue.put('%s [%s after %d attempts]' %
+                                    (path, time_str, conn.attempts))
                 else:
-                    print_queue.put(path)
+                    print_queue.put('%s [%s]' % (path, time_str))
         except ClientException, err:
             if err.http_status != 404:
                 raise
