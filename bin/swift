@@ -22,6 +22,7 @@ from optparse import OptionParser
 from os import environ, listdir, makedirs, utime, _exit as os_exit
 from os.path import basename, dirname, getmtime, getsize, isdir, join
 from Queue import Empty, Queue
+from random import shuffle
 from sys import argv, exc_info, exit, stderr, stdout
 from threading import current_thread, enumerate as threading_enumerate, Thread
 from time import sleep
@@ -423,9 +424,10 @@ def st_download(parser, args, print_queue, error_queue):
                            conn.get_container(container, marker=marker)[1]]
                 if not objects:
                     break
+                marker = objects[-1]
+                shuffle(objects)
                 for obj in objects:
                     object_queue.put((container, obj))
-                marker = objects[-1]
         except ClientException, err:
             if err.http_status != 404:
                 raise
@@ -450,9 +452,10 @@ def st_download(parser, args, print_queue, error_queue):
                               for c in conn.get_account(marker=marker)[1]]
                 if not containers:
                     break
+                marker = containers[-1]
+                shuffle(containers)
                 for container in containers:
                     container_queue.put(container)
-                marker = containers[-1]
         except ClientException, err:
             if err.http_status != 404:
                 raise
