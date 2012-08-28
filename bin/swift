@@ -1025,6 +1025,7 @@ def parse_args(parser, args, enforce_requires=True):
         'tenant_id': options.os_tenant_id,
         'tenant_name': options.os_tenant_name,
         'service_type': options.os_service_type,
+        'endpoint_type': options.os_endpoint_type,
         'auth_token': options.os_auth_token,
         'object_storage_url': options.os_storage_url,
     }
@@ -1133,6 +1134,11 @@ Example:
                            'Defaults to env[OS_SERVICE_TYPE]')
     parser.add_option('--os_service_type',
                       help=SUPPRESS_HELP)
+    parser.add_option('--os-endpoint-type',
+                      metavar='<endpoint-type>',
+                      default=environ.get('OS_ENDPOINT_TYPE'),
+                      help='Openstack Endpoint type. (publicURL, e.g.)' \
+                           'Defaults to env[OS_ENDPOINT_TYPE]')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()

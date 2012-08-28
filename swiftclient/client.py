@@ -242,9 +242,10 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options):
                                 tenant_id=os_options.get('tenant_id'),
                                 auth_url=auth_url)
     service_type = os_options.get('service_type') or 'object-store'
+    endpoint_type = os_options.get('endpoint_type') or 'publicURL'
     endpoint = _ksclient.service_catalog.url_for(
         service_type=service_type,
-        endpoint_type='publicURL')
+        endpoint_type=endpoint_type)
     return (endpoint, _ksclient.auth_token)
 
 
@@ -922,8 +923,8 @@ class Connection(object):
         :param tenant_name: The tenant/account name, required when connecting
                             to a auth 2.0 system.
         :param os_options: The OpenStack options which can have tenant_id,
-                           auth_token, service_type, tenant_name,
-                           object_storage_url
+                           auth_token, service_type, endpoint_type,
+                           tenant_name, object_storage_url
         """
         self.authurl = authurl
         self.user = user

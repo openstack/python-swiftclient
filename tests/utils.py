@@ -16,13 +16,15 @@ from httplib import HTTPException
 
 from eventlet import Timeout, sleep
 
-
-def fake_get_keystoneclient_2_0(auth_url,
-                                username,
-                                tenant_name,
-                                password,
-                                service_type='object-store'):
-    return ("http://url/", "token")
+def fake_get_keystoneclient_2_0(os_options):
+    def fake_get_keystoneclient_2_0(auth_url,
+                                    user,
+                                    key,
+                                    actual_os_options):
+        if actual_os_options != os_options:
+            return "", None
+        return ("http://url/", "token")
+    return fake_get_keystoneclient_2_0
 
 
 def fake_http_connect(*code_iter, **kwargs):
