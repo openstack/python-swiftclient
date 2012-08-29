@@ -995,7 +995,7 @@ def split_headers(options, prefix='', error_queue=None):
         else:
             error_string = "Metadata parameter %s must contain a ':'.\n%s" \
                            % (item, st_post_help)
-            if error_queue != None:
+            if error_queue:
                 error_queue.put(error_string)
             else:
                 exit(error_string)
@@ -1073,7 +1073,7 @@ Example:
                       dest='auth_version',
                       default=environ.get('ST_AUTH_VERSION', '1.0'),
                       type=str,
-                      help='Specify a version for authentication'\
+                      help='Specify a version for authentication'
                            '(default: 1.0)')
     parser.add_option('-U', '--user', dest='user',
                       default=environ.get('ST_USER'),
@@ -1096,14 +1096,14 @@ Example:
     parser.add_option('--os-tenant-id',
                       metavar='<auth-tenant-id>',
                       default=environ.get('OS_TENANT_ID'),
-                      help='OpenStack tenant ID.' \
+                      help='OpenStack tenant ID.'
                            'Defaults to env[OS_TENANT_ID]')
     parser.add_option('--os_tenant_id',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-tenant-name',
                       metavar='<auth-tenant-name>',
                       default=environ.get('OS_TENANT_NAME'),
-                      help='Openstack tenant name.' \
+                      help='Openstack tenant name.'
                            'Defaults to env[OS_TENANT_NAME].')
     parser.add_option('--os_tenant_name',
                       help=SUPPRESS_HELP)
@@ -1122,14 +1122,14 @@ Example:
     parser.add_option('--os-storage-url',
                       metavar='<storage-url>',
                       default=environ.get('OS_STORAGE_URL'),
-                      help='Openstack storage URL.' \
+                      help='Openstack storage URL.'
                            'Defaults to env[OS_STORAGE_URL]')
     parser.add_option('--os_storage_url',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-service-type',
                       metavar='<service-type>',
                       default=environ.get('OS_SERVICE_TYPE'),
-                      help='Openstack Service type.' \
+                      help='Openstack Service type.'
                            'Defaults to env[OS_SERVICE_TYPE]')
     parser.add_option('--os_service_type',
                       help=SUPPRESS_HELP)
