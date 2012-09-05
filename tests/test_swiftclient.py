@@ -220,6 +220,25 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)
 
+    def test_auth_v2_with_os_region_name(self):
+        os_options={'region_name': 'good-region',
+                    'tenant_name': 'asdf'}
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                os_options=os_options,
+                                auth_version="2.0")
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+    def test_auth_v2_no_endpoint(self):
+        os_options={'region_name': 'unknown_region',
+                    'tenant_name': 'asdf'}
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+                                       os_options,
+                                       c.ClientException)
+        self.assertRaises(c.ClientException, c.get_auth,
+                          'http://www.tests.com', 'asdf', 'asdf',
+                          os_options=os_options, auth_version='2.0')
 
 class TestGetAccount(MockHttpTest):
 

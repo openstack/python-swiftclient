@@ -1028,6 +1028,7 @@ def parse_args(parser, args, enforce_requires=True):
         'endpoint_type': options.os_endpoint_type,
         'auth_token': options.os_auth_token,
         'object_storage_url': options.os_storage_url,
+        'region_name': options.os_region_name,
     }
 
     # Handle trailing '/' in URL
@@ -1126,6 +1127,13 @@ Example:
                       help='Openstack storage URL.'
                            'Defaults to env[OS_STORAGE_URL]')
     parser.add_option('--os_storage_url',
+                      help=SUPPRESS_HELP)
+    parser.add_option('--os-region-name',
+                      metavar='<region-name>',
+                      default=environ.get('OS_REGION_NAME'),
+                      help='Openstack region name. '
+                           'Defaults to env[OS_REGION_NAME]')
+    parser.add_option('--os_region_name',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-service-type',
                       metavar='<service-type>',

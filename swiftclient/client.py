@@ -236,6 +236,7 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options):
     We are using the keystoneclient library for our 2.0 authentication.
     """
     from keystoneclient.v2_0 import client as ksclient
+    from keystoneclient import exceptions
     _ksclient = ksclient.Client(username=user,
                                 password=key,
                                 tenant_name=os_options.get('tenant_name'),
@@ -243,9 +244,15 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options):
                                 auth_url=auth_url)
     service_type = os_options.get('service_type') or 'object-store'
     endpoint_type = os_options.get('endpoint_type') or 'publicURL'
-    endpoint = _ksclient.service_catalog.url_for(
-        service_type=service_type,
-        endpoint_type=endpoint_type)
+    try:
+        endpoint = _ksclient.service_catalog.url_for(
+            attr='region',
+            filter_value=os_options.get('region_name'),
+            service_type=service_type,
+            endpoint_type=endpoint_type)
+    except exceptions.EndpointNotFound:
+        raise ClientException('Endpoint for %s not found - '
+                              'have you specified a region?' % service_type)
     return (endpoint, _ksclient.auth_token)
 
 
@@ -924,7 +931,7 @@ class Connection(object):
                             to a auth 2.0 system.
         :param os_options: The OpenStack options which can have tenant_id,
                            auth_token, service_type, endpoint_type,
-                           tenant_name, object_storage_url
+                           tenant_name, object_storage_url, region_name
         """
         self.authurl = authurl
         self.user = user
