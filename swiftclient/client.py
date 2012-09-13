@@ -916,7 +916,7 @@ class Connection(object):
 
     def __init__(self, authurl, user, key, retries=5, preauthurl=None,
                  preauthtoken=None, snet=False, starting_backoff=1,
-                 tenant_name=None, os_options={}, auth_version="1"):
+                 tenant_name=None, os_options=None, auth_version="1"):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -944,9 +944,9 @@ class Connection(object):
         self.snet = snet
         self.starting_backoff = starting_backoff
         self.auth_version = auth_version
+        self.os_options = os_options or {}
         if tenant_name:
-            os_options['tenant_name'] = tenant_name
-        self.os_options = os_options
+            self.os_options['tenant_name'] = tenant_name
 
     def get_auth(self):
         return get_auth(self.authurl,
