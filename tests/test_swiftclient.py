@@ -240,6 +240,15 @@ class TestGetAuth(MockHttpTest):
                           'http://www.tests.com', 'asdf', 'asdf',
                           os_options=os_options, auth_version='2.0')
 
+    def test_auth_v2_ks_exception(self):
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+                                       {},
+                                       c.ClientException)
+        self.assertRaises(c.ClientException, c.get_auth,
+                          'http://www.tests.com', 'asdf', 'asdf',
+                          os_options={},
+                          auth_version='2.0')
+
 class TestGetAccount(MockHttpTest):
 
     def test_no_content(self):

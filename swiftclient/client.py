@@ -237,11 +237,17 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options):
     """
     from keystoneclient.v2_0 import client as ksclient
     from keystoneclient import exceptions
-    _ksclient = ksclient.Client(username=user,
-                                password=key,
-                                tenant_name=os_options.get('tenant_name'),
-                                tenant_id=os_options.get('tenant_id'),
-                                auth_url=auth_url)
+    try:
+        _ksclient = ksclient.Client(username=user,
+                                    password=key,
+                                    tenant_name=os_options.get('tenant_name'),
+                                    tenant_id=os_options.get('tenant_id'),
+                                    auth_url=auth_url)
+    except exceptions.Unauthorized:
+        raise ClientException('Unauthorised. Check username, password'
+                              ' and tenant name/id')
+    except exceptions.AuthorizationFailure, err:
+        raise ClientException('Authorization Failure. %s' % err)
     service_type = os_options.get('service_type') or 'object-store'
     endpoint_type = os_options.get('endpoint_type') or 'publicURL'
     try:
