@@ -273,6 +273,7 @@ def get_auth(auth_url, user, key, **kwargs):
     client to be running on Rackspace's ServiceNet network.
     """
     auth_version = kwargs.get('auth_version', '1')
+    os_options = kwargs.get('os_options', {})
 
     if auth_version in ['1.0', '1', 1]:
         return get_auth_1_0(auth_url,
@@ -284,28 +285,28 @@ def get_auth(auth_url, user, key, **kwargs):
 
         # We are allowing to specify a token/storage-url to re-use
         # without having to re-authenticate.
-        if (kwargs['os_options'].get('object_storage_url') and
-                kwargs['os_options'].get('auth_token')):
-            return(kwargs['os_options'].get('object_storage_url'),
-                   kwargs['os_options'].get('auth_token'))
+        if (os_options.get('object_storage_url') and
+                os_options.get('auth_token')):
+            return(os_options.get('object_storage_url'),
+                   os_options.get('auth_token'))
 
         # We are handling a special use case here when we were
         # allowing specifying the account/tenant_name with the -U
         # argument
         if not kwargs.get('tenant_name') and ':' in user:
-            (kwargs['os_options']['tenant_name'],
+            (os_options['tenant_name'],
              user) = user.split(':')
 
         # We are allowing to have an tenant_name argument in get_auth
         # directly without having os_options
         if kwargs.get('tenant_name'):
-            kwargs['os_options']['tenant_name'] = kwargs['tenant_name']
+            os_options['tenant_name'] = kwargs['tenant_name']
 
-        if (not 'tenant_name' in kwargs['os_options']):
+        if (not 'tenant_name' in os_options):
             raise ClientException('No tenant specified')
 
         (auth_url, token) = get_keystoneclient_2_0(auth_url, user,
-                                                   key, kwargs['os_options'])
+                                                   key, os_options)
         return (auth_url, token)
 
     raise ClientException('Unknown auth_version %s specified.'
