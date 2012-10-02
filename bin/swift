@@ -1007,8 +1007,7 @@ def parse_args(parser, args, enforce_requires=True):
         args = ['-h']
     (options, args) = parser.parse_args(args)
 
-    if (not (options.auth and options.user and options.key) or
-        options.os_auth_url):
+    if (not (options.auth and options.user and options.key)):
         # Use 2.0 auth if none of the old args are present
         options.auth_version = '2.0'
 
