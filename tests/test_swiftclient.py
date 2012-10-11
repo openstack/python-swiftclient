@@ -15,6 +15,7 @@
 
 # TODO: More tests
 import socket
+import StringIO
 import unittest
 from urlparse import urlparse
 
@@ -119,6 +120,24 @@ class MockHttpTest(unittest.TestCase):
 
     def tearDown(self):
         reload(c)
+
+
+class MockHttpResponse():
+    def __init__(self):
+        self.status = 200
+        self.buffer = []
+
+    def read(self):
+        return ""
+
+    def getheader(self, name, default):
+        return ""
+
+    def fake_response(self):
+        return MockHttpResponse()
+
+    def fake_send(self, msg):
+        self.buffer.append(msg)
 
 
 class TestHttpHelpers(MockHttpTest):
@@ -360,6 +379,26 @@ class TestPutObject(MockHttpTest):
         value = c.put_object(*args)
         self.assertTrue(isinstance(value, basestring))
 
+    def test_unicode_ok(self):
+        conn = c.http_connection(u'http://www.test.com/')
+        file = StringIO.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                file)
+        headers = {'X-Header1': u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                   'X-2': 1, 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:fg:lp'}
+
+        resp = MockHttpResponse()
+        conn[1].getresponse = resp.fake_response
+        conn[1].send = resp.fake_send
+        value = c.put_object(*args, headers=headers, http_conn=conn)
+        self.assertTrue(isinstance(value, basestring))
+        # Test for RFC-2616 encoded symbols
+        self.assertTrue("a-b: .x:yz mn:fg:lp" in resp.buffer[0],
+                      "[a-b: .x:yz mn:fg:lp] header is missing")
+
     def test_server_error(self):
         body = 'c' * 60
         c.http_connection = self.fake_http_connection(500, body=body)
@@ -377,6 +416,23 @@ class TestPostObject(MockHttpTest):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', {})
         value = c.post_object(*args)
+
+    def test_unicode_ok(self):
+        conn = c.http_connection(u'http://www.test.com/')
+        args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        headers = {'X-Header1': u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                   'X-2': 1, 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr'}
+
+        resp = MockHttpResponse()
+        conn[1].getresponse = resp.fake_response
+        conn[1].send = resp.fake_send
+        c.post_object(*args, headers=headers, http_conn=conn)
+        # Test for RFC-2616 encoded symbols
+        self.assertTrue("a-b: .x:yz mn:kl:qr" in resp.buffer[0],
+                      "[a-b: .x:yz mn:kl:qr] header is missing")
 
     def test_server_error(self):
         body = 'c' * 60
