@@ -824,10 +824,12 @@ def st_upload(parser, args, print_queue, error_queue):
                         cl = int(headers.get('content-length'))
                         et = headers.get('etag')
                         mt = headers.get('x-object-meta-mtime')
-                        if ct.split(';', 1)[0] == 'text/directory' and \
-                                cl == 0 and \
-                                et == 'd41d8cd98f00b204e9800998ecf8427e' and \
-                                mt == put_headers['x-object-meta-mtime']:
+                        content_type = ct.split(';', 1)[0]
+                        if  content_type == 'text/directory' or \
+                            content_type == 'application/directory' and \
+                            cl == 0 and \
+                            et == 'd41d8cd98f00b204e9800998ecf8427e' and \
+                            mt == put_headers['x-object-meta-mtime']:
                             return
                     except ClientException, err:
                         if err.http_status != 404:
