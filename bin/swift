@@ -22,6 +22,7 @@ from optparse import OptionParser, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
 from os.path import basename, dirname, getmtime, getsize, isdir, join, exists as path_exists
 from Queue import Empty, Queue
+from random import shuffle
 from sys import argv, exc_info, exit, stderr, stdout
 from threading import current_thread, enumerate as threading_enumerate, Thread
 from time import sleep, time
@@ -336,6 +337,9 @@ def st_download(parser, args, print_queue, error_queue):
     parser.add_option('', '--verified-overwrite', action='store_true', dest='verifiedoverwrite',
                       default=False, help="If file exists, check the checksum, download and overwrite "
                       "if different")
+    parser.add_option('', '--seq', action='store_true', dest='seq_download',
+                      default=False, help="Sort the container before adding to queue so download in"
+                      " order")
 
     (options, args) = parse_args(parser, args)
     args = args[1:]
@@ -492,7 +496,10 @@ def st_download(parser, args, print_queue, error_queue):
                 if not objects:
                     break
                 marker = objects[-1]
-                sorted(objects)
+                if options.seq_download:
+                    sorted(objects)
+                else:
+                    shuffle(objects)
                 for obj in objects:
                     object_queue.put((container, obj))
         except ClientException, err:
@@ -520,7 +527,10 @@ def st_download(parser, args, print_queue, error_queue):
                 if not containers:
                     break
                 marker = containers[-1]
-                sorted(containers)
+                if options.seq_download:
+                    sorted(containers)
+                else:
+                    shuffle(containers)
                 for container in containers:
                     container_queue.put(container)
         except ClientException, err:
