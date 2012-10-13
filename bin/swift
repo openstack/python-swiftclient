@@ -333,7 +333,7 @@ def st_download(parser, args, print_queue, error_queue):
                       default=False, help="Perform download(s), but don't "
                       "actually write anything to disk")
     parser.add_option('', '--no-clobber', action='store_true', dest='noclobber',
-                      default=False, help="Do not overwrite if file all ready exists")
+                      default=False, help="Do not overwrite if file already exists")
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
