@@ -22,7 +22,6 @@ from optparse import OptionParser, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
 from os.path import basename, dirname, getmtime, getsize, isdir, join, exists as path_exists
 from Queue import Empty, Queue
-from random import shuffle
 from sys import argv, exc_info, exit, stderr, stdout
 from threading import current_thread, enumerate as threading_enumerate, Thread
 from time import sleep, time
@@ -493,7 +492,7 @@ def st_download(parser, args, print_queue, error_queue):
                 if not objects:
                     break
                 marker = objects[-1]
-                shuffle(objects)
+                sorted(objects)
                 for obj in objects:
                     object_queue.put((container, obj))
         except ClientException, err:
@@ -521,7 +520,7 @@ def st_download(parser, args, print_queue, error_queue):
                 if not containers:
                     break
                 marker = containers[-1]
-                shuffle(containers)
+                sorted(containers)
                 for container in containers:
                     container_queue.put(container)
         except ClientException, err:
