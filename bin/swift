@@ -397,18 +397,18 @@ def st_download(parser, args, print_queue, error_queue):
                             #if matching skip
                             if md5sum_remote == md5sum_file.hexdigest():
                                 if options.verbose:
-                                    print obj +' [ Verified Skipping %s ] %s ' % ( md5sum_remote, 
-                                          verify_time_str)
+                                    print_queue.put(obj +' [ Verified Skipping %s ] %s ' % \
+                                    ( md5sum_remote, verify_time_str))
                                 return
                             else:
                                 if options.verbose:
-                                    print obj +' [ Overwriting local %s remote %s] %s ' % \
-                                          (md5sum_file.hexdigest(), md5sum_remote,verify_time_str)
+                                    print_queue.put(obj +' [ Overwriting local %s remote %s] %s ' % \
+                                          (md5sum_file.hexdigest(), md5sum_remote,verify_time_str))
                             
                                 # continue through and get the file
                     else:
                         if options.verbose:
-                            print obj +'[ Skipping ]'
+                            print_queue.put(obj +'[ Skipping ]')
                         return
             start_time = time()
             headers, body = \
