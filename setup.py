@@ -46,6 +46,7 @@ setuptools.setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
+        'Environment :: OpenStack',
         'Intended Audience :: Developers',
         'Intended Audience :: Information Technology',
         'License :: OSI Approved :: Apache Software License',
