@@ -407,6 +407,20 @@ class TestConnection(MockHttpTest):
         conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
         self.assertEquals(conn.retries, 5)
 
+    def test_instance_kwargs(self):
+        args = {'user':  'ausername',
+                'key':  'secretpass',
+                'authurl':  'http://www.test.com',
+                'tenant_name':  'atenant'}
+        conn = c.Connection(**args)
+        self.assertEquals(type(conn), c.Connection)
+
+    def test_instance_kwargs_token(self):
+        args = {'preauthtoken': 'atoken123',
+                'preauthurl':  'http://www.test.com:8080/v1/AUTH_123456'}
+        conn = c.Connection(**args)
+        self.assertEquals(type(conn), c.Connection)
+
     def test_retry(self):
         c.http_connection = self.fake_http_connection(500)
 

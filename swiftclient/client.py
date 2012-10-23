@@ -921,9 +921,10 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
 class Connection(object):
     """Convenience class to make requests that will also retry the request"""
 
-    def __init__(self, authurl, user, key, retries=5, preauthurl=None,
-                 preauthtoken=None, snet=False, starting_backoff=1,
-                 tenant_name=None, os_options=None, auth_version="1"):
+    def __init__(self, authurl=None, user=None, key=None, retries=5,
+                 preauthurl=None, preauthtoken=None, snet=False,
+                 starting_backoff=1, tenant_name=None, os_options=None,
+                 auth_version="1"):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -931,7 +932,8 @@ class Connection(object):
         :param retries: Number of times to retry the request before failing
         :param preauthurl: storage URL (if you have already authenticated)
         :param preauthtoken: authentication token (if you have already
-                             authenticated)
+                             authenticated) note authurl/user/key/tenant_name
+                             are not required when specifying preauthtoken
         :param snet: use SERVICENET internal network default is False
         :param auth_version: OpenStack auth version, default is 1.0
         :param tenant_name: The tenant/account name, required when connecting
