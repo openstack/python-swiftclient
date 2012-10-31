@@ -31,6 +31,10 @@ class _deferred_version_string(object):
         self.version_info = version_info
         self.prefix = prefix
 
+    def __getattr__(self, method_name):
+        """Delegate to the generated string"""
+        return getattr(self.__str__(), method_name)
+
     def __str__(self):
         return "%s%s" % (self.prefix, self.version_info.version_string())
 

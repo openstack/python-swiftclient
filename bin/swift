@@ -1047,7 +1047,12 @@ OS_TENANT_NAME OS_TENANT_ID to be set or overridden with --os-auth-url,
 
 
 if __name__ == '__main__':
-    parser = OptionParser(version='%prog 1.0', usage='''
+    try:
+      from swiftclient.version import version_info
+      version_str = version_info.deferred_version_string('%prog ')
+    except IOError:
+      version_str = '%prog (unknown version)'
+    parser = OptionParser(version=version_str, usage='''
 Usage: %%prog <command> [options] [args]
 
 Commands:
