@@ -20,7 +20,7 @@ from errno import EEXIST, ENOENT
 from hashlib import md5
 from optparse import OptionParser, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
-from os.path import basename, dirname, getmtime, getsize, isdir, join
+from os.path import basename, dirname, getmtime, getsize, isdir, join, exists as path_exists
 from Queue import Empty, Queue
 from random import shuffle
 from sys import argv, exc_info, exit, stderr, stdout
@@ -332,6 +332,15 @@ def st_download(parser, args, print_queue, error_queue):
     parser.add_option('', '--no-download', action='store_true',
                       default=False, help="Perform download(s), but don't "
                       "actually write anything to disk")
+    parser.add_option('', '--no-clobber', action='store_true', dest='noclobber',
+                      default=False, help="Do not overwrite if file already exists")
+    parser.add_option('', '--verified-overwrite', action='store_true', dest='verifiedoverwrite',
+                      default=False, help="If file exists, check the checksum, download and overwrite "
+                      "if different")
+    parser.add_option('', '--seq', action='store_true', dest='seq_download',
+                      default=False, help="Sort the container before adding to queue so download in"
+                      " order")
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
@@ -344,6 +353,14 @@ def st_download(parser, args, print_queue, error_queue):
         return
 
     object_queue = Queue(10000)
+    
+    def _read_in_chunks(file_obj, chunk_size=1024):
+        while True:
+            data = file_obj.read(chunk_size)
+            if not data:
+                break
+            yield data
+    
 
     def _download_object(queue_arg, conn):
         if len(queue_arg) == 2:
@@ -354,6 +371,45 @@ def st_download(parser, args, print_queue, error_queue):
         else:
             raise Exception("Invalid queue_arg length of %s" % len(queue_arg))
         try:
+            if options.noclobber or options.verifiedoverwrite:
+                if path_exists(obj):
+                    if options.verifiedoverwrite:
+                        if not isdir(obj):              
+                            verify_start_time = time()
+                            # check the checksums match
+                            headers = conn.head_object(container, obj)
+                            verify_header_receipt = time()
+                            md5sum_remote = headers['etag']
+                            md5sum_file = md5()
+                            localfile = open(obj,'r')
+                            chunksize = 1024*1024*4 
+                            read_length = 0
+                            for chunk in _read_in_chunks(localfile,chunksize):
+                                read_length = len(chunk)
+                                md5sum_file.update(chunk)
+                            verify_finish_time = time()
+                            verify_time_str = 'headers %.3fs, total %.3fs, %.3fs MB/s' % (
+                                              verify_header_receipt - verify_start_time, 
+                                              verify_finish_time - verify_start_time,
+                                              float(read_length) / (verify_finish_time - 
+                                              verify_start_time) / 1000000)              
+                            
+                            #if matching skip
+                            if md5sum_remote == md5sum_file.hexdigest():
+                                if options.verbose:
+                                    print_queue.put(obj +' [ Verified Skipping %s ] %s ' % \
+                                    ( md5sum_remote, verify_time_str))
+                                return
+                            else:
+                                if options.verbose:
+                                    print_queue.put(obj +' [ Overwriting local %s remote %s] %s ' % \
+                                          (md5sum_file.hexdigest(), md5sum_remote,verify_time_str))
+                            
+                                # continue through and get the file
+                    else:
+                        if options.verbose:
+                            print_queue.put(obj +'[ Skipping ]')
+                        return
             start_time = time()
             headers, body = \
                 conn.get_object(container, obj, resp_chunk_size=65536)
@@ -369,7 +425,8 @@ def st_download(parser, args, print_queue, error_queue):
                 path = path[1:]
             md5sum = None
             make_dir = not options.no_download and out_file != "-"
-            if content_type.split(';', 1)[0] == 'text/directory':
+            if content_type.split(';', 1)[0] == 'text/directory' \
+               or content_type.split(';', 1)[0] == 'application/directory':
                 if make_dir and not isdir(path):
                     mkdirs(path)
                 read_length = 0
@@ -439,7 +496,10 @@ def st_download(parser, args, print_queue, error_queue):
                 if not objects:
                     break
                 marker = objects[-1]
-                shuffle(objects)
+                if options.seq_download:
+                    sorted(objects)
+                else:
+                    shuffle(objects)
                 for obj in objects:
                     object_queue.put((container, obj))
         except ClientException, err:
@@ -467,7 +527,10 @@ def st_download(parser, args, print_queue, error_queue):
                 if not containers:
                     break
                 marker = containers[-1]
-                shuffle(containers)
+                if options.seq_download:
+                    sorted(containers)
+                else:
+                    shuffle(containers)
                 for container in containers:
                     container_queue.put(container)
         except ClientException, err:
@@ -816,10 +879,12 @@ def st_upload(parser, args, print_queue, error_queue):
                         cl = int(headers.get('content-length'))
                         et = headers.get('etag')
                         mt = headers.get('x-object-meta-mtime')
-                        if ct.split(';', 1)[0] == 'text/directory' and \
-                                cl == 0 and \
-                                et == 'd41d8cd98f00b204e9800998ecf8427e' and \
-                                mt == put_headers['x-object-meta-mtime']:
+                        content_type = ct.split(';', 1)[0]
+                        if  content_type == 'text/directory' or \
+                            content_type == 'application/directory' and \
+                            cl == 0 and \
+                            et == 'd41d8cd98f00b204e9800998ecf8427e' and \
+                            mt == put_headers['x-object-meta-mtime']:
                             return
                     except ClientException, err:
                         if err.http_status != 404:
