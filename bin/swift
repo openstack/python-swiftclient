@@ -1074,14 +1074,14 @@ Example:
                       dest='auth_version',
                       default=environ.get('ST_AUTH_VERSION', '1.0'),
                       type=str,
-                      help='Specify a version for authentication'
-                           '(default: 1.0)')
+                      help='Specify a version for authentication. '
+                           'Defaults to 1.0.')
     parser.add_option('-U', '--user', dest='user',
                       default=environ.get('ST_USER'),
-                      help='User name for obtaining an auth token')
+                      help='User name for obtaining an auth token.')
     parser.add_option('-K', '--key', dest='key',
                       default=environ.get('ST_KEY'),
-                      help='Key for obtaining an auth token')
+                      help='Key for obtaining an auth token.')
     parser.add_option('--os-username',
                       metavar='<auth-user-name>',
                       default=environ.get('OS_USERNAME'),
@@ -1097,14 +1097,13 @@ Example:
     parser.add_option('--os-tenant-id',
                       metavar='<auth-tenant-id>',
                       default=environ.get('OS_TENANT_ID'),
-                      help='OpenStack tenant ID.'
-                           'Defaults to env[OS_TENANT_ID]')
+                      help='OpenStack tenant ID. Defaults to env[OS_TENANT_ID]')
     parser.add_option('--os_tenant_id',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-tenant-name',
                       metavar='<auth-tenant-name>',
                       default=environ.get('OS_TENANT_NAME'),
-                      help='Openstack tenant name.'
+                      help='Openstack tenant name. '
                            'Defaults to env[OS_TENANT_NAME].')
     parser.add_option('--os_tenant_name',
                       help=SUPPRESS_HELP)
@@ -1123,7 +1122,7 @@ Example:
     parser.add_option('--os-storage-url',
                       metavar='<storage-url>',
                       default=environ.get('OS_STORAGE_URL'),
-                      help='Openstack storage URL.'
+                      help='Openstack storage URL. '
                            'Defaults to env[OS_STORAGE_URL]')
     parser.add_option('--os_storage_url',
                       help=SUPPRESS_HELP)
@@ -1137,14 +1136,14 @@ Example:
     parser.add_option('--os-service-type',
                       metavar='<service-type>',
                       default=environ.get('OS_SERVICE_TYPE'),
-                      help='Openstack Service type.'
+                      help='Openstack Service type. '
                            'Defaults to env[OS_SERVICE_TYPE]')
     parser.add_option('--os_service_type',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-endpoint-type',
                       metavar='<endpoint-type>',
                       default=environ.get('OS_ENDPOINT_TYPE'),
-                      help='Openstack Endpoint type. (publicURL, e.g.)' \
+                      help='Openstack Endpoint type. ' \
                            'Defaults to env[OS_ENDPOINT_TYPE]')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
