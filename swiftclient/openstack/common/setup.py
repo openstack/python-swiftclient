@@ -31,13 +31,13 @@ from setuptools.command import sdist
 def parse_mailmap(mailmap='.mailmap'):
     mapping = {}
     if os.path.exists(mailmap):
-        fp = open(mailmap, 'r')
-        for l in fp:
-            l = l.strip()
-            if not l.startswith('#') and ' ' in l:
-                canonical_email, alias = [x for x in l.split(' ')
-                                          if x.startswith('<')]
-                mapping[alias] = canonical_email
+        with open(mailmap, 'r') as fp:
+            for l in fp:
+                l = l.strip()
+                if not l.startswith('#') and ' ' in l:
+                    canonical_email, alias = [x for x in l.split(' ')
+                                              if x.startswith('<')]
+                    mapping[alias] = canonical_email
     return mapping
 
 
@@ -52,10 +52,10 @@ def canonicalize_emails(changelog, mapping):
 
 # Get requirements from the first file that exists
 def get_reqs_from_files(requirements_files):
-    reqs_in = []
     for requirements_file in requirements_files:
         if os.path.exists(requirements_file):
-            return open(requirements_file, 'r').read().split('\n')
+            with open(requirements_file, 'r') as fil:
+                return fil.read().split('\n')
     return []
 
 
@@ -117,21 +117,18 @@ def write_requirements():
 
 
 def _run_shell_command(cmd):
-    output = subprocess.Popen(["/bin/sh", "-c", cmd],
-                              stdout=subprocess.PIPE)
+    if os.name == 'nt':
+        output = subprocess.Popen(["cmd.exe", "/C", cmd],
+                                  stdout=subprocess.PIPE)
+    else:
+        output = subprocess.Popen(["/bin/sh", "-c", cmd],
+                                  stdout=subprocess.PIPE)
     out = output.communicate()
     if len(out) == 0:
         return None
     if len(out[0].strip()) == 0:
         return None
     return out[0].strip()
-
-
-def _get_git_branch_name():
-    branch_ref = _run_shell_command("git symbolic-ref -q HEAD")
-    if branch_ref is None:
-        return "HEAD"
-    return branch_ref[len("refs/heads/"):]
 
 
 def _get_git_next_version_suffix(branch_name):
@@ -143,16 +140,18 @@ def _get_git_next_version_suffix(branch_name):
     _run_shell_command("git fetch origin +refs/meta/*:refs/remotes/meta/*")
     milestone_cmd = "git show meta/openstack/release:%s" % branch_name
     milestonever = _run_shell_command(milestone_cmd)
-    if not milestonever:
-        milestonever = branch_name
+    if milestonever:
+        first_half = "%s~%s" % (milestonever, datestamp)
+    else:
+        first_half = datestamp
+
     post_version = _get_git_post_version()
     # post version should look like:
-    # 0.1.1.4.cc9e28a
+    # 0.1.1.4.gcc9e28a
     # where the bit after the last . is the short sha, and the bit between
     # the last and second to last is the revno count
     (revno, sha) = post_version.split(".")[-2:]
-    first_half = "%(milestonever)s~%(datestamp)s" % locals()
-    second_half = "%(revno_prefix)s%(revno)s.%(sha)s" % locals()
+    second_half = "%s%s.%s" % (revno_prefix, revno, sha)
     return ".".join((first_half, second_half))
 
 
@@ -180,37 +179,43 @@ def _get_git_post_version():
             tag_infos = tag_info.split("-")
             base_version = "-".join(tag_infos[:-2])
             (revno, sha) = tag_infos[-2:]
-            # git describe prefixes the sha with a g
-            sha = sha[1:]
         return "%s.%s.%s" % (base_version, revno, sha)
 
 
 def write_git_changelog():
     """Write a changelog based on the git changelog."""
-    if os.path.isdir('.git'):
-        git_log_cmd = 'git log --stat'
-        changelog = _run_shell_command(git_log_cmd)
-        mailmap = parse_mailmap()
-        with open("ChangeLog", "w") as changelog_file:
-            changelog_file.write(canonicalize_emails(changelog, mailmap))
+    new_changelog = 'ChangeLog'
+    if not os.getenv('SKIP_WRITE_GIT_CHANGELOG'):
+        if os.path.isdir('.git'):
+            git_log_cmd = 'git log --stat'
+            changelog = _run_shell_command(git_log_cmd)
+            mailmap = parse_mailmap()
+            with open(new_changelog, "w") as changelog_file:
+                changelog_file.write(canonicalize_emails(changelog, mailmap))
+    else:
+        open(new_changelog, 'w').close()
 
 
 def generate_authors():
     """Create AUTHORS file using git commits."""
-    jenkins_email = 'jenkins@review.openstack.org'
+    jenkins_email = 'jenkins@review.(openstack|stackforge).org'
     old_authors = 'AUTHORS.in'
     new_authors = 'AUTHORS'
-    if os.path.isdir('.git'):
-        # don't include jenkins email address in AUTHORS file
-        git_log_cmd = ("git log --format='%aN <%aE>' | sort -u | "
-                       "grep -v " + jenkins_email)
-        changelog = _run_shell_command(git_log_cmd)
-        mailmap = parse_mailmap()
-        with open(new_authors, 'w') as new_authors_fh:
-            new_authors_fh.write(canonicalize_emails(changelog, mailmap))
-            if os.path.exists(old_authors):
-                with open(old_authors, "r") as old_authors_fh:
-                    new_authors_fh.write('\n' + old_authors_fh.read())
+    if not os.getenv('SKIP_GENERATE_AUTHORS'):
+        if os.path.isdir('.git'):
+            # don't include jenkins email address in AUTHORS file
+            git_log_cmd = ("git log --format='%aN <%aE>' | sort -u | "
+                           "egrep -v '" + jenkins_email + "'")
+            changelog = _run_shell_command(git_log_cmd)
+            mailmap = parse_mailmap()
+            with open(new_authors, 'w') as new_authors_fh:
+                new_authors_fh.write(canonicalize_emails(changelog, mailmap))
+                if os.path.exists(old_authors):
+                    with open(old_authors, "r") as old_authors_fh:
+                        new_authors_fh.write('\n' + old_authors_fh.read())
+    else:
+        open(new_authors, 'w').close()
+
 
 _rst_template = """%(heading)s
 %(underline)s
@@ -238,7 +243,8 @@ def read_versioninfo(project):
 
 def write_versioninfo(project, version):
     """Write a simple file containing the version of the package."""
-    open(os.path.join(project, 'versioninfo'), 'w').write("%s\n" % version)
+    with open(os.path.join(project, 'versioninfo'), 'w') as fil:
+        fil.write("%s\n" % version)
 
 
 def get_cmdclass():
@@ -319,6 +325,15 @@ def get_cmdclass():
     return cmdclass
 
 
+def get_git_branchname():
+    for branch in _run_shell_command("git branch --color=never").split("\n"):
+        if branch.startswith('*'):
+            _branch_name = branch.split()[1].strip()
+    if _branch_name == "(no":
+        _branch_name = "no-branch"
+    return _branch_name
+
+
 def get_pre_version(projectname, base_version):
     """Return a version which is leading up to a version that will
        be released in the future."""
@@ -329,7 +344,7 @@ def get_pre_version(projectname, base_version):
         else:
             branch_name = os.getenv('BRANCHNAME',
                                     os.getenv('GERRIT_REFNAME',
-                                              _get_git_branch_name()))
+                                              get_git_branchname()))
             version_suffix = _get_git_next_version_suffix(branch_name)
             version = "%s~%s" % (base_version, version_suffix)
         write_versioninfo(projectname, version)
