@@ -20,6 +20,7 @@ Cloud Files client library used internally
 import socket
 import os
 import logging
+from functools import wraps
 
 from urllib import quote as _quote
 from urlparse import urlparse, urlunparse
@@ -81,9 +82,17 @@ def quote(value, safe='/'):
     """
     Patched version of urllib.quote that encodes utf8 strings before quoting
     """
+    value = encode_utf8(value)
+    if isinstance(value, str):
+        return _quote(value, safe)
+    else:
+        return value
+
+
+def encode_utf8(value):
     if isinstance(value, unicode):
         value = value.encode('utf8')
-    return _quote(value, safe)
+    return value
 
 
 # look for a real json parser first
@@ -161,6 +170,7 @@ def http_connection(url, proxy=None):
     :returns: tuple of (parsed url, connection object)
     :raises ClientException: Unable to handle protocol scheme
     """
+    url = encode_utf8(url)
     parsed = urlparse(url)
     proxy_parsed = urlparse(proxy) if proxy else None
     if parsed.scheme == 'http':
@@ -170,6 +180,25 @@ def http_connection(url, proxy=None):
     else:
         raise ClientException('Cannot handle protocol scheme %s for url %s' %
                               (parsed.scheme, repr(url)))
+
+    def putheader_wrapper(func):
+
+        @wraps(func)
+        def putheader_escaped(key, value):
+            func(encode_utf8(key), encode_utf8(value))
+        return putheader_escaped
+    conn.putheader = putheader_wrapper(conn.putheader)
+
+    def request_wrapper(func):
+
+        @wraps(func)
+        def request_escaped(method, url, body=None, headers=None):
+            url = encode_utf8(url)
+            if body:
+                body = encode_utf8(body)
+            func(method, url, body=body, headers=headers or {})
+        return request_escaped
+    conn.request = request_wrapper(conn.request)
     if proxy:
         conn._set_tunnel(parsed.hostname, parsed.port)
     return parsed, conn
