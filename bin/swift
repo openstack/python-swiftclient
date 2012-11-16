@@ -15,6 +15,7 @@
 # limitations under the License.
 import signal
 import socket
+import logging
 
 from errno import EEXIST, ENOENT
 from hashlib import md5
@@ -1065,6 +1066,9 @@ Example:
                       default=False, help='Use SERVICENET internal network')
     parser.add_option('-v', '--verbose', action='count', dest='verbose',
                       default=1, help='Print more info')
+    parser.add_option('--debug', action='store_true', dest='debug',
+                      default=False, help='Show the curl commands of all http '
+                      'queries.')
     parser.add_option('-q', '--quiet', action='store_const', dest='verbose',
                       const=0, default=1, help='Suppress status output')
     parser.add_option('-A', '--auth', dest='auth',
@@ -1143,7 +1147,7 @@ Example:
     parser.add_option('--os-endpoint-type',
                       metavar='<endpoint-type>',
                       default=environ.get('OS_ENDPOINT_TYPE'),
-                      help='Openstack Endpoint type. ' \
+                      help='Openstack Endpoint type. '
                            'Defaults to env[OS_ENDPOINT_TYPE]')
     parser.add_option('--os-cacert',
                       metavar='<ca-certificate>',
@@ -1168,6 +1172,10 @@ Example:
         exit()
 
     signal.signal(signal.SIGINT, attempt_graceful_exit)
+
+    if options.debug:
+        logger = logging.getLogger("swiftclient")
+        logging.basicConfig(level=logging.DEBUG)
 
     print_queue = Queue(10000)
 

@@ -48,16 +48,14 @@ logger = logging.getLogger("swiftclient")
 
 
 def http_log(args, kwargs, resp, body):
-    if os.environ.get('SWIFTCLIENT_DEBUG', False):
-        ch = logging.StreamHandler()
-        logger.setLevel(logging.DEBUG)
-        logger.addHandler(ch)
-    elif not logger.isEnabledFor(logging.DEBUG):
+    if not logger.isEnabledFor(logging.DEBUG):
         return
 
     string_parts = ['curl -i']
     for element in args:
-        if element in ('GET', 'POST', 'PUT', 'HEAD'):
+        if element == 'HEAD':
+            string_parts.append(' -I')
+        elif element in ('GET', 'POST', 'PUT'):
             string_parts.append(' -X %s' % element)
         else:
             string_parts.append(' %s' % element)
@@ -240,6 +238,7 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
     """
 
     insecure = kwargs.get('insecure', False)
+    debug = logger.isEnabledFor(logging.DEBUG) and True or False
 
     from keystoneclient.v2_0 import client as ksclient
     from keystoneclient import exceptions
@@ -248,6 +247,7 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
                                     password=key,
                                     tenant_name=os_options.get('tenant_name'),
                                     tenant_id=os_options.get('tenant_id'),
+                                    debug=debug,
                                     cacert=kwargs.get('cacert'),
                                     auth_url=auth_url, insecure=insecure)
     except exceptions.Unauthorized:
@@ -364,11 +364,11 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
         qs += '&prefix=%s' % quote(prefix)
     full_path = '%s?%s' % (parsed.path, qs)
     headers = {'X-Auth-Token': token}
-    conn.request('GET', full_path, '',
-                 headers)
+    method = 'GET'
+    conn.request(method, full_path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(("%s?%s" % (url, qs), 'GET',), {'headers': headers}, resp, body)
+    http_log(("%s?%s" % (url, qs), method,), {'headers': headers}, resp, body)
 
     resp_headers = {}
     for header, value in resp.getheaders():
@@ -546,7 +546,7 @@ def head_container(url, token, container, http_conn=None, headers=None):
     conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), method,),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': req_headers}, resp, body)
 
     if resp.status < 200 or resp.status >= 300:
@@ -587,7 +587,7 @@ def put_container(url, token, container, headers=None, http_conn=None):
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), method,),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container PUT failed',
@@ -621,7 +621,7 @@ def post_container(url, token, container, headers, http_conn=None):
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), method,),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container POST failed',
@@ -652,7 +652,7 @@ def delete_container(url, token, container, http_conn=None):
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), method,),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container DELETE failed',
@@ -692,7 +692,7 @@ def get_object(url, token, container, name, http_conn=None,
     resp = conn.getresponse()
     if resp.status < 200 or resp.status >= 300:
         body = resp.read()
-        http_log(('%s?%s' % (url, path), 'POST',),
+        http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
                  {'headers': headers}, resp, body)
         raise ClientException('Object GET failed', http_scheme=parsed.scheme,
                               http_host=conn.host, http_port=conn.port,
@@ -712,8 +712,8 @@ def get_object(url, token, container, name, http_conn=None,
     resp_headers = {}
     for header, value in resp.getheaders():
         resp_headers[header.lower()] = value
-    http_log(('%s?%s' % (url, path), 'POST',),
-             {'headers': headers}, resp, object_body)
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
+             {'headers': headers}, resp, None)
     return resp_headers, object_body
 
 
@@ -741,7 +741,7 @@ def head_object(url, token, container, name, http_conn=None):
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), 'POST',),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object HEAD failed', http_scheme=parsed.scheme,
@@ -840,7 +840,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     resp = conn.getresponse()
     body = resp.read()
     headers = {'X-Auth-Token': token}
-    http_log(('%s?%s' % (url, path), 'PUT',),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'PUT',),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object PUT failed', http_scheme=parsed.scheme,
@@ -873,7 +873,7 @@ def post_object(url, token, container, name, headers, http_conn=None):
     conn.request('POST', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), 'POST',),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'POST',),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object POST failed', http_scheme=parsed.scheme,
@@ -919,7 +919,7 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
     conn.request('DELETE', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s?%s' % (url, path), 'POST',),
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'DELETE',),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Object DELETE failed',
