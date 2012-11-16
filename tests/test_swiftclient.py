@@ -139,17 +139,6 @@ class TestHttpHelpers(MockHttpTest):
         url = 'ftp://www.test.com'
         self.assertRaises(c.ClientException, c.http_connection, url)
 
-    def test_json_request(self):
-        def read(*args, **kwargs):
-            body = {'a': '1',
-                    'b': '2'}
-            return c.json_dumps(body)
-        c.http_connection = self.fake_http_connection(200, return_read=read)
-        url = 'http://www.test.com'
-        _junk, conn = c.json_request('GET', url, body={'username': 'user1',
-                                                       'password': 'secure'})
-        self.assertTrue(type(conn) is dict)
-
 # TODO: following tests are placeholders, need more tests, better coverage
 
 

@@ -175,32 +175,6 @@ def http_connection(url, proxy=None):
     return parsed, conn
 
 
-def json_request(method, url, **kwargs):
-    """Takes a request in json parse it and return in json"""
-    kwargs.setdefault('headers', {})
-    if 'body' in kwargs:
-        kwargs['headers']['Content-Type'] = 'application/json'
-        kwargs['body'] = json_dumps(kwargs['body'])
-    parsed, conn = http_connection(url)
-    conn.request(method, parsed.path, **kwargs)
-    resp = conn.getresponse()
-    body = resp.read()
-    http_log((url, method,), kwargs, resp, body)
-    if body:
-        try:
-            body = json_loads(body)
-        except ValueError:
-            body = None
-    if not body or resp.status < 200 or resp.status >= 300:
-        raise ClientException('Auth GET failed', http_scheme=parsed.scheme,
-                              http_host=conn.host,
-                              http_port=conn.port,
-                              http_path=parsed.path,
-                              http_status=resp.status,
-                              http_reason=resp.reason)
-    return resp, body
-
-
 def get_auth_1_0(url, user, key, snet):
     parsed, conn = http_connection(url)
     method = 'GET'
