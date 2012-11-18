@@ -807,7 +807,7 @@ def st_upload(parser, args, print_queue, error_queue):
                 obj = obj[2:]
             if obj.startswith('/'):
                 obj = obj[1:]
-            put_headers = {'x-object-meta-mtime': str(getmtime(path))}
+            put_headers = {'x-object-meta-mtime': "%f" % getmtime(path)}
             if dir_marker:
                 if options.changed:
                     try:
