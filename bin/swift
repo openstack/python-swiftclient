@@ -861,9 +861,9 @@ def st_upload(parser, args, print_queue, error_queue):
                         if segment_start + segment_size > full_size:
                             segment_size = full_size - segment_start
                         segment_queue.put({'path': path,
-                            'obj': '%s/%s/%s/%08d' % (obj,
+                            'obj': '%s/%s/%s/%s/%08d' % (obj,
                                 put_headers['x-object-meta-mtime'], full_size,
-                                segment),
+                                options.segment_size, segment),
                             'segment_start': segment_start,
                             'segment_size': segment_size,
                             'log_line': '%s segment %s' % (obj, segment)})
@@ -879,9 +879,10 @@ def st_upload(parser, args, print_queue, error_queue):
                         raise ClientException('Aborting manifest creation '
                             'because not all segments could be uploaded. %s/%s'
                             % (container, obj))
-                    new_object_manifest = '%s_segments/%s/%s/%s/' % (
+                    new_object_manifest = '%s_segments/%s/%s/%s/%s' % (
                         quote(container), quote(obj),
-                        put_headers['x-object-meta-mtime'], full_size)
+                        put_headers['x-object-meta-mtime'], full_size,
+                            options.segment_size)
                     if old_manifest == new_object_manifest:
                         old_manifest = None
                     put_headers['x-object-manifest'] = new_object_manifest
