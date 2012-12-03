@@ -1030,10 +1030,6 @@ def parse_args(parser, args, enforce_requires=True):
         'region_name': options.os_region_name,
     }
 
-    # Handle trailing '/' in URL
-    if options.auth and not options.auth.endswith('/'):
-        options.auth += '/'
-
     if enforce_requires and \
             not (options.auth and options.user and options.key):
         exit('''
