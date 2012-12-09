@@ -232,12 +232,15 @@ def get_auth_1_0(url, user, key, snet):
                                resp.getheader('x-auth-token'))
 
 
-def get_keystoneclient_2_0(auth_url, user, key, os_options):
+def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
     """
     Authenticate against a auth 2.0 server.
 
     We are using the keystoneclient library for our 2.0 authentication.
     """
+
+    insecure = kwargs.get('insecure', False)
+
     from keystoneclient.v2_0 import client as ksclient
     from keystoneclient import exceptions
     try:
@@ -245,7 +248,7 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options):
                                     password=key,
                                     tenant_name=os_options.get('tenant_name'),
                                     tenant_id=os_options.get('tenant_id'),
-                                    auth_url=auth_url)
+                                    auth_url=auth_url, insecure=insecure)
     except exceptions.Unauthorized:
         raise ClientException('Unauthorised. Check username, password'
                               ' and tenant name/id')
@@ -308,8 +311,10 @@ def get_auth(auth_url, user, key, **kwargs):
         if (not 'tenant_name' in os_options):
             raise ClientException('No tenant specified')
 
+        insecure = kwargs.get('insecure', False)
         (auth_url, token) = get_keystoneclient_2_0(auth_url, user,
-                                                   key, os_options)
+                                                   key, os_options,
+                                                   insecure=insecure)
         return (auth_url, token)
 
     raise ClientException('Unknown auth_version %s specified.'
@@ -927,7 +932,7 @@ class Connection(object):
     def __init__(self, authurl=None, user=None, key=None, retries=5,
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, tenant_name=None, os_options=None,
-                 auth_version="1"):
+                 auth_version="1", insecure=False):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -944,6 +949,8 @@ class Connection(object):
         :param os_options: The OpenStack options which can have tenant_id,
                            auth_token, service_type, endpoint_type,
                            tenant_name, object_storage_url, region_name
+        :param insecure: Allow to access insecure keystone server.
+                         The keystone's certificate will not be verified.
         """
         self.authurl = authurl
         self.user = user
@@ -959,6 +966,7 @@ class Connection(object):
         self.os_options = os_options or {}
         if tenant_name:
             self.os_options['tenant_name'] = tenant_name
+        self.insecure = insecure
 
     def get_auth(self):
         return get_auth(self.authurl,
@@ -966,7 +974,8 @@ class Connection(object):
                         self.key,
                         snet=self.snet,
                         auth_version=self.auth_version,
-                        os_options=self.os_options)
+                        os_options=self.os_options,
+                        insecure=self.insecure)
 
     def http_connection(self):
         return http_connection(self.url)

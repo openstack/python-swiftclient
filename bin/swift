@@ -41,7 +41,8 @@ def get_conn(options):
                       options.key,
                       auth_version=options.auth_version,
                       os_options=options.os_options,
-                      snet=options.snet)
+                      snet=options.snet,
+                      insecure=options.insecure)
 
 
 def mkdirs(path):
@@ -1143,6 +1144,11 @@ Example:
                       default=environ.get('OS_ENDPOINT_TYPE'),
                       help='Openstack Endpoint type. ' \
                            'Defaults to env[OS_ENDPOINT_TYPE]')
+    parser.add_option('--insecure',
+                      action="store_true", dest="insecure", default=False,
+                      help='Allow swiftclient to access insecure keystone '
+                           'server. The keystone\'s certificate will not '
+                           'be verified.')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()

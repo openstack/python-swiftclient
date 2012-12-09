@@ -16,15 +16,22 @@ from httplib import HTTPException
 
 from eventlet import Timeout, sleep
 
-def fake_get_keystoneclient_2_0(os_options, exc=None):
+def fake_get_keystoneclient_2_0(os_options, exc=None, **kwargs):
     def fake_get_keystoneclient_2_0(auth_url,
                                     user,
                                     key,
-                                    actual_os_options):
+                                    actual_os_options, **actual_kwargs):
         if exc:
             raise exc('test')
         if actual_os_options != os_options:
             return "", None
+
+        if auth_url.startswith("https") and \
+           auth_url.endswith("invalid-certificate") and \
+           not actual_kwargs['insecure']:
+            from swiftclient import client as c
+            raise c.ClientException("invalid-certificate")
+
         return ("http://url/", "token")
     return fake_get_keystoneclient_2_0
 
