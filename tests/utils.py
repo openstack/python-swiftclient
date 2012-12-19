@@ -31,6 +31,12 @@ def fake_get_keystoneclient_2_0(os_options, exc=None, **kwargs):
            not actual_kwargs['insecure']:
             from swiftclient import client as c
             raise c.ClientException("invalid-certificate")
+        if auth_url.startswith("https") and \
+           auth_url.endswith("self-signed-certificate") and \
+           not actual_kwargs['insecure'] and \
+           actual_kwargs['cacert'] is None:
+            from swiftclient import client as c
+            raise c.ClientException("unverified-certificate")
 
         return ("http://url/", "token")
     return fake_get_keystoneclient_2_0

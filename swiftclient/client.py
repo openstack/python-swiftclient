@@ -248,6 +248,7 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
                                     password=key,
                                     tenant_name=os_options.get('tenant_name'),
                                     tenant_id=os_options.get('tenant_id'),
+                                    cacert=kwargs.get('cacert'),
                                     auth_url=auth_url, insecure=insecure)
     except exceptions.Unauthorized:
         raise ClientException('Unauthorised. Check username, password'
@@ -312,8 +313,10 @@ def get_auth(auth_url, user, key, **kwargs):
             raise ClientException('No tenant specified')
 
         insecure = kwargs.get('insecure', False)
+        cacert = kwargs.get('cacert', None)
         (auth_url, token) = get_keystoneclient_2_0(auth_url, user,
                                                    key, os_options,
+                                                   cacert=cacert,
                                                    insecure=insecure)
         return (auth_url, token)
 
@@ -932,7 +935,7 @@ class Connection(object):
     def __init__(self, authurl=None, user=None, key=None, retries=5,
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, tenant_name=None, os_options=None,
-                 auth_version="1", insecure=False):
+                 auth_version="1", cacert=None, insecure=False):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -966,6 +969,7 @@ class Connection(object):
         self.os_options = os_options or {}
         if tenant_name:
             self.os_options['tenant_name'] = tenant_name
+        self.cacert = cacert
         self.insecure = insecure
 
     def get_auth(self):
@@ -975,6 +979,7 @@ class Connection(object):
                         snet=self.snet,
                         auth_version=self.auth_version,
                         os_options=self.os_options,
+                        cacert=self.cacert,
                         insecure=self.insecure)
 
     def http_connection(self):

@@ -265,6 +265,35 @@ class TestGetAuth(MockHttpTest):
                           os_options={},
                           auth_version='2.0')
 
+    def test_auth_v2_cacert(self):
+        os_options = {'tenant_name': 'foo'}
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+                                       os_options,
+                                       None)
+
+        auth_url_secure   = 'https://www.tests.com'
+        auth_url_insecure = 'https://www.tests.com/self-signed-certificate'
+
+        url, token = c.get_auth(auth_url_secure, 'asdf', 'asdf',
+                                os_options=os_options, auth_version='2.0',
+                                insecure=False)
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+        url, token = c.get_auth(auth_url_insecure, 'asdf', 'asdf',
+                                os_options=os_options, auth_version='2.0',
+                                cacert='ca.pem', insecure=False)
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+        self.assertRaises(c.ClientException, c.get_auth,
+                          auth_url_insecure, 'asdf', 'asdf',
+                          os_options=os_options, auth_version='2.0')
+        self.assertRaises(c.ClientException, c.get_auth,
+                          auth_url_insecure, 'asdf', 'asdf',
+                          os_options=os_options, auth_version='2.0',
+                          insecure=False)
+
     def test_auth_v2_insecure(self):
         os_options = {'tenant_name': 'foo'}
         c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
