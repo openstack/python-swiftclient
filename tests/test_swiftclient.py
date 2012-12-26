@@ -16,7 +16,7 @@
 # TODO: More tests
 import socket
 import StringIO
-import unittest
+import testtools
 from urlparse import urlparse
 
 # TODO: mock http connection class with more control over headers
@@ -25,7 +25,7 @@ from utils import fake_http_connect, fake_get_keystoneclient_2_0
 from swiftclient import client as c
 
 
-class TestClientException(unittest.TestCase):
+class TestClientException(testtools.TestCase):
 
     def test_is_exception(self):
         self.assertTrue(issubclass(c.ClientException, Exception))
@@ -51,7 +51,7 @@ class TestClientException(unittest.TestCase):
             self.assertTrue(value in str(exc))
 
 
-class TestJsonImport(unittest.TestCase):
+class TestJsonImport(testtools.TestCase):
 
     def tearDown(self):
         try:
@@ -67,6 +67,8 @@ class TestJsonImport(unittest.TestCase):
             pass
         else:
             reload(simplejson)
+        super(TestJsonImport, self).tearDown()
+
 
     def test_any(self):
         self.assertTrue(hasattr(c, 'json_loads'))
@@ -91,9 +93,12 @@ class TestJsonImport(unittest.TestCase):
             self.assertEquals(loads, c.json_loads)
 
 
-class MockHttpTest(unittest.TestCase):
+class MockHttpTest(testtools.TestCase):
 
     def setUp(self):
+        super(MockHttpTest, self).setUp()
+
+
         def fake_http_connection(*args, **kwargs):
             _orig_http_connection = c.http_connection
             return_read = kwargs.get('return_read')
@@ -119,6 +124,7 @@ class MockHttpTest(unittest.TestCase):
         self.fake_http_connection = fake_http_connection
 
     def tearDown(self):
+        super(MockHttpTest, self).tearDown()
         reload(c)
 
 
@@ -695,4 +701,4 @@ class TestConnection(MockHttpTest):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    testtools.main()
