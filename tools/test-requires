@@ -1,12 +1,10 @@
 distribute>=0.6.24
 
+coverage
+discover
 eventlet
-nose
-nose-exclude
-nosehtmloutput
-nosexcover
-openstack.nose_plugin
 pep8==1.3
 python-keystoneclient
 sphinx>=1.1.2
+testrepository>=0.0.13
 testtools>=0.9.22
