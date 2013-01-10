@@ -32,7 +32,7 @@ def read(fname):
 
 setuptools.setup(
     name=name,
-    version=setup.get_post_version('swiftclient'),
+    version=setup.get_version(name),
     description='Client Library for OpenStack Object Storage API',
     long_description=read('README.rst'),
     url='https://github.com/openstack/python-swiftclient',
