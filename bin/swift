@@ -29,7 +29,7 @@ from time import sleep, time
 from traceback import format_exception
 from urllib import quote, unquote
 
-from swiftclient import Connection, ClientException, HTTPException
+from swiftclient import Connection, ClientException, HTTPException, utils
 
 
 def get_conn(options):
@@ -1151,11 +1151,16 @@ Example:
                       help='Specify a CA bundle file to use in verifying a '
                       'TLS (https) server certificate. '
                       'Defaults to env[OS_CACERT]')
+    default_val = utils.config_true_value(
+                      environ.get('SWIFTCLIENT_INSECURE'))
     parser.add_option('--insecure',
-                      action="store_true", dest="insecure", default=False,
+                      action="store_true", dest="insecure",
+                      default=default_val,
                       help='Allow swiftclient to access insecure keystone '
                            'server. The keystone\'s certificate will not '
-                           'be verified.')
+                           'be verified. '
+                           'Defaults to env[SWIFTCLIENT_INSECURE] '
+                           '(set to \'true\' to enable).')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
