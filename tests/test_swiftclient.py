@@ -14,6 +14,7 @@
 # limitations under the License.
 
 # TODO: More tests
+import httplib
 import socket
 import StringIO
 import testtools
@@ -123,7 +124,7 @@ class MockHttpTest(testtools.TestCase):
             return_read = kwargs.get('return_read')
             query_string = kwargs.get('query_string')
 
-            def wrapper(url, proxy=None):
+            def wrapper(url, proxy=None, ssl_compression=True):
                 parsed, _conn = _orig_http_connection(url, proxy=proxy)
                 conn = fake_http_connect(*args, **kwargs)()
 
@@ -182,7 +183,8 @@ class TestHttpHelpers(MockHttpTest):
         self.assertTrue(isinstance(conn, c.HTTPConnection))
         url = 'https://www.test.com'
         _junk, conn = c.http_connection(url)
-        self.assertTrue(isinstance(conn, c.HTTPSConnection))
+        self.assertTrue(isinstance(conn, httplib.HTTPSConnection) or
+                        isinstance(conn, c.HTTPSConnectionNoSSLComp))
         url = 'ftp://www.test.com'
         self.assertRaises(c.ClientException, c.http_connection, url)
 
@@ -775,7 +777,7 @@ class TestConnection(MockHttpTest):
             def read(self, *args, **kwargs):
                 return ''
 
-        def local_http_connection(url, proxy=None):
+        def local_http_connection(url, proxy=None, ssl_compression=True):
             parsed = urlparse(url)
             return parsed, LocalConnection()
 

@@ -28,6 +28,10 @@ from urlparse import urlparse, urlunparse
 from httplib import HTTPException, HTTPConnection, HTTPSConnection
 from time import sleep
 
+try:
+    from swiftclient.https_connection import HTTPSConnectionNoSSLComp
+except ImportError:
+    HTTPSConnectionNoSSLComp = HTTPSConnection
 
 logger = logging.getLogger("swiftclient")
 
@@ -141,23 +145,32 @@ class ClientException(Exception):
         return b and '%s: %s' % (a, b) or a
 
 
-def http_connection(url, proxy=None):
+def http_connection(url, proxy=None, ssl_compression=True):
     """
     Make an HTTPConnection or HTTPSConnection
 
     :param url: url to connect to
     :param proxy: proxy to connect through, if any; None by default; str of the
                   format 'http://127.0.0.1:8888' to set one
+    :param ssl_compression: Whether to enable compression at the SSL layer.
+                            If set to 'False' and the pyOpenSSL library is
+                            present an attempt to disable SSL compression
+                            will be made. This may provide a performance
+                            increase for https upload/download operations.
     :returns: tuple of (parsed url, connection object)
     :raises ClientException: Unable to handle protocol scheme
     """
     url = encode_utf8(url)
     parsed = urlparse(url)
     proxy_parsed = urlparse(proxy) if proxy else None
+    host = proxy_parsed if proxy else parsed.netloc
     if parsed.scheme == 'http':
-        conn = HTTPConnection((proxy_parsed if proxy else parsed).netloc)
+        conn = HTTPConnection(host)
     elif parsed.scheme == 'https':
-        conn = HTTPSConnection((proxy_parsed if proxy else parsed).netloc)
+        if ssl_compression is True:
+            conn = HTTPSConnection(host)
+        else:
+            conn = HTTPSConnectionNoSSLComp(host)
     else:
         raise ClientException('Cannot handle protocol scheme %s for url %s' %
                               (parsed.scheme, repr(url)))
@@ -956,7 +969,8 @@ class Connection(object):
     def __init__(self, authurl=None, user=None, key=None, retries=5,
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, tenant_name=None, os_options=None,
-                 auth_version="1", cacert=None, insecure=False):
+                 auth_version="1", cacert=None, insecure=False,
+                 ssl_compression=True):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -975,6 +989,11 @@ class Connection(object):
                            tenant_name, object_storage_url, region_name
         :param insecure: Allow to access insecure keystone server.
                          The keystone's certificate will not be verified.
+        :param ssl_compression: Whether to enable compression at the SSL layer.
+                                If set to 'False' and the pyOpenSSL library is
+                                present an attempt to disable SSL compression
+                                will be made. This may provide a performance
+                                increase for https upload/download operations.
         """
         self.authurl = authurl
         self.user = user
@@ -992,6 +1011,7 @@ class Connection(object):
             self.os_options['tenant_name'] = tenant_name
         self.cacert = cacert
         self.insecure = insecure
+        self.ssl_compression = ssl_compression
 
     def get_auth(self):
         return get_auth(self.authurl,
@@ -1004,7 +1024,8 @@ class Connection(object):
                         insecure=self.insecure)
 
     def http_connection(self):
-        return http_connection(self.url)
+        return http_connection(self.url,
+                               ssl_compression=self.ssl_compression)
 
     def _retry(self, reset_func, func, *args, **kwargs):
         self.attempts = 0

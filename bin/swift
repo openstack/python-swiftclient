@@ -50,7 +50,8 @@ def get_conn(options):
                       os_options=options.os_options,
                       snet=options.snet,
                       cacert=options.os_cacert,
-                      insecure=options.insecure)
+                      insecure=options.insecure,
+                      ssl_compression=options.ssl_compression)
 
 
 def mkdirs(path):
@@ -1268,6 +1269,11 @@ Examples:
                            'be verified. '
                            'Defaults to env[SWIFTCLIENT_INSECURE] '
                            '(set to \'true\' to enable).')
+    parser.add_option('--no-ssl-compression',
+                      action='store_false', dest='ssl_compression',
+                      default=True,
+                      help='Disable SSL compression when using https. '
+                           'This may increase performance.')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
