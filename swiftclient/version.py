@@ -17,5 +17,4 @@
 
 from swiftclient.openstack.common import version as common_version
 
-version_info = common_version.VersionInfo('swiftclient',
-                                          python_package='python-swiftclient')
+version_info = common_version.VersionInfo('python-swiftclient')
