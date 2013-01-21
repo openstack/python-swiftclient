@@ -19,6 +19,7 @@ Cloud Files client library used internally
 
 import socket
 import os
+import sys
 import logging
 from functools import wraps
 
@@ -240,8 +241,15 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
     insecure = kwargs.get('insecure', False)
     debug = logger.isEnabledFor(logging.DEBUG) and True or False
 
-    from keystoneclient.v2_0 import client as ksclient
-    from keystoneclient import exceptions
+    try:
+        from keystoneclient.v2_0 import client as ksclient
+        from keystoneclient import exceptions
+    except ImportError:
+        sys.exit('''
+Auth version 2.0 requires python-keystoneclient, install it or use Auth
+version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
+variables to be set or overridden with -A, -U, or -K.''')
+
     try:
         _ksclient = ksclient.Client(username=user,
                                     password=key,
