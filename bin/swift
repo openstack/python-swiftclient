@@ -31,6 +31,7 @@ from traceback import format_exception
 from urllib import quote, unquote
 
 from swiftclient import Connection, ClientException, HTTPException, utils
+from swiftclient.version import version_info
 
 
 def get_conn(options):
@@ -1048,7 +1049,9 @@ OS_TENANT_NAME OS_TENANT_ID to be set or overridden with --os-auth-url,
 
 
 if __name__ == '__main__':
-    parser = OptionParser(version='%prog 1.0', usage='''
+    version = version_info.version_string()
+    parser = OptionParser(version='%%prog %s' % version,
+                          usage='''
 Usage: %%prog <command> [options] [args]
 
 Commands:
