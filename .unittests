@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-nosetests --exe --with-coverage --cover-package swiftclient --cover-erase $@
-rvalue=$?
+python setup.py testr --coverage
+RET=$?
+coverage report
 rm -f .coverage
-exit $rvalue
+exit $RET

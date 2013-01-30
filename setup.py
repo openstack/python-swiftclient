@@ -54,7 +54,6 @@ setuptools.setup(
         'Programming Language :: Python :: 2.6',
         'Environment :: No Input/Output (Daemon)',
     ],
-    test_suite='nose.collector',
     scripts=[
         'bin/swift',
     ],
