@@ -754,7 +754,9 @@ upload [options] container file_or_directory [file_or_directory] [...]
     Uploads to the given container the files and directories specified by the
     remaining args. -c or --changed is an option that will only upload files
     that have changed since the last upload. -S <size> or --segment-size <size>
-    and --leave-segments are options as well (see --help for more).
+    will upload the files in segments no larger than size. -C <container> or
+    --segment-container <container> will specify the location of the segments
+    to <container>. --leave-segments are options as well (see --help for more).
 '''.strip('\n')
 
 
@@ -765,7 +767,10 @@ def st_upload(parser, args, print_queue, error_queue):
     parser.add_option('-S', '--segment-size', dest='segment_size', help='Will '
         'upload files in segments no larger than <size> and then create a '
         '"manifest" file that will download all the segments as if it were '
-        'the original file. The segments will be uploaded to a '
+        'the original file.')
+    parser.add_option('-C', '--segment-container', dest='segment_container',
+        help='Will upload the segments into the specified container.'
+        'If not specified, the segments will be uploaded to '
         '<container>_segments container so as to not pollute the main '
         '<container> listings.')
     parser.add_option('', '--leave-segments', action='store_true',
@@ -792,7 +797,10 @@ def st_upload(parser, args, print_queue, error_queue):
         else:
             fp = open(job['path'], 'rb')
             fp.seek(job['segment_start'])
-            conn.put_object(job.get('container', args[0] + '_segments'),
+            seg_container = args[0] +'_segments'
+            if options.segment_container:
+               seg_container = options.segment_container
+            conn.put_object(job.get('container', seg_container),
                 job['obj'], fp, content_length=job['segment_size'])
         if options.verbose and 'log_line' in job:
             if conn.attempts > 1:
@@ -852,6 +860,9 @@ def st_upload(parser, args, print_queue, error_queue):
                 # Don't do segment job if object is not big enough
                 if options.segment_size and \
                         getsize(path) > int(options.segment_size):
+                    seg_container = container + '_segments'
+                    if options.segment_container:
+                        seg_container = options.segment_container
                     full_size = getsize(path)
                     segment_queue = Queue(10000)
                     segment_threads = [QueueFunctionThread(segment_queue,
@@ -884,8 +895,8 @@ def st_upload(parser, args, print_queue, error_queue):
                         raise ClientException('Aborting manifest creation '
                             'because not all segments could be uploaded. %s/%s'
                             % (container, obj))
-                    new_object_manifest = '%s_segments/%s/%s/%s/%s' % (
-                        quote(container), quote(obj),
+                    new_object_manifest = '%s/%s/%s/%s/%s' % (
+                        quote(seg_container), quote(obj),
                         put_headers['x-object-meta-mtime'], full_size,
                             options.segment_size)
                     if old_manifest == new_object_manifest:
@@ -954,7 +965,10 @@ def st_upload(parser, args, print_queue, error_queue):
     try:
         conn.put_container(args[0])
         if options.segment_size is not None:
-            conn.put_container(args[0] + '_segments')
+            seg_container = args[0] + '_segments'
+            if options.segment_container:
+               seg_container = options.segment_container
+            conn.put_container(seg_container)
     except ClientException, err:
         msg = ' '.join(str(x) for x in (err.http_status, err.http_reason))
         if err.http_response_content:
