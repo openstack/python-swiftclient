@@ -527,7 +527,7 @@ def st_list(parser, args, print_queue, error_queue):
     args = args[1:]
     if options.delimiter and not args:
         exit('-d option only allowed for container listings')
-    if len(args) > 1:
+    if len(args) > 1 or len(args) == 1 and args[0].find('/') >= 0:
         error_queue.put('Usage: %s [options] %s' %
                         (basename(argv[0]), st_list_help))
         return
