@@ -21,6 +21,7 @@ import socket
 import os
 import sys
 import logging
+import warnings
 from functools import wraps
 
 from urllib import quote as _quote
@@ -764,7 +765,7 @@ def head_object(url, token, container, name, http_conn=None):
 
 
 def put_object(url, token=None, container=None, name=None, contents=None,
-               content_length=None, etag=None, chunk_size=65536,
+               content_length=None, etag=None, chunk_size=None,
                content_type=None, headers=None, http_conn=None, proxy=None):
     """
     Put an object
@@ -782,7 +783,9 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                            computed via the contents or chunked transfer
                            encoding will be used
     :param etag: etag of contents; if None, no etag will be sent
-    :param chunk_size: chunk size of data to write; default 65536
+    :param chunk_size: chunk size of data to write; it defaults to 65536;
+                       used only if the the contents object has a 'read'
+                       method, eg. file-like objects, ignored otherwise
     :param content_type: value to send as content-type header; if None, no
                          content-type will be set (remote end will likely try
                          to auto-detect it)
@@ -822,6 +825,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     if not contents:
         headers['Content-Length'] = '0'
     if hasattr(contents, 'read'):
+        if chunk_size is None:
+            chunk_size = 65536
         conn.putrequest('PUT', path)
         for header, value in headers.iteritems():
             conn.putheader(header, value)
@@ -844,6 +849,10 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                 conn.send(chunk)
                 left -= len(chunk)
     else:
+        if chunk_size is not None:
+            warn_msg = '%s object has no \"read\" method, ignoring chunk_size'\
+                % type(contents).__name__
+            warnings.warn(warn_msg, stacklevel=2)
         conn.request('PUT', path, contents, headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -1082,7 +1091,7 @@ class Connection(object):
                            resp_chunk_size=resp_chunk_size)
 
     def put_object(self, container, obj, contents, content_length=None,
-                   etag=None, chunk_size=65536, content_type=None,
+                   etag=None, chunk_size=None, content_type=None,
                    headers=None):
         """Wrapper for :func:`put_object`"""
 

@@ -17,6 +17,7 @@
 import socket
 import StringIO
 import testtools
+import warnings
 from urlparse import urlparse
 
 # TODO: mock http connection class with more control over headers
@@ -471,6 +472,26 @@ class TestPutObject(MockHttpTest):
         # Test for RFC-2616 encoded symbols
         self.assertTrue("a-b: .x:yz mn:fg:lp" in resp.buffer[0],
                       "[a-b: .x:yz mn:fg:lp] header is missing")
+
+    def test_chunk_warning(self):
+        conn = c.http_connection('http://www.test.com/')
+        file = StringIO.StringIO('asdf')
+        args = ('asdf', 'asdf', 'asdf', 'asdf', file)
+        resp = MockHttpResponse()
+        conn[1].getresponse = resp.fake_response
+        conn[1].send = resp.fake_send
+        with warnings.catch_warnings(record=True) as w:
+            c.put_object(*args, chunk_size=20, headers={}, http_conn=conn)
+            self.assertEquals(len(w), 0)
+
+        body = 'c' * 60
+        c.http_connection = self.fake_http_connection(200, body=body)
+        args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
+        with warnings.catch_warnings(record=True) as w:
+            c.put_object(*args, chunk_size=20)
+            self.assertEquals(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, UserWarning))
+
 
     def test_server_error(self):
         body = 'c' * 60
