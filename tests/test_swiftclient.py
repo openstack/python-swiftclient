@@ -123,12 +123,15 @@ class MockHttpTest(testtools.TestCase):
         def fake_http_connection(*args, **kwargs):
             _orig_http_connection = c.http_connection
             return_read = kwargs.get('return_read')
+            query_string = kwargs.get('query_string')
 
             def wrapper(url, proxy=None):
                 parsed, _conn = _orig_http_connection(url, proxy=proxy)
                 conn = fake_http_connect(*args, **kwargs)()
 
-                def request(*args, **kwargs):
+                def request(method, url, *args, **kwargs):
+                    if query_string:
+                        self.assert_(url.endswith('?' + query_string))
                     return
                 conn.request = request
 
@@ -436,6 +439,12 @@ class TestGetObject(MockHttpTest):
         self.assertRaises(c.ClientException, c.get_object,
                           'http://www.test.com', 'asdf', 'asdf', 'asdf')
 
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(200,
+                                                      query_string="hello=20")
+        c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
+                     query_string="hello=20")
+
 
 class TestHeadObject(MockHttpTest):
 
@@ -492,7 +501,6 @@ class TestPutObject(MockHttpTest):
             self.assertEquals(len(w), 1)
             self.assertTrue(issubclass(w[-1].category, UserWarning))
 
-
     def test_server_error(self):
         body = 'c' * 60
         c.http_connection = self.fake_http_connection(500, body=body)
@@ -502,6 +510,12 @@ class TestPutObject(MockHttpTest):
             value = c.put_object(*args)
         except c.ClientException as e:
             self.assertEquals(e.http_response_content, body)
+
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(200,
+                                                      query_string="hello=20")
+        c.put_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
+                     query_string="hello=20")
 
 
 class TestPostObject(MockHttpTest):
@@ -549,6 +563,12 @@ class TestDeleteObject(MockHttpTest):
         c.http_connection = self.fake_http_connection(500)
         self.assertRaises(c.ClientException, c.delete_object,
                           'http://www.test.com', 'asdf', 'asdf', 'asdf')
+
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(200,
+                                                      query_string="hello=20")
+        c.delete_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
+                        query_string="hello=20")
 
 
 class TestConnection(MockHttpTest):
