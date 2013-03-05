@@ -49,6 +49,9 @@ def get_conn(options):
 
 
 def mkdirs(path):
+    """
+    Make directory tree for the given path.
+    """
     try:
         makedirs(path)
     except OSError, err:
