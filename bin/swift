@@ -701,6 +701,10 @@ def st_post(parser, args, print_queue, error_queue):
     parser.add_option('-m', '--meta', action='append', dest='meta', default=[],
         help='Sets a meta data item with the syntax name:value. This option '
         'may be repeated. Example: -m Color:Blue -m Size:Large')
+    parser.add_option('-H', '--header', action='append', dest='header',
+        default=[], help='Set request headers with the syntax header:value. '
+        ' This option may be repeated. Example -H content-type:text/plain '
+        '-H "Content-Length: 4000"')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (options.read_acl or options.write_acl or options.sync_to or
@@ -737,6 +741,8 @@ def st_post(parser, args, print_queue, error_queue):
             conn.put_container(args[0], headers=headers)
     elif len(args) == 2:
         headers = split_headers(options.meta, 'X-Object-Meta-', error_queue)
+        # add header options to the headers object for the request.
+        headers.update(split_headers(options.header, '', error_queue))
         try:
             conn.post_object(args[0], args[1], headers=headers)
         except ClientException, err:
@@ -783,6 +789,11 @@ def st_upload(parser, args, print_queue, error_queue):
     parser.add_option('', '--segment-threads', type=int,
                       default=10, help='Number of threads to use for '
                       'uploading object segments')
+    parser.add_option('-H', '--header', action='append', dest='header',
+        default=[], help='Set request headers with the syntax header:value. '
+        ' This option may be repeated. Example -H content-type:text/plain '
+        '-H "Content-Length: 4000"')
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if len(args) < 2:
@@ -857,6 +868,9 @@ def st_upload(parser, args, print_queue, error_queue):
                     except ClientException, err:
                         if err.http_status != 404:
                             raise
+                # Merge the command line header options to the put_headers
+                put_headers.update(split_headers(options.header, '',
+                                                 error_queue))
                 # Don't do segment job if object is not big enough
                 if options.segment_size and \
                         getsize(path) > int(options.segment_size):
@@ -1011,7 +1025,7 @@ def split_headers(options, prefix='', error_queue=None):
     for item in options:
         split_item = item.split(':', 1)
         if len(split_item) == 2:
-            headers[prefix + split_item[0]] = split_item[1]
+            headers[(prefix + split_item[0]).title()] = split_item[1]
         else:
             error_string = "Metadata parameter %s must contain a ':'.\n%s" \
                            % (item, st_post_help)
