@@ -1050,6 +1050,11 @@ def parse_args(parser, args, enforce_requires=True):
         'region_name': options.os_region_name,
     }
 
+    if (options.os_options.get('object_storage_url') and
+        options.os_options.get('auth_token') and
+        options.auth_version == '2.0'):
+        return options, args
+
     if enforce_requires and \
             not (options.auth and options.user and options.key):
         exit('''
@@ -1118,7 +1123,8 @@ Example:
     parser.add_option('--os-tenant-id',
                       metavar='<auth-tenant-id>',
                       default=environ.get('OS_TENANT_ID'),
-                      help='OpenStack tenant ID. Defaults to env[OS_TENANT_ID]')
+                      help='OpenStack tenant ID. '
+                      'Defaults to env[OS_TENANT_ID]')
     parser.add_option('--os_tenant_id',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-tenant-name',
