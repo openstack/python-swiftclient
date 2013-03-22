@@ -16,6 +16,7 @@ from httplib import HTTPException
 
 from eventlet import Timeout, sleep
 
+
 def fake_get_keystoneclient_2_0(os_options, exc=None, **kwargs):
     def fake_get_keystoneclient_2_0(auth_url,
                                     user,
@@ -78,7 +79,7 @@ def fake_http_connect(*code_iter, **kwargs):
                        'last-modified': self.timestamp,
                        'x-object-meta-test': 'testing',
                        'etag':
-                            self.etag or '"68b329da9893e34099c7d8ad5cb9c940"',
+                       self.etag or '"68b329da9893e34099c7d8ad5cb9c940"',
                        'x-works': 'yes',
                        'x-account-container-count': 12345}
             if not self.timestamp:
