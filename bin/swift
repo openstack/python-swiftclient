@@ -1095,8 +1095,15 @@ Commands:
   %(st_download_help)s
   %(st_delete_help)s
 
-Example:
+Examples:
   %%prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K key stat
+
+  %%prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
+      --os-usernameuser --os-password password list
+
+  %%prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
+      --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
+      list
 '''.strip('\n') % globals())
     parser.add_option('-s', '--snet', action='store_true', dest='snet',
                       default=False, help='Use SERVICENET internal network')
@@ -1157,14 +1164,18 @@ Example:
     parser.add_option('--os-auth-token',
                       metavar='<auth-token>',
                       default=environ.get('OS_AUTH_TOKEN'),
-                      help='Openstack token. Defaults to env[OS_AUTH_TOKEN]')
+                      help='Openstack token. Defaults to env[OS_AUTH_TOKEN]. '
+                           'Used with --os-storage-url to bypass the '
+                           'usual username/password authentication.')
     parser.add_option('--os_auth_token',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-storage-url',
                       metavar='<storage-url>',
                       default=environ.get('OS_STORAGE_URL'),
                       help='Openstack storage URL. '
-                           'Defaults to env[OS_STORAGE_URL]')
+                           'Defaults to env[OS_STORAGE_URL]. '
+                           'Used with --os-auth-token to bypass the '
+                           'usual username/password authentication.')
     parser.add_option('--os_storage_url',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-region-name',
