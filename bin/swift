@@ -56,7 +56,7 @@ def get_conn(options):
 def mkdirs(path):
     try:
         makedirs(path)
-    except OSError, err:
+    except OSError as err:
         if err.errno != EEXIST:
             raise
 
@@ -188,7 +188,7 @@ def st_delete(parser, args, print_queue, error_queue):
                     if utils.config_true_value(
                             headers.get('x-static-large-object')):
                         query_string = 'multipart-manifest=delete'
-                except ClientException, err:
+                except ClientException as err:
                     if err.http_status != 404:
                         raise
             conn.delete_object(container, obj, query_string=query_string)
@@ -222,7 +222,7 @@ def st_delete(parser, args, print_queue, error_queue):
                                     (path, conn.attempts))
                 else:
                     print_queue.put(path)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Object %s not found' %
@@ -252,14 +252,14 @@ def st_delete(parser, args, print_queue, error_queue):
                 try:
                     conn.delete_container(container)
                     break
-                except ClientException, err:
+                except ClientException as err:
                     if err.http_status != 409:
                         raise
                     if attempts > 10:
                         raise
                     attempts += 1
                     sleep(1)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Container %s not found' % repr(container))
@@ -292,7 +292,7 @@ def st_delete(parser, args, print_queue, error_queue):
                 sleep(0.01)
             while not object_queue.empty():
                 sleep(0.01)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Account not found')
@@ -439,7 +439,7 @@ def st_download(parser, args, print_queue, error_queue):
                                     (path, time_str, conn.attempts))
                 else:
                     print_queue.put('%s [%s]' % (path, time_str))
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Object %s not found' %
@@ -459,7 +459,7 @@ def st_download(parser, args, print_queue, error_queue):
                 shuffle(objects)
                 for obj in objects:
                     object_queue.put((container, obj))
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Container %s not found' % repr(container))
@@ -487,7 +487,7 @@ def st_download(parser, args, print_queue, error_queue):
                 shuffle(containers)
                 for container in containers:
                     container_queue.put(container)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Account not found')
@@ -560,7 +560,7 @@ def st_list(parser, args, print_queue, error_queue):
             for item in items:
                 print_queue.put(item.get('name', item.get('subdir')))
             marker = items[-1].get('name', items[-1].get('subdir'))
-    except ClientException, err:
+    except ClientException as err:
         if err.http_status != 404:
             raise
         if not args:
@@ -606,7 +606,7 @@ Containers: %d
                         'x-account-object-count', 'x-account-bytes-used'):
                     print_queue.put(
                         '%10s: %s' % (key.title(), value))
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Account not found')
@@ -645,7 +645,7 @@ Write ACL: %s
                         'x-container-sync-key'):
                     print_queue.put(
                         '%9s: %s' % (key.title(), value))
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Container %s not found' % repr(args[0]))
@@ -679,7 +679,7 @@ Write ACL: %s
                         'etag', 'date', 'x-object-manifest'):
                     print_queue.put(
                         '%14s: %s' % (key.title(), value))
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Object %s not found' %
@@ -728,7 +728,7 @@ def st_post(parser, args, print_queue, error_queue):
         headers = split_headers(options.meta, 'X-Account-Meta-', error_queue)
         try:
             conn.post_account(headers=headers)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Account not found')
@@ -748,7 +748,7 @@ def st_post(parser, args, print_queue, error_queue):
             headers['X-Container-Sync-Key'] = options.sync_key
         try:
             conn.post_container(args[0], headers=headers)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             conn.put_container(args[0], headers=headers)
@@ -758,7 +758,7 @@ def st_post(parser, args, print_queue, error_queue):
         headers.update(split_headers(options.header, '', error_queue))
         try:
             conn.post_object(args[0], args[1], headers=headers)
-        except ClientException, err:
+        except ClientException as err:
             if err.http_status != 404:
                 raise
             error_queue.put('Object %s not found' %
@@ -863,7 +863,7 @@ def st_upload(parser, args, print_queue, error_queue):
                                 et == 'd41d8cd98f00b204e9800998ecf8427e' and \
                                 mt == put_headers['x-object-meta-mtime']:
                             return
-                    except ClientException, err:
+                    except ClientException as err:
                         if err.http_status != 404:
                             raise
                 conn.put_object(container, obj, '', content_length=0,
@@ -896,7 +896,7 @@ def st_upload(parser, args, print_queue, error_queue):
                                     if isinstance(seg_path, unicode):
                                         seg_path = seg_path.encode('utf-8')
                                     old_slo_manifest_paths.append(seg_path)
-                    except ClientException, err:
+                    except ClientException as err:
                         if err.http_status != 404:
                             raise
                 # Merge the command line header options to the put_headers
@@ -1020,7 +1020,7 @@ def st_upload(parser, args, print_queue, error_queue):
                         '%s [after %d attempts]' % (obj, conn.attempts))
                 else:
                     print_queue.put(obj)
-        except OSError, err:
+        except OSError as err:
             if err.errno != ENOENT:
                 raise
             error_queue.put('Local file %s not found' % repr(path))
@@ -1054,7 +1054,7 @@ def st_upload(parser, args, print_queue, error_queue):
             if options.segment_container:
                seg_container = options.segment_container
             conn.put_container(seg_container)
-    except ClientException, err:
+    except ClientException as err:
         msg = ' '.join(str(x) for x in (err.http_status, err.http_reason))
         if err.http_response_content:
             if msg:
@@ -1062,7 +1062,7 @@ def st_upload(parser, args, print_queue, error_queue):
             msg += err.http_response_content[:60]
         error_queue.put(
             'Error trying to create container %r: %s' % (args[0], msg))
-    except Exception, err:
+    except Exception as err:
         error_queue.put(
             'Error trying to create container %r: %s' % (args[0], err))
     try:
@@ -1078,7 +1078,7 @@ def st_upload(parser, args, print_queue, error_queue):
             while thread.isAlive():
                 thread.join(0.01)
         put_errors_from_threads(object_threads, error_queue)
-    except ClientException, err:
+    except ClientException as err:
         if err.http_status != 404:
             raise
         error_queue.put('Account not found')
@@ -1329,7 +1329,7 @@ Examples:
         try:
             globals()['st_%s' % args[0]](parser, argv[1:], print_queue,
                                          error_queue)
-        except (ClientException, HTTPException, socket.error), err:
+        except (ClientException, HTTPException, socket.error) as err:
             error_queue.put(str(err))
         while not print_queue.empty():
             sleep(0.01)

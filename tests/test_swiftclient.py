@@ -625,7 +625,7 @@ class TestConnection(MockHttpTest):
             except AssertionError:
                 msg = '%s did not read resp on server error' % method.__name__
                 self.fail(msg)
-            except Exception, e:
+            except Exception as e:
                 raise e.__class__("%s - %s" % (method.__name__, e))
 
     def test_reauth(self):
@@ -727,7 +727,7 @@ class TestConnection(MockHttpTest):
             exc = None
             try:
                 conn.put_object('c', 'o', contents)
-            except socket.error, err:
+            except socket.error as err:
                 exc = err
             self.assertEquals(contents.seeks, [0])
             self.assertEquals(str(exc), 'oops')
@@ -736,7 +736,7 @@ class TestConnection(MockHttpTest):
             exc = None
             try:
                 conn.put_object('c', 'o', contents)
-            except socket.error, err:
+            except socket.error as err:
                 exc = err
             self.assertEquals(contents.seeks, [123])
             self.assertEquals(str(exc), 'oops')
@@ -746,7 +746,7 @@ class TestConnection(MockHttpTest):
             exc = None
             try:
                 conn.put_object('c', 'o', contents)
-            except c.ClientException, err:
+            except c.ClientException as err:
                 exc = err
             self.assertEquals(contents.seeks, [])
             self.assertEquals(str(exc), "put_object('c', 'o', ...) failure "

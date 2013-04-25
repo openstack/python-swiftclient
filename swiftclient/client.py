@@ -262,7 +262,7 @@ variables to be set or overridden with -A, -U, or -K.''')
     except exceptions.Unauthorized:
         raise ClientException('Unauthorised. Check username, password'
                               ' and tenant name/id')
-    except exceptions.AuthorizationFailure, err:
+    except exceptions.AuthorizationFailure as err:
         raise ClientException('Authorization Failure. %s' % err)
     service_type = os_options.get('service_type') or 'object-store'
     endpoint_type = os_options.get('endpoint_type') or 'publicURL'
@@ -1030,7 +1030,7 @@ class Connection(object):
                 if self.attempts > self.retries:
                     raise
                 self.http_conn = None
-            except ClientException, err:
+            except ClientException as err:
                 if self.attempts > self.retries:
                     raise
                 if err.http_status == 401:
