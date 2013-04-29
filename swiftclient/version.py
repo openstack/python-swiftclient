@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from pbr import version as pbr_version
 
-from swiftclient.openstack.common import version as common_version
-
-version_info = common_version.VersionInfo('python-swiftclient')
+version_info = pbr_version.VersionInfo('python-swiftclient')
