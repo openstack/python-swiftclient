@@ -371,7 +371,7 @@ class TestHeadAccount(MockHttpTest):
         self.assertRaises(c.ClientException, c.head_account,
                           'http://www.tests.com', 'asdf')
         try:
-            value = c.head_account('http://www.tests.com', 'asdf')
+            c.head_account('http://www.tests.com', 'asdf')
         except c.ClientException as e:
             new_body = "[first 60 chars of response] " + body[0:60]
             self.assertEquals(e.__str__()[-89:], new_body)
@@ -394,7 +394,7 @@ class TestHeadContainer(MockHttpTest):
                           'http://www.test.com', 'asdf', 'asdf',
                           )
         try:
-            value = c.head_container('http://www.test.com', 'asdf', 'asdf')
+            c.head_container('http://www.test.com', 'asdf', 'asdf')
         except c.ClientException as e:
             self.assertEquals(e.http_response_content, body)
 
@@ -413,7 +413,7 @@ class TestPutContainer(MockHttpTest):
                           'http://www.test.com', 'asdf', 'asdf',
                           )
         try:
-            value = c.put_container('http://www.test.com', 'asdf', 'asdf')
+            c.put_container('http://www.test.com', 'asdf', 'asdf')
         except c.ClientException as e:
             self.assertEquals(e.http_response_content, body)
 
@@ -501,7 +501,7 @@ class TestPutObject(MockHttpTest):
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
         self.assertRaises(c.ClientException, c.put_object, *args)
         try:
-            value = c.put_object(*args)
+            c.put_object(*args)
         except c.ClientException as e:
             self.assertEquals(e.http_response_content, body)
 
@@ -517,7 +517,7 @@ class TestPostObject(MockHttpTest):
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', {})
-        value = c.post_object(*args)
+        c.post_object(*args)
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
@@ -542,7 +542,7 @@ class TestPostObject(MockHttpTest):
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', {})
         self.assertRaises(c.ClientException, c.post_object, *args)
         try:
-            value = c.post_object(*args)
+            c.post_object(*args)
         except c.ClientException as e:
             self.assertEquals(e.http_response_content, body)
 
@@ -551,7 +551,7 @@ class TestDeleteObject(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        value = c.delete_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+        c.delete_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
 
     def test_server_error(self):
         c.http_connection = self.fake_http_connection(500)
@@ -572,16 +572,16 @@ class TestConnection(MockHttpTest):
         self.assertEquals(conn.retries, 5)
 
     def test_instance_kwargs(self):
-        args = {'user':  'ausername',
-                'key':  'secretpass',
-                'authurl':  'http://www.test.com',
-                'tenant_name':  'atenant'}
+        args = {'user': 'ausername',
+                'key': 'secretpass',
+                'authurl': 'http://www.test.com',
+                'tenant_name': 'atenant'}
         conn = c.Connection(**args)
         self.assertEquals(type(conn), c.Connection)
 
     def test_instance_kwargs_token(self):
         args = {'preauthtoken': 'atoken123',
-                'preauthurl':  'http://www.test.com:8080/v1/AUTH_123456'}
+                'preauthurl': 'http://www.test.com:8080/v1/AUTH_123456'}
         conn = c.Connection(**args)
         self.assertEquals(type(conn), c.Connection)
 
@@ -650,7 +650,7 @@ class TestConnection(MockHttpTest):
         self.assertEquals(conn.url, 'http://www.old.com')
         self.assertEquals(conn.token, 'old')
 
-        value = conn.head_account()
+        conn.head_account()
 
         self.assertTrue(self.swap_sleep_called)
         self.assertEquals(conn.attempts, 2)

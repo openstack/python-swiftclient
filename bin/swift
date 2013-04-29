@@ -147,15 +147,18 @@ delete [options] --all OR delete container [options] [object] [object] ...
 
 
 def st_delete(parser, args, print_queue, error_queue):
-    parser.add_option('-a', '--all', action='store_true', dest='yes_all',
+    parser.add_option(
+        '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Indicates that you really want to delete '
         'everything in the account')
-    parser.add_option('', '--leave-segments', action='store_true',
-        dest='leave_segments', default=False, help='Indicates that you want '
-        'the segments of manifest objects left alone')
-    parser.add_option('', '--object-threads', type=int,
-                      default=10, help='Number of threads to use for '
-                      'deleting objects')
+    parser.add_option(
+        '', '--leave-segments', action='store_true',
+        dest='leave_segments', default=False,
+        help='Indicates that you want the segments of manifest'
+             'objects left alone')
+    parser.add_option(
+        '', '--object-threads', type=int,
+        default=10, help='Number of threads to use for deleting objects')
     parser.add_option('', '--container-threads', type=int,
                       default=10, help='Number of threads to use for '
                       'deleting containers')
@@ -201,7 +204,8 @@ def st_delete(parser, args, print_queue, error_queue):
                                                  prefix=sprefix)[1]:
                     segment_queue.put((scontainer, delobj['name']))
                 if not segment_queue.empty():
-                    segment_threads = [QueueFunctionThread(segment_queue,
+                    segment_threads = [QueueFunctionThread(
+                        segment_queue,
                         _delete_segment, create_connection()) for _junk in
                         xrange(options.object_threads)]
                     for thread in segment_threads:
@@ -332,23 +336,27 @@ download --all OR download container [options] [object] [object] ...
 
 
 def st_download(parser, args, print_queue, error_queue):
-    parser.add_option('-a', '--all', action='store_true', dest='yes_all',
+    parser.add_option(
+        '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Indicates that you really want to download '
         'everything in the account')
-    parser.add_option('-m', '--marker', dest='marker',
+    parser.add_option(
+        '-m', '--marker', dest='marker',
         default='', help='Marker to use when starting a container or '
         'account download')
-    parser.add_option('-o', '--output', dest='out_file', help='For a single '
+    parser.add_option(
+        '-o', '--output', dest='out_file', help='For a single '
         'file download, stream the output to an alternate location ')
-    parser.add_option('', '--object-threads', type=int,
-                      default=10, help='Number of threads to use for '
-                      'downloading objects')
-    parser.add_option('', '--container-threads', type=int,
-                      default=10, help='Number of threads to use for '
-                      'listing containers')
-    parser.add_option('', '--no-download', action='store_true',
-                      default=False, help="Perform download(s), but don't "
-                      "actually write anything to disk")
+    parser.add_option(
+        '', '--object-threads', type=int,
+        default=10, help='Number of threads to use for downloading objects')
+    parser.add_option(
+        '', '--container-threads', type=int, default=10,
+        help='Number of threads to use for listing containers')
+    parser.add_option(
+        '', '--no-download', action='store_true',
+        default=False,
+        help="Perform download(s), but don't actually write anything to disk")
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
@@ -465,11 +473,13 @@ def st_download(parser, args, print_queue, error_queue):
             error_queue.put('Container %s not found' % repr(container))
 
     create_connection = lambda: get_conn(options)
-    object_threads = [QueueFunctionThread(object_queue, _download_object,
+    object_threads = [QueueFunctionThread(
+        object_queue, _download_object,
         create_connection()) for _junk in xrange(options.object_threads)]
     for thread in object_threads:
         thread.start()
-    container_threads = [QueueFunctionThread(container_queue,
+    container_threads = [QueueFunctionThread(
+        container_queue,
         _download_container, create_connection())
         for _junk in xrange(options.container_threads)]
     for thread in container_threads:
@@ -531,11 +541,13 @@ list [options] [container]
 
 
 def st_list(parser, args, print_queue, error_queue):
-    parser.add_option('-p', '--prefix', dest='prefix', help='Will only list '
-        'items beginning with the prefix')
-    parser.add_option('-d', '--delimiter', dest='delimiter', help='Will roll '
-        'up items with the given delimiter (see Cloud Files general '
-        'documentation for what this means)')
+    parser.add_option(
+        '-p', '--prefix', dest='prefix',
+        help='Will only list items beginning with the prefix')
+    parser.add_option(
+        '-d', '--delimiter', dest='delimiter',
+        help='Will roll up items with the given delimiter'
+             ' (see Cloud Files general documentation for what this means)')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.delimiter and not args:
@@ -553,7 +565,8 @@ def st_list(parser, args, print_queue, error_queue):
                 items = \
                     conn.get_account(marker=marker, prefix=options.prefix)[1]
             else:
-                items = conn.get_container(args[0], marker=marker,
+                items = conn.get_container(
+                    args[0], marker=marker,
                     prefix=options.prefix, delimiter=options.delimiter)[1]
             if not items:
                 break
@@ -598,7 +611,8 @@ Containers: %d
                                  object_count, bytes_used))
             for key, value in headers.items():
                 if key.startswith('x-account-meta-'):
-                    print_queue.put('%10s: %s' % ('Meta %s' %
+                    print_queue.put(
+                        '%10s: %s' % ('Meta %s' %
                         key[len('x-account-meta-'):].title(), value))
             for key, value in headers.items():
                 if not key.startswith('x-account-meta-') and key not in (
@@ -635,7 +649,8 @@ Write ACL: %s
                                 headers.get('x-container-sync-key', '')))
             for key, value in headers.items():
                 if key.startswith('x-container-meta-'):
-                    print_queue.put('%9s: %s' % ('Meta %s' %
+                    print_queue.put(
+                        '%9s: %s' % ('Meta %s' %
                         key[len('x-container-meta-'):].title(), value))
             for key, value in headers.items():
                 if not key.startswith('x-container-meta-') and key not in (
@@ -671,7 +686,8 @@ Write ACL: %s
                                 headers['x-object-manifest'])
             for key, value in headers.items():
                 if key.startswith('x-object-meta-'):
-                    print_queue.put('%14s: %s' % ('Meta %s' %
+                    print_queue.put(
+                        '%14s: %s' % ('Meta %s' %
                         key[len('x-object-meta-'):].title(), value))
             for key, value in headers.items():
                 if not key.startswith('x-object-meta-') and key not in (
@@ -701,27 +717,33 @@ post [options] [container] [object]
 
 
 def st_post(parser, args, print_queue, error_queue):
-    parser.add_option('-r', '--read-acl', dest='read_acl', help='Sets the '
+    parser.add_option(
+        '-r', '--read-acl', dest='read_acl', help='Sets the '
         'Read ACL for containers. Quick summary of ACL syntax: .r:*, '
         '.r:-.example.com, .r:www.example.com, account1, account2:user2')
-    parser.add_option('-w', '--write-acl', dest='write_acl', help='Sets the '
+    parser.add_option(
+        '-w', '--write-acl', dest='write_acl', help='Sets the '
         'Write ACL for containers. Quick summary of ACL syntax: account1, '
         'account2:user2')
-    parser.add_option('-t', '--sync-to', dest='sync_to', help='Sets the '
+    parser.add_option(
+        '-t', '--sync-to', dest='sync_to', help='Sets the '
         'Sync To for containers, for multi-cluster replication.')
-    parser.add_option('-k', '--sync-key', dest='sync_key', help='Sets the '
+    parser.add_option(
+        '-k', '--sync-key', dest='sync_key', help='Sets the '
         'Sync Key for containers, for multi-cluster replication.')
-    parser.add_option('-m', '--meta', action='append', dest='meta', default=[],
+    parser.add_option(
+        '-m', '--meta', action='append', dest='meta', default=[],
         help='Sets a meta data item with the syntax name:value. This option '
         'may be repeated. Example: -m Color:Blue -m Size:Large')
-    parser.add_option('-H', '--header', action='append', dest='header',
+    parser.add_option(
+        '-H', '--header', action='append', dest='header',
         default=[], help='Set request headers with the syntax header:value. '
         ' This option may be repeated. Example -H content-type:text/plain '
         '-H "Content-Length: 4000"')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (options.read_acl or options.write_acl or options.sync_to or
-        options.sync_key) and not args:
+            options.sync_key) and not args:
         exit('-r, -w, -t, and -k options only allowed for containers')
     conn = get_conn(options)
     if not args:
@@ -780,29 +802,34 @@ upload [options] container file_or_directory [file_or_directory] [...]
 
 
 def st_upload(parser, args, print_queue, error_queue):
-    parser.add_option('-c', '--changed', action='store_true', dest='changed',
+    parser.add_option(
+        '-c', '--changed', action='store_true', dest='changed',
         default=False, help='Will only upload files that have changed since '
         'the last upload')
-    parser.add_option('-S', '--segment-size', dest='segment_size', help='Will '
+    parser.add_option(
+        '-S', '--segment-size', dest='segment_size', help='Will '
         'upload files in segments no larger than <size> and then create a '
         '"manifest" file that will download all the segments as if it were '
         'the original file.')
-    parser.add_option('-C', '--segment-container', dest='segment_container',
+    parser.add_option(
+        '-C', '--segment-container', dest='segment_container',
         help='Will upload the segments into the specified container.'
         'If not specified, the segments will be uploaded to '
         '<container>_segments container so as to not pollute the main '
         '<container> listings.')
-    parser.add_option('', '--leave-segments', action='store_true',
+    parser.add_option(
+        '', '--leave-segments', action='store_true',
         dest='leave_segments', default=False, help='Indicates that you want '
         'the older segments of manifest objects left alone (in the case of '
         'overwrites)')
-    parser.add_option('', '--object-threads', type=int,
-                      default=10, help='Number of threads to use for '
-                      'uploading full objects')
-    parser.add_option('', '--segment-threads', type=int,
-                      default=10, help='Number of threads to use for '
-                      'uploading object segments')
-    parser.add_option('-H', '--header', action='append', dest='header',
+    parser.add_option(
+        '', '--object-threads', type=int, default=10,
+        help='Number of threads to use for uploading full objects')
+    parser.add_option(
+        '', '--segment-threads', type=int, default=10,
+        help='Number of threads to use for uploading object segments')
+    parser.add_option(
+        '-H', '--header', action='append', dest='header',
         default=[], help='Set request headers with the syntax header:value. '
         ' This option may be repeated. Example -H content-type:text/plain '
         '-H "Content-Length: 4000"')
@@ -824,11 +851,12 @@ def st_upload(parser, args, print_queue, error_queue):
         else:
             fp = open(job['path'], 'rb')
             fp.seek(job['segment_start'])
-            seg_container = args[0] +'_segments'
+            seg_container = args[0] + '_segments'
             if options.segment_container:
-               seg_container = options.segment_container
+                seg_container = options.segment_container
             etag = conn.put_object(job.get('container', seg_container),
-                job['obj'], fp, content_length=job['segment_size'])
+                                   job['obj'], fp,
+                                   content_length=job['segment_size'])
             job['segment_location'] = '/%s/%s' % (seg_container, job['obj'])
             job['segment_etag'] = etag
         if options.verbose and 'log_line' in job:
@@ -911,8 +939,9 @@ def st_upload(parser, args, print_queue, error_queue):
                     full_size = getsize(path)
                     segment_queue = Queue(10000)
                     segment_threads = [
-                        QueueFunctionThread(segment_queue,
-                        _segment_job, create_connection(), store_results=True)
+                        QueueFunctionThread(
+                            segment_queue, _segment_job,
+                            create_connection(), store_results=True)
                         for _junk in xrange(options.segment_threads)]
                     for thread in segment_threads:
                         thread.start()
@@ -945,7 +974,8 @@ def st_upload(parser, args, print_queue, error_queue):
                         while thread.isAlive():
                             thread.join(0.01)
                     if put_errors_from_threads(segment_threads, error_queue):
-                        raise ClientException('Aborting manifest creation '
+                        raise ClientException(
+                            'Aborting manifest creation '
                             'because not all segments could be uploaded. %s/%s'
                             % (container, obj))
                     if options.use_slo:
@@ -973,7 +1003,7 @@ def st_upload(parser, args, print_queue, error_queue):
                         new_object_manifest = '%s/%s/%s/%s/%s/' % (
                             quote(seg_container), quote(obj),
                             put_headers['x-object-meta-mtime'], full_size,
-                                options.segment_size)
+                            options.segment_size)
                         if old_manifest and old_manifest.rstrip('/') == \
                                 new_object_manifest.rstrip('/'):
                             old_manifest = None
@@ -981,7 +1011,8 @@ def st_upload(parser, args, print_queue, error_queue):
                         conn.put_object(container, obj, '', content_length=0,
                                         headers=put_headers)
                 else:
-                    conn.put_object(container, obj, open(path, 'rb'),
+                    conn.put_object(
+                        container, obj, open(path, 'rb'),
                         content_length=getsize(path), headers=put_headers)
                 if old_manifest or old_slo_manifest_paths:
                     segment_queue = Queue(10000)
@@ -991,20 +1022,25 @@ def st_upload(parser, args, print_queue, error_queue):
                         sprefix = unquote(sprefix).rstrip('/') + '/'
                         for delobj in conn.get_container(scontainer,
                                                          prefix=sprefix)[1]:
-                            segment_queue.put({'delete': True,
-                                'container': scontainer, 'obj': delobj['name']})
+                            segment_queue.put(
+                                {'delete': True,
+                                 'container': scontainer,
+                                 'obj': delobj['name']})
                     if old_slo_manifest_paths:
                         for seg_to_delete in old_slo_manifest_paths:
                             if seg_to_delete in new_slo_manifest_paths:
                                 continue
                             scont, sobj = \
                                 seg_to_delete.split('/', 1)
-                            segment_queue.put({'delete': True,
-                                'container': scont, 'obj': sobj})
+                            segment_queue.put(
+                                {'delete': True,
+                                 'container': scont, 'obj': sobj})
                     if not segment_queue.empty():
-                        segment_threads = [QueueFunctionThread(segment_queue,
-                            _segment_job, create_connection()) for _junk in
-                            xrange(options.segment_threads)]
+                        segment_threads = [
+                            QueueFunctionThread(
+                                segment_queue,
+                                _segment_job, create_connection())
+                            for _junk in xrange(options.segment_threads)]
                         for thread in segment_threads:
                             thread.start()
                         while not segment_queue.empty():
@@ -1038,8 +1074,9 @@ def st_upload(parser, args, print_queue, error_queue):
                     object_queue.put({'path': subpath})
 
     create_connection = lambda: get_conn(options)
-    object_threads = [QueueFunctionThread(object_queue, _object_job,
-        create_connection()) for _junk in xrange(options.object_threads)]
+    object_threads = [
+        QueueFunctionThread(object_queue, _object_job, create_connection())
+        for _junk in xrange(options.object_threads)]
     for thread in object_threads:
         thread.start()
     conn = create_connection()
@@ -1052,7 +1089,7 @@ def st_upload(parser, args, print_queue, error_queue):
         if options.segment_size is not None:
             seg_container = args[0] + '_segments'
             if options.segment_container:
-               seg_container = options.segment_container
+                seg_container = options.segment_container
             conn.put_container(seg_container)
     except ClientException as err:
         msg = ' '.join(str(x) for x in (err.http_status, err.http_reason))
@@ -1136,8 +1173,8 @@ def parse_args(parser, args, enforce_requires=True):
     }
 
     if (options.os_options.get('object_storage_url') and
-        options.os_options.get('auth_token') and
-        options.auth_version == '2.0'):
+            options.os_options.get('auth_token') and
+            options.auth_version == '2.0'):
         return options, args
 
     if enforce_requires and \
@@ -1274,8 +1311,7 @@ Examples:
                       help='Specify a CA bundle file to use in verifying a '
                       'TLS (https) server certificate. '
                       'Defaults to env[OS_CACERT]')
-    default_val = utils.config_true_value(
-                      environ.get('SWIFTCLIENT_INSECURE'))
+    default_val = utils.config_true_value(environ.get('SWIFTCLIENT_INSECURE'))
     parser.add_option('--insecure',
                       action="store_true", dest="insecure",
                       default=default_val,

@@ -17,7 +17,6 @@
 
 import os
 import setuptools
-import sys
 
 from swiftclient.openstack.common import setup
 

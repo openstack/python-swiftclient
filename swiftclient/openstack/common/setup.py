@@ -269,7 +269,7 @@ def get_version_from_git():
     if the current revision has no tag."""
 
     if os.path.isdir('.git'):
-        return  _run_shell_command(
+        return _run_shell_command(
             "git describe --always").replace('-', '.')
     return None
 

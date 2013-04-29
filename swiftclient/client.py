@@ -18,7 +18,6 @@ Cloud Files client library used internally
 """
 
 import socket
-import os
 import sys
 import logging
 import warnings
@@ -99,11 +98,9 @@ def encode_utf8(value):
 try:
     # simplejson is popular and pretty good
     from simplejson import loads as json_loads
-    from simplejson import dumps as json_dumps
 except ImportError:
     # 2.6 will have a json module in the stdlib
     from json import loads as json_loads
-    from json import dumps as json_dumps
 
 
 class ClientException(Exception):
