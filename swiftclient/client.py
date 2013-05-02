@@ -1032,7 +1032,9 @@ class Connection(object):
                     raise
                 if err.http_status == 401:
                     self.url = self.token = None
-                    if self.attempts > 1:
+                    if self.attempts > 1 or not all((self.authurl,
+                                                     self.user,
+                                                     self.key)):
                         raise
                 elif err.http_status == 408:
                     self.http_conn = None
