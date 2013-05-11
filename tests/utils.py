@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from httplib import HTTPException
-
-from eventlet import Timeout, sleep
+from time import sleep
 
 
 def fake_get_keystoneclient_2_0(os_options, exc=None, **kwargs):
@@ -61,8 +60,6 @@ def fake_http_connect(*code_iter, **kwargs):
         def getresponse(self):
             if kwargs.get('raise_exc'):
                 raise Exception('test')
-            if kwargs.get('raise_timeout_exc'):
-                raise Timeout()
             return self
 
         def getexpect(self):

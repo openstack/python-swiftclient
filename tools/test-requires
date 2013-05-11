@@ -7,7 +7,6 @@ flake8==2.0
 
 coverage
 discover
-eventlet
 python-keystoneclient
 sphinx>=1.1.2
 testrepository>=0.0.13

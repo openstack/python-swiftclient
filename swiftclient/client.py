@@ -25,25 +25,9 @@ from functools import wraps
 
 from urllib import quote as _quote
 from urlparse import urlparse, urlunparse
+from httplib import HTTPException, HTTPConnection, HTTPSConnection
+from time import sleep
 
-try:
-    from eventlet.green.httplib import HTTPException, HTTPSConnection
-except ImportError:
-    from httplib import HTTPException, HTTPSConnection
-
-try:
-    from eventlet import sleep
-except ImportError:
-    from time import sleep
-
-try:
-    from swift.common.bufferedhttp \
-        import BufferedHTTPConnection as HTTPConnection
-except ImportError:
-    try:
-        from eventlet.green.httplib import HTTPConnection
-    except ImportError:
-        from httplib import HTTPConnection
 
 logger = logging.getLogger("swiftclient")
 
