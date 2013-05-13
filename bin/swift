@@ -398,7 +398,8 @@ def st_download(parser, args, print_queue, error_queue):
                 if make_dir and not isdir(path):
                     mkdirs(path)
                 read_length = 0
-                if 'x-object-manifest' not in headers:
+                if 'x-object-manifest' not in headers and \
+                        'x-static-large-object' not in headers:
                     md5sum = md5()
                 for chunk in body:
                     read_length += len(chunk)
@@ -416,7 +417,8 @@ def st_download(parser, args, print_queue, error_queue):
                     else:
                         fp = open(path, 'wb')
                 read_length = 0
-                if 'x-object-manifest' not in headers:
+                if 'x-object-manifest' not in headers and \
+                        'x-static-large-object' not in headers:
                     md5sum = md5()
                 for chunk in body:
                     if not options.no_download:
