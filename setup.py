@@ -1,6 +1,5 @@
-#!/usr/bin/python
-# -*- encoding: utf-8 -*-
-# Copyright (c) 2010 OpenStack, LLC.
+#!/usr/bin/env python
+# Copyright (c) 2013 Hewlett-Packard Development Company, L.P.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,45 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import setuptools
 
-from swiftclient.openstack.common import setup
-
-name = 'python-swiftclient'
-
-requires = setup.parse_requirements()
-depend_links = setup.parse_dependency_links()
-
-
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
 setuptools.setup(
-    name=name,
-    version=setup.get_version(name),
-    description='Client Library for OpenStack Object Storage API',
-    long_description=read('README.rst'),
-    url='https://github.com/openstack/python-swiftclient',
-    license='Apache License (2.0)',
-    author='OpenStack, LLC.',
-    author_email='openstack-admins@lists.launchpad.net',
-    packages=setuptools.find_packages(exclude=['tests', 'tests.*']),
-    cmdclass=setup.get_cmdclass(),
-    install_requires=requires,
-    dependency_links=depend_links,
-    classifiers=[
-        'Development Status :: 4 - Beta',
-        'Environment :: Console',
-        'Environment :: OpenStack',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Information Technology',
-        'License :: OSI Approved :: Apache Software License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.6',
-        'Environment :: No Input/Output (Daemon)',
-    ],
-    scripts=[
-        'bin/swift',
-    ],
-)
+    setup_requires=['d2to1', 'pbr'],
+    d2to1=True)
