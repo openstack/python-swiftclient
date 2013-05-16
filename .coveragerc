@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = swiftclient
+omit = swiftclient/openstack/common/*
+
+[report]
+ignore-errors = True
