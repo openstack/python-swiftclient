@@ -354,6 +354,30 @@ class TestGetAccount(MockHttpTest):
         value = c.get_account('http://www.test.com', 'asdf')[1]
         self.assertEquals(value, [])
 
+    def test_param_marker(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&marker=marker")
+        c.get_account('http://www.test.com', 'asdf', marker='marker')
+
+    def test_param_limit(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&limit=10")
+        c.get_account('http://www.test.com', 'asdf', limit=10)
+
+    def test_param_prefix(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&prefix=asdf/")
+        c.get_account('http://www.test.com', 'asdf', prefix='asdf/')
+
+    def test_param_end_marker(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&end_marker=end_marker")
+        c.get_account('http://www.test.com', 'asdf', end_marker='end_marker')
+
 
 class TestHeadAccount(MockHttpTest):
 
@@ -383,6 +407,44 @@ class TestGetContainer(MockHttpTest):
         c.http_connection = self.fake_http_connection(204)
         value = c.get_container('http://www.test.com', 'asdf', 'asdf')[1]
         self.assertEquals(value, [])
+
+    def test_param_marker(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&marker=marker")
+        c.get_container('http://www.test.com', 'asdf', 'asdf', marker='marker')
+
+    def test_param_limit(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&limit=10")
+        c.get_container('http://www.test.com', 'asdf', 'asdf', limit=10)
+
+    def test_param_prefix(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&prefix=asdf/")
+        c.get_container('http://www.test.com', 'asdf', 'asdf', prefix='asdf/')
+
+    def test_param_delimiter(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&delimiter=/")
+        c.get_container('http://www.test.com', 'asdf', 'asdf', delimiter='/')
+
+    def test_param_end_marker(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&end_marker=end_marker")
+        c.get_container('http://www.test.com', 'asdf', 'asdf',
+                        end_marker='end_marker')
+
+    def test_param_path(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&path=asdf")
+        c.get_container('http://www.test.com', 'asdf', 'asdf',
+                        path='asdf')
 
 
 class TestHeadContainer(MockHttpTest):

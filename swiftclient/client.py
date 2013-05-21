@@ -315,7 +315,7 @@ def get_auth(auth_url, user, key, **kwargs):
 
 
 def get_account(url, token, marker=None, limit=None, prefix=None,
-                http_conn=None, full_listing=False):
+                end_marker=None, http_conn=None, full_listing=False):
     """
     Get a listing of containers for the account.
 
@@ -324,6 +324,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     :param marker: marker query
     :param limit: limit query
     :param prefix: prefix query
+    :param end_marker: end_marker query
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
     :param full_listing: if True, return a full listing, else returns a max
@@ -335,12 +336,14 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     if not http_conn:
         http_conn = http_connection(url)
     if full_listing:
-        rv = get_account(url, token, marker, limit, prefix, http_conn)
+        rv = get_account(url, token, marker, limit, prefix,
+                         end_marker, http_conn)
         listing = rv[1]
         while listing:
             marker = listing[-1]['name']
             listing = \
-                get_account(url, token, marker, limit, prefix, http_conn)[1]
+                get_account(url, token, marker, limit, prefix,
+                            end_marker, http_conn)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
@@ -352,6 +355,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
         qs += '&limit=%d' % limit
     if prefix:
         qs += '&prefix=%s' % quote(prefix)
+    if end_marker:
+        qs += '&end_marker=%s' % quote(end_marker)
     full_path = '%s?%s' % (parsed.path, qs)
     headers = {'X-Auth-Token': token}
     method = 'GET'
@@ -442,7 +447,8 @@ def post_account(url, token, headers, http_conn=None):
 
 
 def get_container(url, token, container, marker=None, limit=None,
-                  prefix=None, delimiter=None, http_conn=None,
+                  prefix=None, delimiter=None, end_marker=None,
+                  path=None, http_conn=None,
                   full_listing=False):
     """
     Get a listing of objects for the container.
@@ -453,7 +459,9 @@ def get_container(url, token, container, marker=None, limit=None,
     :param marker: marker query
     :param limit: limit query
     :param prefix: prefix query
-    :param delimeter: string to delimit the queries on
+    :param delimiter: string to delimit the queries on
+    :param end_marker: marker query
+    :param path: path query (equivalent: "delimiter=/" and "prefix=path/")
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
     :param full_listing: if True, return a full listing, else returns a max
@@ -466,7 +474,7 @@ def get_container(url, token, container, marker=None, limit=None,
         http_conn = http_connection(url)
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
-                           delimiter, http_conn)
+                           delimiter, end_marker, path, http_conn)
         listing = rv[1]
         while listing:
             if not delimiter:
@@ -474,12 +482,13 @@ def get_container(url, token, container, marker=None, limit=None,
             else:
                 marker = listing[-1].get('name', listing[-1].get('subdir'))
             listing = get_container(url, token, container, marker, limit,
-                                    prefix, delimiter, http_conn)[1]
+                                    prefix, delimiter, end_marker, path,
+                                    http_conn)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
     parsed, conn = http_conn
-    path = '%s/%s' % (parsed.path, quote(container))
+    cont_path = '%s/%s' % (parsed.path, quote(container))
     qs = 'format=json'
     if marker:
         qs += '&marker=%s' % quote(marker)
@@ -489,9 +498,13 @@ def get_container(url, token, container, marker=None, limit=None,
         qs += '&prefix=%s' % quote(prefix)
     if delimiter:
         qs += '&delimiter=%s' % quote(delimiter)
+    if end_marker:
+        qs += '&end_marker=%s' % quote(end_marker)
+    if path:
+        qs += '&path=%s' % quote(path)
     headers = {'X-Auth-Token': token}
     method = 'GET'
-    conn.request(method, '%s?%s' % (path, qs), '', headers)
+    conn.request(method, '%s?%s' % (cont_path, qs), '', headers)
     resp = conn.getresponse()
     body = resp.read()
     http_log(('%s?%s' % (url, qs), method,), {'headers': headers}, resp, body)
@@ -499,7 +512,7 @@ def get_container(url, token, container, marker=None, limit=None,
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container GET failed',
                               http_scheme=parsed.scheme, http_host=conn.host,
-                              http_port=conn.port, http_path=path,
+                              http_port=conn.port, http_path=cont_path,
                               http_query=qs, http_status=resp.status,
                               http_reason=resp.reason,
                               http_response_content=body)
@@ -1036,13 +1049,14 @@ class Connection(object):
         return self._retry(None, head_account)
 
     def get_account(self, marker=None, limit=None, prefix=None,
-                    full_listing=False):
+                    end_marker=None, full_listing=False):
         """Wrapper for :func:`get_account`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
         # retries where it left off.
         return self._retry(None, get_account, marker=marker, limit=limit,
-                           prefix=prefix, full_listing=full_listing)
+                           prefix=prefix, end_marker=end_marker,
+                           full_listing=full_listing)
 
     def post_account(self, headers):
         """Wrapper for :func:`post_account`"""
@@ -1053,13 +1067,15 @@ class Connection(object):
         return self._retry(None, head_container, container)
 
     def get_container(self, container, marker=None, limit=None, prefix=None,
-                      delimiter=None, full_listing=False):
+                      delimiter=None, end_marker=None, path=None,
+                      full_listing=False):
         """Wrapper for :func:`get_container`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
         # retries where it left off.
         return self._retry(None, get_container, container, marker=marker,
                            limit=limit, prefix=prefix, delimiter=delimiter,
+                           end_marker=end_marker, path=path,
                            full_listing=full_listing)
 
     def put_container(self, container, headers=None):
