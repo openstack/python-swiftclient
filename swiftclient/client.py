@@ -192,8 +192,8 @@ def get_auth_1_0(url, user, key, snet):
                  {'X-Auth-User': user, 'X-Auth-Key': key})
     resp = conn.getresponse()
     body = resp.read()
-    url = resp.getheader('x-storage-url')
     http_log((url, method,), {}, resp, body)
+    url = resp.getheader('x-storage-url')
 
     # There is a side-effect on current Rackspace 1.0 server where a
     # bad URL would get you that document page and a 200. We error out
