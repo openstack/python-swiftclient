@@ -181,7 +181,12 @@ def http_connection(url, proxy=None):
         return request_escaped
     conn.request = request_wrapper(conn.request)
     if proxy:
-        conn._set_tunnel(parsed.hostname, parsed.port)
+        try:
+            # python 2.6 method
+            conn._set_tunnel(parsed.hostname, parsed.port)
+        except AttributeError:
+            # python 2.7 method
+            conn.set_tunnel(parsed.hostname, parsed.port)
     return parsed, conn
 
 
