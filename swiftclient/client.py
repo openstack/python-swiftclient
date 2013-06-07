@@ -181,7 +181,7 @@ def http_connection(url, proxy=None):
         return request_escaped
     conn.request = request_wrapper(conn.request)
     if proxy:
-        conn._set_tunnel(parsed.hostname, parsed.port)
+        conn.set_tunnel(parsed.hostname, parsed.port)
     return parsed, conn
 
 
