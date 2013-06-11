@@ -50,6 +50,11 @@ The -p or --prefix is an option that will only list items beginning
 with that prefix. The -d or --delimiter is option (for container listings only)
 that will roll up items with the given delimiter (see Cloud Files general
 documentation for what this means).
+
+The -l and --lh options provide more detail, similar to ls -l and ls -lh, the latter
+providing sizes in human readable format (eg 3K, 12M, etc). These latter 2 switches
+use more overhead to get those details, which is directly proportional to the number
+of container or objects being listed.
 .RE
 
 \fBupload\fR [\fIcommand-options\fR] container file_or_directory [\fIfile_or_directory\fR] [...]

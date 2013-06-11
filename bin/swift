@@ -26,7 +26,7 @@ from Queue import Queue
 from random import shuffle
 from sys import argv, exc_info, exit, stderr, stdout
 from threading import enumerate as threading_enumerate, Thread
-from time import sleep, time
+from time import sleep, time, gmtime, strftime
 from traceback import format_exception
 from urllib import quote, unquote
 
@@ -493,24 +493,60 @@ def st_download(parser, args, print_queue, error_queue):
     put_errors_from_threads(object_threads, error_queue)
 
 
+def prt_bytes(bytes, human_flag):
+    """
+    convert a number > 1024 to printable format, either in 4 char -h format as
+    with ls -lh or return as 12 char right justified string (up to 999GB)
+    """
+
+    if human_flag:
+        suffix = ''
+        mods = 'KMGTPEZY'
+        temp = float(bytes)
+        if temp > 0:
+            while (temp > 1023):
+                temp /= 1024.0
+                suffix = mods[0]
+                mods = mods[1:]
+            if suffix != '':
+                if temp > 9:
+                    bytes = '%3d%s' % (temp, suffix)
+                else:
+                    bytes = '%.1f%s' % (temp, suffix)
+        if suffix == '':    # must be < 1024
+            bytes = '%4s' % bytes
+    else:
+        bytes = '%12s' % bytes
+
+    return(bytes)
+
+
 st_list_help = '''
 list [options] [container]
     Lists the containers for the account or the objects for a container. -p or
     --prefix is an option that will only list items beginning with that prefix.
+    -l produces output formatted like 'ls -l' and --lh like 'ls -lh'.
     -d or --delimiter is option (for container listings only) that will roll up
-    items with the given delimiter (see Cloud Files general documentation for
-    what this means).
+    items with the given delimiter (see http://docs.openstack.org/
+        api/openstack-object-storage/1.0/content/list-objects.html)
 '''.strip('\n')
 
 
 def st_list(parser, args, print_queue, error_queue):
+    parser.add_option(
+        '-l', '--long', dest='long', help='Long listing '
+        'similar to ls -l command', action='store_true', default=False)
+    parser.add_option(
+        '--lh', dest='human', help='report sizes as human '
+        "similar to ls -lh switch, but -h taken", action='store_true',
+        default=False)
     parser.add_option(
         '-p', '--prefix', dest='prefix',
         help='Will only list items beginning with the prefix')
     parser.add_option(
         '-d', '--delimiter', dest='delimiter',
         help='Will roll up items with the given delimiter'
-             ' (see Cloud Files general documentation for what this means)')
+        ' (see Cloud Files general documentation for what this means)')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.delimiter and not args:
@@ -534,7 +570,35 @@ def st_list(parser, args, print_queue, error_queue):
             if not items:
                 break
             for item in items:
-                print_queue.put(item.get('name', item.get('subdir')))
+                item_name = item.get('name')
+
+                if not options.long and not options.human:
+                    print_queue.put(item.get('name', item.get('subdir')))
+                else:
+                    if len(args) == 0:    # listing containers
+                        bytes = prt_bytes(item.get('bytes'), options.human)
+                        count = item.get('count')
+                        try:
+                            meta = conn.head_container(item_name)
+                            utc = gmtime(float(meta.get('x-timestamp')))
+                            datestamp = strftime('%Y-%m-%d %H:%M:%S', utc)
+                        except ClientException:
+                            datestamp = '????-??-?? ??:??:??'
+                        print_queue.put("%5s %s %s %s" %
+                                        (count, bytes, datestamp, item_name))
+                    else:    # list container contents
+                        subdir = item.get('subdir')
+                        if subdir is None:
+                            bytes = prt_bytes(item.get('bytes'), options.human)
+                            date, xtime = item.get('last_modified').split('T')
+                            xtime = xtime.split('.')[0]
+                        else:
+                            bytes = prt_bytes(0, options.human)
+                            date = xtime = ''
+                            item_name = subdir
+                        print_queue.put("%s %10s %8s %s" %
+                                        (bytes, date, xtime, item_name))
+
             marker = items[-1].get('name', items[-1].get('subdir'))
     except ClientException as err:
         if err.http_status != 404:
@@ -543,7 +607,6 @@ def st_list(parser, args, print_queue, error_queue):
             error_queue.put('Account not found')
         else:
             error_queue.put('Container %s not found' % repr(args[0]))
-
 
 st_stat_help = '''
 stat [container] [object]
@@ -1161,6 +1224,8 @@ Examples:
   %%prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
       --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
       list
+
+  %%prog list --lh
 '''.strip('\n') % globals())
     parser.add_option('-s', '--snet', action='store_true', dest='snet',
                       default=False, help='Use SERVICENET internal network')
