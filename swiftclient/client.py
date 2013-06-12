@@ -1034,6 +1034,7 @@ class Connection(object):
 
     def _retry(self, reset_func, func, *args, **kwargs):
         self.attempts = 0
+        retried_auth = False
         backoff = self.starting_backoff
         while self.attempts <= self.retries:
             self.attempts += 1
@@ -1055,10 +1056,11 @@ class Connection(object):
                     raise
                 if err.http_status == 401:
                     self.url = self.token = None
-                    if self.attempts > 1 or not all((self.authurl,
-                                                     self.user,
-                                                     self.key)):
+                    if retried_auth or not all((self.authurl,
+                                                self.user,
+                                                self.key)):
                         raise
+                    retried_auth = True
                 elif err.http_status == 408:
                     self.http_conn = None
                 elif 500 <= err.http_status <= 599:
