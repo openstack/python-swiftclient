@@ -496,7 +496,7 @@ def st_download(parser, args, print_queue, error_queue):
 def prt_bytes(bytes, human_flag):
     """
     convert a number > 1024 to printable format, either in 4 char -h format as
-    with ls -lh or return as 12 char right justified string (up to 999GB)
+    with ls -lh or return as 12 char right justified string
     """
 
     if human_flag:
@@ -509,7 +509,7 @@ def prt_bytes(bytes, human_flag):
                 suffix = mods[0]
                 mods = mods[1:]
             if suffix != '':
-                if temp > 9:
+                if temp >= 10:
                     bytes = '%3d%s' % (temp, suffix)
                 else:
                     bytes = '%.1f%s' % (temp, suffix)
@@ -526,6 +526,7 @@ list [options] [container]
     Lists the containers for the account or the objects for a container. -p or
     --prefix is an option that will only list items beginning with that prefix.
     -l produces output formatted like 'ls -l' and --lh like 'ls -lh'.
+    -t used with -l or --lh, only report totals
     -d or --delimiter is option (for container listings only) that will roll up
     items with the given delimiter (see http://docs.openstack.org/
         api/openstack-object-storage/1.0/content/list-objects.html)
@@ -540,6 +541,9 @@ def st_list(parser, args, print_queue, error_queue):
         '--lh', dest='human', help='report sizes as human '
         "similar to ls -lh switch, but -h taken", action='store_true',
         default=False)
+    parser.add_option(
+        '-t', dest='totals', help='used with -l or --ls, only report totals',
+        action='store_true', default=False)
     parser.add_option(
         '-p', '--prefix', dest='prefix',
         help='Will only list items beginning with the prefix')
@@ -559,6 +563,7 @@ def st_list(parser, args, print_queue, error_queue):
     conn = get_conn(options)
     try:
         marker = ''
+        total_count = total_bytes = 0
         while True:
             if not args:
                 items = \
@@ -575,31 +580,47 @@ def st_list(parser, args, print_queue, error_queue):
                 if not options.long and not options.human:
                     print_queue.put(item.get('name', item.get('subdir')))
                 else:
+                    item_bytes = item.get('bytes')
+                    total_bytes += item_bytes
                     if len(args) == 0:    # listing containers
-                        bytes = prt_bytes(item.get('bytes'), options.human)
+                        bytes = prt_bytes(item_bytes, options.human)
                         count = item.get('count')
+                        total_count += count
                         try:
                             meta = conn.head_container(item_name)
                             utc = gmtime(float(meta.get('x-timestamp')))
                             datestamp = strftime('%Y-%m-%d %H:%M:%S', utc)
                         except ClientException:
                             datestamp = '????-??-?? ??:??:??'
-                        print_queue.put("%5s %s %s %s" %
-                                        (count, bytes, datestamp, item_name))
+                        if not options.totals:
+                            print_queue.put("%5s %s %s %s" %
+                                            (count, bytes, datestamp,
+                                             item_name))
                     else:    # list container contents
                         subdir = item.get('subdir')
                         if subdir is None:
-                            bytes = prt_bytes(item.get('bytes'), options.human)
+                            bytes = prt_bytes(item_bytes, options.human)
                             date, xtime = item.get('last_modified').split('T')
                             xtime = xtime.split('.')[0]
                         else:
                             bytes = prt_bytes(0, options.human)
                             date = xtime = ''
                             item_name = subdir
-                        print_queue.put("%s %10s %8s %s" %
-                                        (bytes, date, xtime, item_name))
+                        if not options.totals:
+                            print_queue.put("%s %10s %8s %s" %
+                                            (bytes, date, xtime, item_name))
 
-            marker = items[-1].get('name', items[-1].get('subdir'))
+                marker = items[-1].get('name', items[-1].get('subdir'))
+
+        # report totals
+        if options.long or options.human:
+            if len(args) == 0:
+                print_queue.put("%5s %s" % (prt_bytes(total_count, True),
+                                            prt_bytes(total_bytes,
+                                                      options.human)))
+            else:
+                print_queue.put("%s" % (prt_bytes(total_bytes, options.human)))
+
     except ClientException as err:
         if err.http_status != 404:
             raise
@@ -611,10 +632,14 @@ def st_list(parser, args, print_queue, error_queue):
 st_stat_help = '''
 stat [container] [object]
     Displays information for the account, container, or object depending on the
-    args given (if any).'''.strip('\n')
+    args given (if any). --lh will print number of objects and total sizes
+    like 'list --lh' noting number of objs a multiple of 1024'''.strip('\n')
 
 
 def st_stat(parser, args, print_queue, error_queue):
+    parser.add_option(
+        '--lh', dest='human', help="report totals like 'list --lh'",
+        action='store_true', default=False)
     (options, args) = parse_args(parser, args)
     args = args[1:]
     conn = get_conn(options)
@@ -627,13 +652,15 @@ StorageURL: %s
 Auth Token: %s
 '''.strip('\n') % (conn.url, conn.token))
             container_count = int(headers.get('x-account-container-count', 0))
-            object_count = int(headers.get('x-account-object-count', 0))
-            bytes_used = int(headers.get('x-account-bytes-used', 0))
+            object_count = prt_bytes(headers.get('x-account-object-count', 0),
+                                     options.human).lstrip()
+            bytes_used = prt_bytes(headers.get('x-account-bytes-used', 0),
+                                   options.human).lstrip()
             print_queue.put('''
    Account: %s
 Containers: %d
-   Objects: %d
-     Bytes: %d'''.strip('\n') % (conn.url.rsplit('/', 1)[-1], container_count,
+   Objects: %s
+     Bytes: %s'''.strip('\n') % (conn.url.rsplit('/', 1)[-1], container_count,
                                  object_count, bytes_used))
             for key, value in headers.items():
                 if key.startswith('x-account-meta-'):
@@ -657,13 +684,16 @@ Containers: %d
                              (args[0].replace('/', ' ', 1), args[0])
         try:
             headers = conn.head_container(args[0])
-            object_count = int(headers.get('x-container-object-count', 0))
-            bytes_used = int(headers.get('x-container-bytes-used', 0))
+            object_count = prt_bytes(
+                headers.get('x-container-object-count', 0),
+                options.human).lstrip()
+            bytes_used = prt_bytes(headers.get('x-container-bytes-used', 0),
+                                   options.human).lstrip()
             print_queue.put('''
   Account: %s
 Container: %s
-  Objects: %d
-    Bytes: %d
+  Objects: %s
+    Bytes: %s
  Read ACL: %s
 Write ACL: %s
   Sync To: %s
@@ -701,7 +731,8 @@ Write ACL: %s
                                      args[1], headers.get('content-type')))
             if 'content-length' in headers:
                 print_queue.put('Content Length: %s' %
-                                headers['content-length'])
+                                prt_bytes(headers['content-length'],
+                                          options.human).lstrip())
             if 'last-modified' in headers:
                 print_queue.put(' Last Modified: %s' %
                                 headers['last-modified'])
