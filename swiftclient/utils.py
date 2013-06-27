@@ -12,7 +12,6 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Miscellaneous utility functions for use with Swift."""
 
 TRUE_VALUES = set(('true', '1', 'yes', 'on', 't', 'y'))

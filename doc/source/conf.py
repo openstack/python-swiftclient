@@ -15,8 +15,6 @@
 import sys
 import os
 
-import swiftclient
-
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -36,6 +34,9 @@ sys.path.insert(0, ROOT)
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest', 'sphinx.ext.todo',
               'sphinx.ext.coverage']
 
+autoclass_content = 'both'
+autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -50,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Swiftclient'
-copyright = u'2012 OpenStack, LLC.'
+copyright = u'2013 OpenStack, LLC.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

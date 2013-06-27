@@ -3,6 +3,6 @@ set -e
 
 python setup.py testr --coverage
 RET=$?
-coverage report
+coverage report -m
 rm -f .coverage
 exit $RET

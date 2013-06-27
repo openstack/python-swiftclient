@@ -4,14 +4,18 @@ swiftclient
 ==============
 
 .. automodule:: swiftclient
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 swiftclient.client
 ==================
 
 .. automodule:: swiftclient.client
-    :members:
-    :undoc-members:
-    :show-inheritance:
+
+swiftclient.exceptions
+======================
+
+.. automodule:: swiftclient.exceptions
+
+swiftclient.multithreading
+==========================
+
+.. automodule:: swiftclient.multithreading
