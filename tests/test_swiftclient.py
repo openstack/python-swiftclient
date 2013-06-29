@@ -14,6 +14,7 @@
 # limitations under the License.
 
 # TODO: More tests
+import mock
 import httplib
 import socket
 import StringIO
@@ -123,8 +124,12 @@ class MockHttpTest(testtools.TestCase):
             _orig_http_connection = c.http_connection
             return_read = kwargs.get('return_read')
             query_string = kwargs.get('query_string')
+            storage_url = kwargs.get('storage_url')
 
             def wrapper(url, proxy=None, ssl_compression=True):
+                if storage_url:
+                    self.assertEqual(storage_url, url)
+
                 parsed, _conn = _orig_http_connection(url, proxy=proxy)
                 conn = fake_http_connect(*args, **kwargs)()
 
@@ -648,6 +653,33 @@ class TestConnection(MockHttpTest):
                 'preauthurl': 'http://www.test.com:8080/v1/AUTH_123456'}
         conn = c.Connection(**args)
         self.assertEquals(type(conn), c.Connection)
+
+    def test_storage_url_override(self):
+        static_url = 'http://overridden.storage.url'
+        c.http_connection = self.fake_http_connection(
+            200, body='[]', storage_url=static_url)
+        conn = c.Connection('http://auth.url/', 'some_user', 'some_key',
+                            os_options={
+                                'object_storage_url': static_url})
+        method_signatures = (
+            (conn.head_account, []),
+            (conn.get_account, []),
+            (conn.head_container, ('asdf',)),
+            (conn.get_container, ('asdf',)),
+            (conn.put_container, ('asdf',)),
+            (conn.delete_container, ('asdf',)),
+            (conn.head_object, ('asdf', 'asdf')),
+            (conn.get_object, ('asdf', 'asdf')),
+            (conn.put_object, ('asdf', 'asdf', 'asdf')),
+            (conn.post_object, ('asdf', 'asdf', {})),
+            (conn.delete_object, ('asdf', 'asdf')),
+        )
+
+        with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
+            mock_get_auth.return_value = ('http://auth.storage.url', 'tToken')
+
+            for method, args in method_signatures:
+                method(*args)
 
     def test_retry(self):
         c.http_connection = self.fake_http_connection(500)

@@ -5,6 +5,7 @@ flake8==2.0
 
 coverage
 discover
+mock>=0.8.0
 python-keystoneclient
 sphinx>=1.1.2
 testrepository>=0.0.13
