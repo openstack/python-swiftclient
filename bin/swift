@@ -1258,7 +1258,8 @@ to be set or overridden with -A, -U, or -K.
 
 Auth version 2.0 requires OS_AUTH_URL, OS_USERNAME, OS_PASSWORD, and
 OS_TENANT_NAME OS_TENANT_ID to be set or overridden with --os-auth-url,
---os-username, --os-password, --os-tenant-name or os-tenant-id.'''.strip('\n'))
+--os-username, --os-password, --os-tenant-name or os-tenant-id. Note:
+adding "-V 2" is necessary for this.'''.strip('\n'))
     return options, args
 
 
