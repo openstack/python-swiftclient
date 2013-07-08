@@ -46,6 +46,7 @@ def get_conn(options):
     return Connection(options.auth,
                       options.user,
                       options.key,
+                      options.retries,
                       auth_version=options.auth_version,
                       os_options=options.os_options,
                       snet=options.snet,
@@ -1312,6 +1313,8 @@ Examples:
     parser.add_option('-K', '--key', dest='key',
                       default=environ.get('ST_KEY'),
                       help='Key for obtaining an auth token.')
+    parser.add_option('-R', '--retries', type=int, default=5, dest='retries',
+                      help='The number of times to retry a failed connection.')
     parser.add_option('--os-username',
                       metavar='<auth-user-name>',
                       default=environ.get('OS_USERNAME'),
