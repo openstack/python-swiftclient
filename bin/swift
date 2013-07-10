@@ -1278,10 +1278,10 @@ Commands:
   %(st_delete_help)s
 
 Examples:
-  %%prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K key stat
+  %%prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K key stat -v
 
   %%prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
-      --os-usernameuser --os-password password list
+      --os-username user --os-password password list
 
   %%prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
       --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
@@ -1358,8 +1358,9 @@ Examples:
                       default=environ.get('OS_STORAGE_URL'),
                       help='Openstack storage URL. '
                            'Defaults to env[OS_STORAGE_URL]. '
-                           'Used with --os-auth-token to bypass the '
-                           'usual username/password authentication.')
+                           'Overrides the storage url returned during auth. '
+                           'Will bypass authentication when used with '
+                           '--os-auth-token.')
     parser.add_option('--os_storage_url',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-region-name',

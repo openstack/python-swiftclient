@@ -290,20 +290,19 @@ def get_auth(auth_url, user, key, **kwargs):
     auth_version = kwargs.get('auth_version', '1')
     os_options = kwargs.get('os_options', {})
 
+    storage_url, token = None, None
     if auth_version in ['1.0', '1', 1]:
-        return get_auth_1_0(auth_url,
-                            user,
-                            key,
-                            kwargs.get('snet'))
-
-    if auth_version in ['2.0', '2', 2]:
-
+        storage_url, token = get_auth_1_0(auth_url,
+                                          user,
+                                          key,
+                                          kwargs.get('snet'))
+    elif auth_version in ['2.0', '2', 2]:
         # We are allowing to specify a token/storage-url to re-use
         # without having to re-authenticate.
         if (os_options.get('object_storage_url') and
                 os_options.get('auth_token')):
-            return(os_options.get('object_storage_url'),
-                   os_options.get('auth_token'))
+            return (os_options.get('object_storage_url'),
+                    os_options.get('auth_token'))
 
         # We are handling a special use case here when we were
         # allowing specifying the account/tenant_name with the -U
@@ -322,14 +321,19 @@ def get_auth(auth_url, user, key, **kwargs):
 
         insecure = kwargs.get('insecure', False)
         cacert = kwargs.get('cacert', None)
-        (auth_url, token) = get_keystoneclient_2_0(auth_url, user,
-                                                   key, os_options,
-                                                   cacert=cacert,
-                                                   insecure=insecure)
-        return (auth_url, token)
+        storage_url, token = get_keystoneclient_2_0(auth_url, user,
+                                                    key, os_options,
+                                                    cacert=cacert,
+                                                    insecure=insecure)
+    else:
+        raise ClientException('Unknown auth_version %s specified.'
+                              % auth_version)
 
-    raise ClientException('Unknown auth_version %s specified.'
-                          % auth_version)
+    # Override storage url, if necessary
+    if os_options.get('object_storage_url'):
+        return os_options['object_storage_url'], token
+    else:
+        return storage_url, token
 
 
 def store_response(resp, response_dict):
@@ -1086,9 +1090,7 @@ class Connection(object):
         self.ssl_compression = ssl_compression
 
     def get_auth(self):
-        return get_auth(self.authurl,
-                        self.user,
-                        self.key,
+        return get_auth(self.authurl, self.user, self.key,
                         snet=self.snet,
                         auth_version=self.auth_version,
                         os_options=self.os_options,

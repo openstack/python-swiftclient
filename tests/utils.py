@@ -38,7 +38,7 @@ def fake_get_keystoneclient_2_0(os_options, exc=None, **kwargs):
             from swiftclient import client as c
             raise c.ClientException("unverified-certificate")
 
-        return ("http://url/", "token")
+        return "http://url/", "token"
     return fake_get_keystoneclient_2_0
 
 
