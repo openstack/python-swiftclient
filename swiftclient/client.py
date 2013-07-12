@@ -1044,9 +1044,9 @@ class Connection(object):
 
     def __init__(self, authurl=None, user=None, key=None, retries=5,
                  preauthurl=None, preauthtoken=None, snet=False,
-                 starting_backoff=1, tenant_name=None, os_options=None,
-                 auth_version="1", cacert=None, insecure=False,
-                 ssl_compression=True):
+                 starting_backoff=1, max_backoff=64, tenant_name=None,
+                 os_options=None, auth_version="1", cacert=None,
+                 insecure=False, ssl_compression=True):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1081,6 +1081,7 @@ class Connection(object):
         self.attempts = 0
         self.snet = snet
         self.starting_backoff = starting_backoff
+        self.max_backoff = max_backoff
         self.auth_version = auth_version
         self.os_options = os_options or {}
         if tenant_name:
@@ -1152,7 +1153,7 @@ class Connection(object):
                 else:
                     raise
             sleep(backoff)
-            backoff *= 2
+            backoff = min(backoff * 2, self.max_backoff)
             if reset_func:
                 reset_func(func, *args, **kwargs)
 
