@@ -1057,6 +1057,8 @@ class Connection(object):
                              authenticated) note authurl/user/key/tenant_name
                              are not required when specifying preauthtoken
         :param snet: use SERVICENET internal network default is False
+        :param starting_backoff: initial delay between retries (seconds)
+        :param max_backoff: maximum delay between retries (seconds)
         :param auth_version: OpenStack auth version, default is 1.0
         :param tenant_name: The tenant/account name, required when connecting
                             to a auth 2.0 system.
