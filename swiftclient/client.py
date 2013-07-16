@@ -1132,20 +1132,23 @@ class Connection(object):
                 rv = func(self.url, self.token, *args, **kwargs)
                 self._add_response_dict(caller_response_dict, kwargs)
                 return rv
-            except (socket.error, HTTPException):
+            except (socket.error, HTTPException) as e:
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:
+                    logger.exception(e)
                     raise
                 self.http_conn = None
             except ClientException as err:
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:
+                    logger.exception(err)
                     raise
                 if err.http_status == 401:
                     self.url = self.token = None
                     if retried_auth or not all((self.authurl,
                                                 self.user,
                                                 self.key)):
+                        logger.exception(err)
                         raise
                     retried_auth = True
                 elif err.http_status == 408:
@@ -1153,6 +1156,7 @@ class Connection(object):
                 elif 500 <= err.http_status <= 599:
                     pass
                 else:
+                    logger.exception(err)
                     raise
             sleep(backoff)
             backoff = min(backoff * 2, self.max_backoff)
