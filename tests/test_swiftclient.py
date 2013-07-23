@@ -23,7 +23,7 @@ import warnings
 from urlparse import urlparse
 
 # TODO: mock http connection class with more control over headers
-from utils import fake_http_connect, fake_get_keystoneclient_2_0
+from .utils import fake_http_connect, fake_get_keystoneclient_2_0
 
 from swiftclient import client as c
 from swiftclient import utils as u
