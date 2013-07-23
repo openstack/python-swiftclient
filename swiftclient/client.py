@@ -76,6 +76,17 @@ def quote(value, safe='/'):
         return value
 
 
+def validate_headers(headers):
+    if headers:
+        for key, value in headers.iteritems():
+            if '\n' in value:
+                raise InvalidHeadersException("%r header contained a "
+                                              "newline" % key)
+            if '\r' in value:
+                raise InvalidHeadersException("%r header contained a "
+                                              "carriage return" % key)
+
+
 def encode_utf8(value):
     if isinstance(value, unicode):
         value = value.encode('utf8')
@@ -89,6 +100,10 @@ try:
 except ImportError:
     # 2.6 will have a json module in the stdlib
     from json import loads as json_loads
+
+
+class InvalidHeadersException(Exception):
+    pass
 
 
 class ClientException(Exception):
@@ -187,6 +202,7 @@ def http_connection(url, proxy=None, ssl_compression=True):
 
         @wraps(func)
         def request_escaped(method, url, body=None, headers=None):
+            validate_headers(headers)
             url = encode_utf8(url)
             if body:
                 body = encode_utf8(body)
@@ -635,7 +651,7 @@ def put_container(url, token, container, headers=None, http_conn=None,
         headers = {}
     headers['X-Auth-Token'] = token
     if not 'content-length' in (k.lower() for k in headers):
-        headers['Content-Length'] = 0
+        headers['Content-Length'] = '0'
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -675,7 +691,7 @@ def post_container(url, token, container, headers, http_conn=None,
     method = 'POST'
     headers['X-Auth-Token'] = token
     if not 'content-length' in (k.lower() for k in headers):
-        headers['Content-Length'] = 0
+        headers['Content-Length'] = '0'
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()

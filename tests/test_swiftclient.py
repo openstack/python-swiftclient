@@ -193,6 +193,18 @@ class TestHttpHelpers(MockHttpTest):
         url = 'ftp://www.test.com'
         self.assertRaises(c.ClientException, c.http_connection, url)
 
+    def test_validate_headers(self):
+        headers = {'key': 'value'}
+        self.assertEquals(c.validate_headers(headers), None)
+
+        headers = {'key': 'value1\nvalue2'}
+        self.assertRaises(c.InvalidHeadersException, c.validate_headers,
+                          headers)
+
+        headers = {'key': 'value1\rvalue2'}
+        self.assertRaises(c.InvalidHeadersException, c.validate_headers,
+                          headers)
+
 # TODO: following tests are placeholders, need more tests, better coverage
 
 
@@ -595,7 +607,7 @@ class TestPostObject(MockHttpTest):
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         headers = {'X-Header1': u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                   'X-2': 1, 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr'}
+                   'X-2': '1', 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr'}
 
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
