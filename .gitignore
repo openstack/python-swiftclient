@@ -2,6 +2,7 @@ AUTHORS
 ChangeLog
 dist/
 .tox
+*.egg
 *.egg-info
 *.py[co]
 .DS_Store
