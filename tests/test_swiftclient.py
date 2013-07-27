@@ -520,6 +520,26 @@ class TestGetObject(MockHttpTest):
         c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
                      query_string="hello=20")
 
+    def test_request_headers(self):
+        request_args = {}
+
+        def fake_request(method, url, body=None, headers=None):
+            request_args['method'] = method
+            request_args['url'] = url
+            request_args['body'] = body
+            request_args['headers'] = headers
+            return
+        conn = self.fake_http_connection(200)('http://www.test.com/')
+        conn[1].request = fake_request
+        headers = {'Range': 'bytes=1-2'}
+        c.get_object('url_is_irrelevant', 'TOKEN', 'container', 'object',
+                     http_conn=conn, headers=headers)
+        self.assertFalse(request_args['headers'] is None,
+                         "No headers in the request")
+        self.assertTrue('Range' in request_args['headers'],
+                        "No Range header in the request")
+        self.assertEquals(request_args['headers']['Range'], 'bytes=1-2')
+
 
 class TestHeadObject(MockHttpTest):
 
