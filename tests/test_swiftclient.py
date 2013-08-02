@@ -539,12 +539,12 @@ class TestPutObject(MockHttpTest):
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
-        file = StringIO.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        mock_file = StringIO.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                file)
+                mock_file)
         headers = {'X-Header1': u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                    'X-2': 1, 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:fg:lp'}
 
@@ -559,8 +559,8 @@ class TestPutObject(MockHttpTest):
 
     def test_chunk_warning(self):
         conn = c.http_connection('http://www.test.com/')
-        file = StringIO.StringIO('asdf')
-        args = ('asdf', 'asdf', 'asdf', 'asdf', file)
+        mock_file = StringIO.StringIO('asdf')
+        args = ('asdf', 'asdf', 'asdf', 'asdf', mock_file)
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
         conn[1].send = resp.fake_send
