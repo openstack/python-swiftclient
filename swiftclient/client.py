@@ -691,7 +691,7 @@ def delete_container(url, token, container, http_conn=None,
 
 def get_object(url, token, container, name, http_conn=None,
                resp_chunk_size=None, query_string=None,
-               response_dict=None):
+               response_dict=None, headers=None):
     """
     Get an object
 
@@ -708,6 +708,8 @@ def get_object(url, token, container, name, http_conn=None,
     :param query_string: if set will be appended with '?' to generated path
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param headers: an optional dictionary with additional headers to include
+                    in the request
     :returns: a tuple of (response headers, the object's contents) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -720,7 +722,8 @@ def get_object(url, token, container, name, http_conn=None,
     if query_string:
         path += '?' + query_string
     method = 'GET'
-    headers = {'X-Auth-Token': token}
+    headers = headers.copy() if headers else {}
+    headers['X-Auth-Token'] = token
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
 
@@ -1178,12 +1181,12 @@ class Connection(object):
         return self._retry(None, head_object, container, obj)
 
     def get_object(self, container, obj, resp_chunk_size=None,
-                   query_string=None, response_dict=None):
+                   query_string=None, response_dict=None, headers=None):
         """Wrapper for :func:`get_object`"""
         return self._retry(None, get_object, container, obj,
                            resp_chunk_size=resp_chunk_size,
                            query_string=query_string,
-                           response_dict=response_dict)
+                           response_dict=response_dict, headers=headers)
 
     def put_object(self, container, obj, contents, content_length=None,
                    etag=None, chunk_size=None, content_type=None,
