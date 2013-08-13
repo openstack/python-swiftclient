@@ -265,6 +265,11 @@ Optional arguments:
                         Number of threads to use for deleting containers
   --no-download         Perform download(s), but don't actually write anything
                         to disk
+  --header <header_name:header_value>
+                        Adds a customized request header to the query, like
+                        "Range" or "If-Match". This argument is repeatable.
+                        Example --header "content-type:text/plain"
+
 '''.strip("\n")
 
 
@@ -293,6 +298,13 @@ def st_download(parser, args, thread_manager):
         '', '--no-download', action='store_true',
         default=False,
         help="Perform download(s), but don't actually write anything to disk")
+    parser.add_option(
+        '-H', '--header', action='append', dest='header',
+        default=[],
+        help='Specify a request header, as --header NAME:VALUE. '
+        'Adds a customized request header to the query, like "Range" or '
+        '"If-Match". This argument is repeatable. Example'
+        ' --header "content-type:text/plain"')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
@@ -303,6 +315,7 @@ def st_download(parser, args, thread_manager):
         thread_manager.error('Usage: %s download %s\n%s', basename(argv[0]),
                              st_download_options, st_download_help)
         return
+    req_headers = split_headers(options.header, '', thread_manager)
 
     def _download_object(queue_arg, conn):
         if len(queue_arg) == 2:
@@ -315,7 +328,8 @@ def st_download(parser, args, thread_manager):
         try:
             start_time = time()
             headers, body = \
-                conn.get_object(container, obj, resp_chunk_size=65536)
+                conn.get_object(container, obj, resp_chunk_size=65536,
+                                headers=req_headers)
             header_receipt = time()
             content_type = headers.get('content-type')
             if 'content-length' in headers:
