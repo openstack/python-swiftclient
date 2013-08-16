@@ -35,7 +35,22 @@ try:
 except ImportError:
     HTTPSConnectionNoSSLComp = HTTPSConnection
 
+
+try:
+    from logging import NullHandler
+except ImportError:
+    class NullHandler(logging.Handler):
+        def handle(self, record):
+            pass
+
+        def emit(self, record):
+            pass
+
+        def createLock(self):
+            self.lock = None
+
 logger = logging.getLogger("swiftclient")
+logger.addHandler(NullHandler())
 
 
 def http_log(args, kwargs, resp, body):
