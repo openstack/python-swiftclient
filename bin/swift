@@ -374,7 +374,7 @@ def st_download(parser, args, thread_manager):
                 utime(path, (mtime, mtime))
             if options.verbose:
                 finish_time = time()
-                time_str = 'headers %.3fs, total %.3fs, %.3fs MB/s' % (
+                time_str = 'headers %.3fs, total %.3fs, %.3f MB/s' % (
                     header_receipt - start_time, finish_time - start_time,
                     float(read_length) / (finish_time - start_time) / 1000000)
                 if conn.attempts > 1:
