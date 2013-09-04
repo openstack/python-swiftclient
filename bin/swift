@@ -331,7 +331,7 @@ def st_download(parser, args, thread_manager):
             headers, body = \
                 conn.get_object(container, obj, resp_chunk_size=65536,
                                 headers=req_headers)
-            header_receipt = time()
+            headers_receipt = time()
             content_type = headers.get('content-type')
             if 'content-length' in headers:
                 content_length = int(headers.get('content-length'))
@@ -391,9 +391,14 @@ def st_download(parser, args, thread_manager):
                 utime(path, (mtime, mtime))
             if options.verbose:
                 finish_time = time()
-                time_str = 'headers %.3fs, total %.3fs, %.3f MB/s' % (
-                    header_receipt - start_time, finish_time - start_time,
-                    float(read_length) / (finish_time - start_time) / 1000000)
+                auth_time = conn.auth_end_time - start_time
+                headers_receipt = headers_receipt - start_time
+                total_time = finish_time - start_time
+                download_time = total_time - auth_time
+                time_str = ('auth %.3fs, headers %.3fs, total %.3fs, '
+                            '%.3f MB/s' % (
+                                auth_time, headers_receipt, total_time,
+                                float(read_length) / download_time / 1000000))
                 if conn.attempts > 1:
                     thread_manager.print_msg('%s [%s after %d attempts]', path,
                                              time_str, conn.attempts)
@@ -460,9 +465,10 @@ def st_download(parser, args, thread_manager):
                     thread_manager.error('Account not found')
             elif len(args) == 1:
                 if '/' in args[0]:
-                    print >> stderr, ('WARNING: / in container name; you '
-                                      'might have meant %r instead of %r.' % (
-                                      args[0].replace('/', ' ', 1), args[0]))
+                    print >> stderr, (
+                        'WARNING: / in container name; you might have meant '
+                        '%r instead of %r.' % (
+                            args[0].replace('/', ' ', 1), args[0]))
                 container_queue.put((args[0], object_queue, options.prefix))
             else:
                 if len(args) == 2:
