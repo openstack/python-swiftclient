@@ -244,9 +244,11 @@ st_download_help = '''
 Download objects from containers
 
 Positional arguments:
-  <container>           Name of container to download from
+  <container>           Name of container to download from. To download a
+                        whole account, omit this and specify --all.
   <object>              Name of object to download. Specify multiple times
-                        for multiple objects
+                        for multiple objects. Omit this to download all
+                        objects from the container.
 
 Optional arguments:
   --all                 Indicates that you really want to download
