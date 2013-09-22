@@ -1011,7 +1011,7 @@ def st_upload(parser, args, thread_manager):
                                     container, obj,
                                     query_string='multipart-manifest=get')
                                 for old_seg in json.loads(manifest_data):
-                                    seg_path = old_seg['path'].lstrip('/')
+                                    seg_path = old_seg['name'].lstrip('/')
                                     if isinstance(seg_path, unicode):
                                         seg_path = seg_path.encode('utf-8')
                                     old_slo_manifest_paths.append(seg_path)
