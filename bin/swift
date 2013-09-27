@@ -807,6 +807,7 @@ def st_post(parser, args, thread_manager):
     if not args:
         headers = split_headers(
             options.meta, 'X-Account-Meta-', thread_manager)
+        headers.update(split_headers(options.header, '', thread_manager))
         try:
             conn.post_account(headers=headers)
         except ClientException as err:
@@ -820,6 +821,7 @@ def st_post(parser, args, thread_manager):
                              (args[0].replace('/', ' ', 1), args[0])
         headers = split_headers(options.meta, 'X-Container-Meta-',
                                 thread_manager)
+        headers.update(split_headers(options.header, '', thread_manager))
         if options.read_acl is not None:
             headers['X-Container-Read'] = options.read_acl
         if options.write_acl is not None:
