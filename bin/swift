@@ -33,7 +33,8 @@ except ImportError:
     import json
 
 from swiftclient import Connection, HTTPException
-from swiftclient.utils import config_true_value
+from swiftclient import command_helpers
+from swiftclient.utils import config_true_value, prt_bytes
 from swiftclient.multithreading import MultiThreadingManager
 from swiftclient.exceptions import ClientException
 from swiftclient.version import version_info
@@ -455,34 +456,6 @@ def st_download(parser, args, thread_manager):
                     for obj in args[1:]:
                         object_queue.put((args[0], obj))
 
-
-def prt_bytes(bytes, human_flag):
-    """
-    convert a number > 1024 to printable format, either in 4 char -h format as
-    with ls -lh or return as 12 char right justified string
-    """
-
-    if human_flag:
-        suffix = ''
-        mods = 'KMGTPEZY'
-        temp = float(bytes)
-        if temp > 0:
-            while (temp > 1023):
-                temp /= 1024.0
-                suffix = mods[0]
-                mods = mods[1:]
-            if suffix != '':
-                if temp >= 10:
-                    bytes = '%3d%s' % (temp, suffix)
-                else:
-                    bytes = '%.1f%s' % (temp, suffix)
-        if suffix == '':    # must be < 1024
-            bytes = '%4s' % bytes
-    else:
-        bytes = '%12s' % bytes
-
-    return(bytes)
-
 st_list_options = '''[--long] [--lh] [--totals]
                   [--container-threads <threads>]
 '''
@@ -628,34 +601,7 @@ def st_stat(parser, args, thread_manager):
     conn = get_conn(options)
     if not args:
         try:
-            headers = conn.head_account()
-            if options.verbose > 1:
-                thread_manager.print_msg('''
-StorageURL: %s
-Auth Token: %s
-'''.strip('\n'), conn.url, conn.token)
-            container_count = int(headers.get('x-account-container-count', 0))
-            object_count = prt_bytes(headers.get('x-account-object-count', 0),
-                                     options.human).lstrip()
-            bytes_used = prt_bytes(headers.get('x-account-bytes-used', 0),
-                                   options.human).lstrip()
-            thread_manager.print_msg('''
-   Account: %s
-Containers: %d
-   Objects: %s
-     Bytes: %s'''.strip('\n'), conn.url.rsplit('/', 1)[-1], container_count,
-                object_count, bytes_used)
-            for key, value in headers.items():
-                if key.startswith('x-account-meta-'):
-                    thread_manager.print_msg(
-                        '%10s: %s',
-                        'Meta %s' % key[len('x-account-meta-'):].title(),
-                        value)
-            for key, value in headers.items():
-                if not key.startswith('x-account-meta-') and key not in (
-                        'content-length', 'date', 'x-account-container-count',
-                        'x-account-object-count', 'x-account-bytes-used'):
-                    thread_manager.print_msg('%10s: %s', key.title(), value)
+            command_helpers.stat_account(conn, options, thread_manager)
         except ClientException as err:
             if err.http_status != 404:
                 raise
@@ -666,75 +612,15 @@ Containers: %d
                              'meant %r instead of %r.' % \
                              (args[0].replace('/', ' ', 1), args[0])
         try:
-            headers = conn.head_container(args[0])
-            object_count = prt_bytes(
-                headers.get('x-container-object-count', 0),
-                options.human).lstrip()
-            bytes_used = prt_bytes(headers.get('x-container-bytes-used', 0),
-                                   options.human).lstrip()
-            thread_manager.print_msg('''
-  Account: %s
-Container: %s
-  Objects: %s
-    Bytes: %s
- Read ACL: %s
-Write ACL: %s
-  Sync To: %s
- Sync Key: %s'''.strip('\n'), conn.url.rsplit('/', 1)[-1], args[0],
-                object_count, bytes_used,
-                headers.get('x-container-read', ''),
-                headers.get('x-container-write', ''),
-                headers.get('x-container-sync-to', ''),
-                headers.get('x-container-sync-key', ''))
-            for key, value in headers.items():
-                if key.startswith('x-container-meta-'):
-                    thread_manager.print_msg(
-                        '%9s: %s',
-                        'Meta %s' % key[len('x-container-meta-'):].title(),
-                        value)
-            for key, value in headers.items():
-                if not key.startswith('x-container-meta-') and key not in (
-                        'content-length', 'date', 'x-container-object-count',
-                        'x-container-bytes-used', 'x-container-read',
-                        'x-container-write', 'x-container-sync-to',
-                        'x-container-sync-key'):
-                    thread_manager.print_msg('%9s: %s', key.title(), value)
+            command_helpers.stat_container(conn, options, args,
+                                           thread_manager)
         except ClientException as err:
             if err.http_status != 404:
                 raise
             thread_manager.error('Container %r not found', args[0])
     elif len(args) == 2:
         try:
-            headers = conn.head_object(args[0], args[1])
-            thread_manager.print_msg('''
-       Account: %s
-     Container: %s
-        Object: %s
-  Content Type: %s'''.strip('\n'), conn.url.rsplit('/', 1)[-1], args[0],
-                args[1], headers.get('content-type'))
-            if 'content-length' in headers:
-                thread_manager.print_msg('Content Length: %s',
-                                         prt_bytes(headers['content-length'],
-                                                   options.human).lstrip())
-            if 'last-modified' in headers:
-                thread_manager.print_msg(' Last Modified: %s',
-                                         headers['last-modified'])
-            if 'etag' in headers:
-                thread_manager.print_msg('          ETag: %s', headers['etag'])
-            if 'x-object-manifest' in headers:
-                thread_manager.print_msg('      Manifest: %s',
-                                         headers['x-object-manifest'])
-            for key, value in headers.items():
-                if key.startswith('x-object-meta-'):
-                    thread_manager.print_msg(
-                        '%14s: %s',
-                        'Meta %s' % key[len('x-object-meta-'):].title(),
-                        value)
-            for key, value in headers.items():
-                if not key.startswith('x-object-meta-') and key not in (
-                        'content-type', 'content-length', 'last-modified',
-                        'etag', 'date', 'x-object-manifest'):
-                    thread_manager.print_msg('%14s: %s', key.title(), value)
+            command_helpers.stat_object(conn, options, args, thread_manager)
         except ClientException as err:
             if err.http_status != 404:
                 raise

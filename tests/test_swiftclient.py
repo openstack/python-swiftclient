@@ -26,7 +26,6 @@ from urlparse import urlparse
 from .utils import fake_http_connect, fake_get_keystoneclient_2_0
 
 from swiftclient import client as c
-from swiftclient import utils as u
 
 
 class TestClientException(testtools.TestCase):
@@ -94,25 +93,6 @@ class TestJsonImport(testtools.TestCase):
             pass
         else:
             self.assertEqual(loads, c.json_loads)
-
-
-class TestConfigTrueValue(testtools.TestCase):
-
-    def test_TRUE_VALUES(self):
-        for v in u.TRUE_VALUES:
-            self.assertEqual(v, v.lower())
-
-    def test_config_true_value(self):
-        orig_trues = u.TRUE_VALUES
-        try:
-            u.TRUE_VALUES = 'hello world'.split()
-            for val in 'hello world HELLO WORLD'.split():
-                self.assertTrue(u.config_true_value(val) is True)
-            self.assertTrue(u.config_true_value(True) is True)
-            self.assertTrue(u.config_true_value('foo') is False)
-            self.assertTrue(u.config_true_value(False) is False)
-        finally:
-            u.TRUE_VALUES = orig_trues
 
 
 class MockHttpTest(testtools.TestCase):
