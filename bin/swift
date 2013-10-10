@@ -36,7 +36,7 @@ from swiftclient import Connection, HTTPException
 from swiftclient.utils import config_true_value
 from swiftclient.multithreading import MultiThreadingManager
 from swiftclient.exceptions import ClientException
-from swiftclient.version import version_info
+from swiftclient import __version__ as client_version
 
 
 def get_conn(options):
@@ -1262,7 +1262,7 @@ adding "-V 2" is necessary for this.'''.strip('\n'))
 
 
 if __name__ == '__main__':
-    version = version_info.version_string()
+    version = client_version
     parser = OptionParser(version='%%prog %s' % version,
                           usage='''
 usage: %%prog [--version] [--help] [--snet] [--verbose]
