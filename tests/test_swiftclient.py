@@ -16,6 +16,7 @@
 # TODO: More tests
 import mock
 import httplib
+import logging
 import socket
 import StringIO
 import testtools
@@ -159,6 +160,7 @@ class MockHttpTest(testtools.TestCase):
 class MockHttpResponse():
     def __init__(self):
         self.status = 200
+        self.reason = "OK"
         self.buffer = []
 
     def read(self):
@@ -166,6 +168,9 @@ class MockHttpResponse():
 
     def getheader(self, name, default):
         return ""
+
+    def getheaders(self):
+        return {"key1": "value1", "key2": "value2"}
 
     def fake_response(self):
         return MockHttpResponse()
@@ -838,6 +843,9 @@ class TestConnection(MockHttpTest):
             def getheader(self, *args, **kwargs):
                 return 'header'
 
+            def getheaders(self):
+                return {"key1": "value1", "key2": "value2"}
+
             def read(self, *args, **kwargs):
                 return ''
 
@@ -881,6 +889,53 @@ class TestConnection(MockHttpTest):
                              "and no ability to reset contents for reupload.")
         finally:
             c.http_connection = orig_conn
+
+
+class TestLogging(MockHttpTest):
+    """
+    Make sure all the lines in http_log are covered.
+    """
+
+    def setUp(self):
+        super(TestLogging, self).setUp()
+        self.swiftclient_logger = logging.getLogger("swiftclient")
+        self.log_level = self.swiftclient_logger.getEffectiveLevel()
+        self.swiftclient_logger.setLevel(logging.INFO)
+
+    def tearDown(self):
+        self.swiftclient_logger.setLevel(self.log_level)
+        super(TestLogging, self).tearDown()
+
+    def test_put_ok(self):
+        c.http_connection = self.fake_http_connection(200)
+        args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
+        value = c.put_object(*args)
+        self.assertTrue(isinstance(value, basestring))
+
+    def test_head_error(self):
+        c.http_connection = self.fake_http_connection(500)
+        self.assertRaises(c.ClientException, c.head_object,
+                          'http://www.test.com', 'asdf', 'asdf', 'asdf')
+
+    def test_get_error(self):
+        body = 'c' * 65
+        conn = self.fake_http_connection(
+            404, body=body)('http://www.test.com/')
+        request_args = {}
+
+        def fake_request(method, url, body=None, headers=None):
+            request_args['method'] = method
+            request_args['url'] = url
+            request_args['body'] = body
+            request_args['headers'] = headers
+            return
+        conn[1].request = fake_request
+        headers = {'Range': 'bytes=1-2'}
+        self.assertRaises(
+            c.ClientException,
+            c.get_object,
+            'url_is_irrelevant', 'TOKEN', 'container', 'object',
+            http_conn=conn, headers=headers)
 
 
 if __name__ == '__main__':
