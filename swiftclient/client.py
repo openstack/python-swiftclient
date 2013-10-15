@@ -1071,7 +1071,7 @@ class Connection(object):
         self.ssl_compression = ssl_compression
 
     def close(self):
-        if self.http_conn and self.http_conn is tuple\
+        if self.http_conn and type(self.http_conn) is tuple\
                 and len(self.http_conn) > 1:
             conn = self.http_conn[1]
             if hasattr(conn, 'close') and callable(conn.close):
