@@ -54,9 +54,10 @@ logger.addHandler(NullHandler())
 
 
 def http_log(args, kwargs, resp, body):
-    if not logger.isEnabledFor(logging.DEBUG):
+    if not logger.isEnabledFor(logging.INFO):
         return
 
+    # create and log equivalent curl command
     string_parts = ['curl -i']
     for element in args:
         if element == 'HEAD':
@@ -65,21 +66,22 @@ def http_log(args, kwargs, resp, body):
             string_parts.append(' -X %s' % element)
         else:
             string_parts.append(' %s' % element)
-
     if 'headers' in kwargs:
         for element in kwargs['headers']:
             header = ' -H "%s: %s"' % (element, kwargs['headers'][element])
             string_parts.append(header)
 
-    logger.debug("REQ: %s\n" % "".join(string_parts))
-    if 'raw_body' in kwargs:
-        logger.debug("REQ BODY (RAW): %s\n" % (kwargs['raw_body']))
-    if 'body' in kwargs:
-        logger.debug("REQ BODY: %s\n" % (kwargs['body']))
+    # log response as debug if good, or info if error
+    if resp.status < 300:
+        log_method = logger.debug
+    else:
+        log_method = logger.info
 
-    logger.debug("RESP STATUS: %s\n", resp.status)
+    log_method("REQ: %s" % "".join(string_parts))
+    log_method("RESP STATUS: %s %s" % (resp.status, resp.reason))
+    log_method("RESP HEADERS: %s", resp.getheaders())
     if body:
-        logger.debug("RESP BODY: %s\n", body)
+        log_method("RESP BODY: %s", body)
 
 
 def quote(value, safe='/'):

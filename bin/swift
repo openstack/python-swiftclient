@@ -1270,7 +1270,7 @@ if __name__ == '__main__':
     parser = OptionParser(version='%%prog %s' % version,
                           usage='''
 usage: %%prog [--version] [--help] [--snet] [--verbose]
-             [--debug] [--quiet] [--auth <auth_url>]
+             [--debug] [--info] [--quiet] [--auth <auth_url>]
              [--auth-version <auth_version>] [--user <username>]
              [--key <api_key>] [--retries <num_retries>]
              [--os-username <auth-user-name>] [--os-password <auth-password>]
@@ -1315,8 +1315,11 @@ Examples:
     parser.add_option('-v', '--verbose', action='count', dest='verbose',
                       default=1, help='Print more info')
     parser.add_option('--debug', action='store_true', dest='debug',
-                      default=False, help='Show the curl commands of all http '
-                      'queries.')
+                      default=False, help='Show the curl commands and results '
+                      'of all http queries regardless of result status.')
+    parser.add_option('--info', action='store_true', dest='info',
+                      default=False, help='Show the curl commands and results '
+                      ' of all http queries which return an error.')
     parser.add_option('-q', '--quiet', action='store_const', dest='verbose',
                       const=0, default=1, help='Suppress status output')
     parser.add_option('-A', '--auth', dest='auth',
@@ -1438,9 +1441,12 @@ Examples:
 
     signal.signal(signal.SIGINT, immediate_exit)
 
-    if options.debug:
+    if options.debug or options.info:
         logger = logging.getLogger("swiftclient")
-        logging.basicConfig(level=logging.DEBUG)
+        if options.debug:
+            logging.basicConfig(level=logging.DEBUG)
+        elif options.info:
+            logging.basicConfig(level=logging.INFO)
 
     had_error = False
 
