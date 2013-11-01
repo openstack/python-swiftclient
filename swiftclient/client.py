@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-Cloud Files client library used internally
+OpenStack Swift client library used internally
 """
 
 import socket
