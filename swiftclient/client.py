@@ -139,7 +139,7 @@ def http_connection(url, proxy=None, ssl_compression=True):
     url = encode_utf8(url)
     parsed = urlparse(url)
     proxy_parsed = urlparse(proxy) if proxy else None
-    host = proxy_parsed if proxy else parsed.netloc
+    host = proxy_parsed.netloc if proxy else parsed.netloc
     if parsed.scheme == 'http':
         conn = HTTPConnection(host)
     elif parsed.scheme == 'https':
@@ -1026,7 +1026,7 @@ class Connection(object):
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, max_backoff=64, tenant_name=None,
                  os_options=None, auth_version="1", cacert=None,
-                 insecure=False, ssl_compression=True):
+                 insecure=False, ssl_compression=True, proxy=None):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1071,6 +1071,7 @@ class Connection(object):
         self.cacert = cacert
         self.insecure = insecure
         self.ssl_compression = ssl_compression
+        self.proxy = proxy
 
     def get_auth(self):
         return get_auth(self.authurl, self.user, self.key,
@@ -1082,7 +1083,8 @@ class Connection(object):
 
     def http_connection(self):
         return http_connection(self.url,
-                               ssl_compression=self.ssl_compression)
+                               ssl_compression=self.ssl_compression,
+                               proxy=self.proxy)
 
     def _add_response_dict(self, target_dict, kwargs):
         if target_dict is not None:
