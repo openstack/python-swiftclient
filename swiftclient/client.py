@@ -29,6 +29,7 @@ from httplib import HTTPException, HTTPConnection, HTTPSConnection
 from time import sleep
 
 from swiftclient.exceptions import ClientException, InvalidHeadersException
+from swiftclient.utils import get_environ_proxies
 
 try:
     from swiftclient.https_connection import HTTPSConnectionNoSSLComp
@@ -138,8 +139,13 @@ def http_connection(url, proxy=None, ssl_compression=True):
     """
     url = encode_utf8(url)
     parsed = urlparse(url)
-    proxy_parsed = urlparse(proxy) if proxy else None
-    host = proxy_parsed if proxy else parsed.netloc
+    if proxy:
+        proxy_parsed = urlparse(proxy)
+    else:
+        proxies = get_environ_proxies(parsed.netloc)
+        proxy = proxies.get(parsed.scheme, None)
+        proxy_parsed = urlparse(proxy) if proxy else None
+    host = proxy_parsed.netloc if proxy else parsed.netloc
     if parsed.scheme == 'http':
         conn = HTTPConnection(host)
     elif parsed.scheme == 'https':
