@@ -1,6 +1,6 @@
 AUTHORS
 ChangeLog
-*.swp
+*.sw?
 dist/
 .tox
 *.egg
