@@ -97,7 +97,9 @@ def quote(value, safe='/'):
 
 def validate_headers(headers):
     if headers:
-        for key, value in headers.iteritems():
+        for key, raw_value in headers.iteritems():
+            value = str(encode_utf8(raw_value))
+
             if '\n' in value:
                 raise InvalidHeadersException("%r header contained a "
                                               "newline" % key)

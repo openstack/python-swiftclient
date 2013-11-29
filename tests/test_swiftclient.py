@@ -190,6 +190,11 @@ class TestHttpHelpers(MockHttpTest):
         self.assertRaises(c.InvalidHeadersException, c.validate_headers,
                           headers)
 
+    def test_validate_headers_with_other_than_str(self):
+        for t in (None, 1, 1.0, 1L, u"A"):
+            self.assertEqual(c.validate_headers({'key': t}),
+                             None)
+
 # TODO: following tests are placeholders, need more tests, better coverage
 
 
