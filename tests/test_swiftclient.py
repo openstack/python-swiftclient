@@ -918,5 +918,30 @@ class TestLogging(MockHttpTest):
             http_conn=conn, headers=headers)
 
 
+class TestCloseConnection(MockHttpTest):
+
+    def test_close_none(self):
+        c.http_connection = self.fake_http_connection(200)
+        conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
+        self.assertEqual(conn.http_conn, None)
+        conn.close()
+        self.assertEqual(conn.http_conn, None)
+
+    def test_close_ok(self):
+        url = 'http://www.test.com'
+        c.http_connection = self.fake_http_connection(200)
+        conn = c.Connection(url, 'asdf', 'asdf')
+        self.assertEqual(conn.http_conn, None)
+
+        conn.http_conn = c.http_connection(url)
+        self.assertEqual(type(conn.http_conn), tuple)
+        self.assertEqual(len(conn.http_conn), 2)
+        http_conn_obj = conn.http_conn[1]
+        self.assertEqual(http_conn_obj.isclosed(), False)
+        conn.close()
+        self.assertEqual(http_conn_obj.isclosed(), True)
+        self.assertEqual(conn.http_conn, None)
+
+
 if __name__ == '__main__':
     testtools.main()

@@ -56,6 +56,16 @@ def fake_http_connect(*code_iter, **kwargs):
             self.etag = etag
             self.body = body
             self.timestamp = timestamp
+            self._is_closed = True
+
+        def connect(self):
+            self._is_closed = False
+
+        def close(self):
+            self._is_closed = True
+
+        def isclosed(self):
+            return self._is_closed
 
         def getresponse(self):
             if kwargs.get('raise_exc'):
@@ -132,7 +142,9 @@ def fake_http_connect(*code_iter, **kwargs):
         timestamp = timestamps_iter.next()
         if status <= 0:
             raise HTTPException()
-        return FakeConn(status, etag, body=kwargs.get('body', ''),
-                        timestamp=timestamp)
+        fake_conn = FakeConn(status, etag, body=kwargs.get('body', ''),
+                             timestamp=timestamp)
+        fake_conn.connect()
+        return fake_conn
 
     return connect
