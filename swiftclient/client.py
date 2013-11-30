@@ -538,8 +538,11 @@ def get_container(url, token, container, marker=None, limit=None,
     conn.request(method, '%s?%s' % (cont_path, qs), '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(('%s%s?%s' % (url.replace(parsed.path, ''), cont_path, qs),
-              method,), {'headers': headers}, resp, body)
+    http_log(('%(url)s%(cont_path)s?%(qs)s' %
+              {'url': url.replace(parsed.path, ''),
+               'cont_path': cont_path,
+               'qs': qs}, method,),
+             {'headers': headers}, resp, body)
 
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Container GET failed',
