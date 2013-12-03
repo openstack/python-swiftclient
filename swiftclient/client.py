@@ -26,7 +26,7 @@ from functools import wraps
 from urllib import quote as _quote
 from urlparse import urlparse, urlunparse
 from httplib import HTTPException, HTTPConnection, HTTPSConnection
-from time import sleep
+from time import sleep, time
 
 from swiftclient.exceptions import ClientException, InvalidHeadersException
 
@@ -1071,6 +1071,7 @@ class Connection(object):
         self.cacert = cacert
         self.insecure = insecure
         self.ssl_compression = ssl_compression
+        self.auth_end_time = 0
 
     def close(self):
         if self.http_conn and type(self.http_conn) is tuple\
@@ -1112,6 +1113,7 @@ class Connection(object):
                 if not self.url or not self.token:
                     self.url, self.token = self.get_auth()
                     self.http_conn = None
+                self.auth_end_time = time()
                 if not self.http_conn:
                     self.http_conn = self.http_connection()
                 kwargs['http_conn'] = self.http_conn
