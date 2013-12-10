@@ -1227,18 +1227,17 @@ class Connection(object):
                                   'ability to reset contents for reupload.'
                                   % (container, obj))
 
-        if isinstance(contents, str):
-            # if its a str then you can retry as much as you want
+        if isinstance(contents, str) or not contents:
+            # if its a str or None then you can retry as much as you want
             reset_func = None
         else:
             reset_func = _default_reset
-        tell = getattr(contents, 'tell', None)
-        seek = getattr(contents, 'seek', None)
-        if tell and seek:
-            orig_pos = tell()
-            reset_func = lambda *a, **k: seek(orig_pos)
-        elif not contents:
-            reset_func = lambda *a, **k: None
+            if self.retries > 0:
+                tell = getattr(contents, 'tell', None)
+                seek = getattr(contents, 'seek', None)
+                if tell and seek:
+                    orig_pos = tell()
+                    reset_func = lambda *a, **k: seek(orig_pos)
 
         return self._retry(reset_func, put_object, container, obj, contents,
                            content_length=content_length, etag=etag,
