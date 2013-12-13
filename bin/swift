@@ -762,6 +762,7 @@ st_upload_options = '''[--changed] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
                     [--header <header>] [--use-slo]
+                    [--object-name <object-name>]
                     <container> <file_or_directory>
 '''
 
@@ -798,6 +799,10 @@ Optional arguments:
   --use-slo             When used in conjunction with --segment-size will
                         create a Static Large Object instead of the default
                         Dynamic Large Object.
+  --object-name <object-name>
+                        Upload file and name object to <object-name> or upload
+                        dir and use <object-name> as object prefix instead of
+                        folder name
 '''.strip('\n')
 
 
@@ -838,6 +843,9 @@ def st_upload(parser, args, thread_manager):
         help='When used in conjunction with --segment-size will '
         'create a Static Large Object instead of the default '
         'Dynamic Large Object.')
+    parser.add_option(
+        '', '--object-name', dest='object_name',
+        help='Upload file and name object to the name specified')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if len(args) < 2:
@@ -872,12 +880,17 @@ def st_upload(parser, args, thread_manager):
         path = job['path']
         container = job.get('container', args[0])
         dir_marker = job.get('dir_marker', False)
+        object_name = job['object_name']
         try:
-            obj = path
-            if obj.startswith('./') or obj.startswith('.\\'):
-                obj = obj[2:]
-            if obj.startswith('/'):
-                obj = obj[1:]
+            if object_name is not None:
+                object_name.replace("\\", "/")
+                obj = object_name
+            else:
+                obj = path
+                if obj.startswith('./') or obj.startswith('.\\'):
+                    obj = obj[2:]
+                if obj.startswith('/'):
+                    obj = obj[1:]
             put_headers = {'x-object-meta-mtime': "%f" % getmtime(path)}
             if dir_marker:
                 if options.changed:
@@ -1045,17 +1058,22 @@ def st_upload(parser, args, thread_manager):
                 raise
             thread_manager.error('Local file %r not found', path)
 
-    def _upload_dir(path, object_queue):
+    def _upload_dir(path, object_queue, object_name):
         names = listdir(path)
         if not names:
-            object_queue.put({'path': path, 'dir_marker': True})
+            object_queue.put({'path': path, 'object_name': object_name,
+                             'dir_marker': True})
         else:
             for name in listdir(path):
                 subpath = join(path, name)
+                subobjname = None
+                if object_name is not None:
+                    subobjname = join(object_name, name)
                 if isdir(subpath):
-                    _upload_dir(subpath, object_queue)
+                    _upload_dir(subpath, object_queue, subobjname)
                 else:
-                    object_queue.put({'path': subpath})
+                    object_queue.put({'path': subpath,
+                                     'object_name': subobjname})
 
     create_connection = lambda: get_conn(options)
     conn = create_connection()
@@ -1085,6 +1103,12 @@ def st_upload(parser, args, thread_manager):
             'Error trying to create container %r: %s', args[0],
             err)
 
+    if options.object_name is not None:
+        if len(args[1:]) > 1:
+            thread_manager.error('object-name only be used with 1 file or dir')
+            return
+    object_name = options.object_name
+
     object_manager = thread_manager.queue_manager(
         _object_job, options.object_threads,
         connection_maker=create_connection)
@@ -1092,9 +1116,9 @@ def st_upload(parser, args, thread_manager):
         try:
             for arg in args[1:]:
                 if isdir(arg):
-                    _upload_dir(arg, object_queue)
+                    _upload_dir(arg, object_queue, object_name)
                 else:
-                    object_queue.put({'path': arg})
+                    object_queue.put({'path': arg, 'object_name': object_name})
         except ClientException as err:
             if err.http_status != 404:
                 raise
