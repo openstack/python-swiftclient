@@ -153,14 +153,14 @@ class TestQueueFunctionManager(ThreadTestCase):
         with self.qfq as input_queue:
             self.assertEqual(self.starting_thread_count + self.thread_count,
                              threading.active_count())
-            for i in xrange(20):
+            for i in range(20):
                 input_queue.put('slap%d' % i)
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
         self.assertEqual([], self.thread_manager.error.call_args_list)
         self.assertEqual(0, self.error_counter[0])
         self.assertQueueContains(self.got_items,
-                                 set(['slap%d' % i for i in xrange(20)]))
+                                 set(['slap%d' % i for i in range(20)]))
         self.assertQueueContains(
             self.got_args_kwargs,
             [(('1arg', '2arg'), {'a': 'b'})] * 20)
@@ -170,7 +170,7 @@ class TestQueueFunctionManager(ThreadTestCase):
         with self.qfq as input_queue:
             self.assertEqual(self.starting_thread_count + self.thread_count,
                              threading.active_count())
-            for i in xrange(20):
+            for i in range(20):
                 input_queue.put('item%d' % i if i % 2 == 0 else 'go boom')
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
@@ -179,8 +179,9 @@ class TestQueueFunctionManager(ThreadTestCase):
         self.assertTrue(all(['Exception: I went boom!' in s for s in
                              error_strs]))
         self.assertEqual(10, self.error_counter[0])
-        expected_items = set(['go boom'] + ['item%d' % i for i in xrange(20)
-                                            if i % 2 == 0])
+        expected_items = set(['go boom'] +
+                             ['item%d' % i for i in range(20)
+                              if i % 2 == 0])
         self.assertQueueContains(self.got_items, expected_items)
         self.assertQueueContains(
             self.got_args_kwargs,
@@ -191,7 +192,7 @@ class TestQueueFunctionManager(ThreadTestCase):
         with self.qfq as input_queue:
             self.assertEqual(self.starting_thread_count + self.thread_count,
                              threading.active_count())
-            for i in xrange(20):
+            for i in range(20):
                 input_queue.put('item%d' % i if i % 2 == 0 else 'c boom')
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
@@ -201,8 +202,9 @@ class TestQueueFunctionManager(ThreadTestCase):
             'http://192.168.22.1:80/booze 404 to much   no sir!'
         self.assertTrue(all([stringification in s for s in error_strs]))
         self.assertEqual(10, self.error_counter[0])
-        expected_items = set(['c boom'] + ['item%d' % i for i in xrange(20)
-                                           if i % 2 == 0])
+        expected_items = set(['c boom'] +
+                             ['item%d' % i for i in range(20)
+                              if i % 2 == 0])
         self.assertQueueContains(self.got_items, expected_items)
         self.assertQueueContains(
             self.got_args_kwargs,
@@ -213,14 +215,14 @@ class TestQueueFunctionManager(ThreadTestCase):
         with self.qfq as input_queue:
             self.assertEqual(self.starting_thread_count + self.thread_count,
                              threading.active_count())
-            for i in xrange(20):
+            for i in range(20):
                 input_queue.put('item%d' % i)
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
         self.assertEqual([], self.thread_manager.error.call_args_list)
         self.assertEqual(0, self.error_counter[0])
         self.assertQueueContains(self.got_items,
-                                 set(['item%d' % i for i in xrange(20)]))
+                                 set(['item%d' % i for i in range(20)]))
         self.assertQueueContains(
             self.got_args_kwargs,
             [(('yup, I made a connection', '1arg', '2arg'), {'a': 'b'})] * 20)

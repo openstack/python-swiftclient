@@ -135,7 +135,7 @@ class QueueFunctionManager(object):
         self.thread_kwargs = thread_kwargs if thread_kwargs else {}
 
     def __enter__(self):
-        for _junk in xrange(self.thread_count):
+        for _junk in range(self.thread_count):
             if self.connection_maker:
                 thread_args = (self.connection_maker(),) + self.thread_args
             else:
