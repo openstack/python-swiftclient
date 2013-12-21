@@ -71,7 +71,7 @@ def immediate_exit(signum, frame):
 st_delete_options = '''[-all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]
-                    <container> <object>
+                    <container> [object]
 '''
 
 st_delete_help = '''
@@ -79,7 +79,7 @@ Delete a container or objects within a container
 
 Positional arguments:
   <container>           Name of container to delete from
-  <object>              Name of object to delete. Specify multiple times
+  [object]              Name of object to delete. Specify multiple times
                         for multiple objects
 
 Optional arguments:
@@ -485,7 +485,7 @@ st_list_help = '''
 Lists the containers for the account or the objects for a container
 
 Positional arguments:
-  <container>           Name of container to list object in
+  [container]           Name of container to list object in
 
 Optional arguments:
   --long                Long listing format, similar to ls -l
@@ -664,7 +664,7 @@ If the container is not found, it will be created automatically.
 
 Positional arguments:
   <container>           Name of container to post to
-  <object>              Name of object to post. Specify multiple times
+  [object]              Name of object to post. Specify multiple times
                         for multiple objects
 
 Optional arguments:
