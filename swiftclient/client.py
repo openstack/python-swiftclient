@@ -1035,7 +1035,8 @@ class Connection(object):
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, max_backoff=64, tenant_name=None,
                  os_options=None, auth_version="1", cacert=None,
-                 insecure=False, ssl_compression=True):
+                 insecure=False, ssl_compression=True,
+                 retry_on_ratelimit=False):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1061,6 +1062,10 @@ class Connection(object):
                                 present an attempt to disable SSL compression
                                 will be made. This may provide a performance
                                 increase for https upload/download operations.
+        :param retry_on_ratelimit: by default, a ratelimited connection will
+                                   raise an exception to the caller. Setting
+                                   this parameter to True will cause a retry
+                                   after a backoff.
         """
         self.authurl = authurl
         self.user = user
@@ -1081,6 +1086,7 @@ class Connection(object):
         self.insecure = insecure
         self.ssl_compression = ssl_compression
         self.auth_end_time = 0
+        self.retry_on_ratelimit = retry_on_ratelimit
 
     def close(self):
         if self.http_conn and type(self.http_conn) is tuple\
@@ -1153,6 +1159,8 @@ class Connection(object):
                 elif err.http_status == 408:
                     self.http_conn = None
                 elif 500 <= err.http_status <= 599:
+                    pass
+                elif self.retry_on_ratelimit and err.http_status == 498:
                     pass
                 else:
                     logger.exception(err)
