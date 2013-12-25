@@ -61,7 +61,9 @@ of container or objects being listed.
 .RS 4
 Uploads to the given container the files and directories specified by the
 remaining args. The -c or --changed is an option that will only upload files
-that have changed since the last upload. The -S <size> or --segment-size <size>
+that have changed since the last upload. The --object-name <object-name> is
+an option that will upload file and name object to <object-name> or upload dir
+and use <object-name> as object prefix. The -S <size> or --segment-size <size>
 and --leave-segments are options as well (see --help for more).
 .RE
 
