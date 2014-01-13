@@ -656,6 +656,20 @@ class TestDeleteObject(MockHttpTest):
                         query_string="hello=20")
 
 
+class TestGetCapabilities(MockHttpTest):
+
+    def test_ok(self):
+        conn = self.fake_http_connection(200, body='{}')
+        http_conn = conn('http://www.test.com/info')
+        self.assertEqual(type(c.get_capabilities(http_conn)), dict)
+        self.assertTrue(http_conn[1].has_been_read)
+
+    def test_server_error(self):
+        conn = self.fake_http_connection(500)
+        http_conn = conn('http://www.test.com/info')
+        self.assertRaises(c.ClientException, c.get_capabilities, http_conn)
+
+
 class TestConnection(MockHttpTest):
 
     def test_instance(self):
@@ -702,6 +716,20 @@ class TestConnection(MockHttpTest):
 
             for method, args in method_signatures:
                 method(*args)
+
+    def test_get_capabilities(self):
+        conn = c.Connection()
+        with mock.patch('swiftclient.client.get_capabilities') as get_cap:
+            conn.get_capabilities('http://storage2.test.com')
+            parsed = get_cap.call_args[0][0][0]
+            self.assertEqual(parsed.path, '/info')
+            self.assertEqual(parsed.netloc, 'storage2.test.com')
+            conn.get_auth = lambda: ('http://storage.test.com/v1/AUTH_test',
+                                     'token')
+            conn.get_capabilities()
+            parsed = get_cap.call_args[0][0][0]
+            self.assertEqual(parsed.path, '/info')
+            self.assertEqual(parsed.netloc, 'storage.test.com')
 
     def test_retry(self):
         c.http_connection = self.fake_http_connection(500)

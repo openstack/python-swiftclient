@@ -1028,6 +1028,29 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
                               http_response_content=body)
 
 
+def get_capabilities(http_conn):
+    """
+    Get cluster capability infos.
+
+    :param http_conn: HTTP connection
+    :returns: a dict containing the cluster capabilities
+    :raises ClientException: HTTP Capabilities GET failed
+    """
+    parsed, conn = http_conn
+    conn.request('GET', parsed.path, '')
+    resp = conn.getresponse()
+    body = resp.read()
+    http_log((parsed.geturl(), 'GET',), {'headers': {}}, resp, body)
+    if resp.status < 200 or resp.status >= 300:
+        raise ClientException('Capabilities GET failed',
+                              http_scheme=parsed.scheme,
+                              http_host=conn.host, http_port=conn.port,
+                              http_path=parsed.path, http_status=resp.status,
+                              http_reason=resp.reason,
+                              http_response_content=body)
+    return json_loads(body)
+
+
 class Connection(object):
     """Convenience class to make requests that will also retry the request"""
 
@@ -1263,3 +1286,12 @@ class Connection(object):
         return self._retry(None, delete_object, container, obj,
                            query_string=query_string,
                            response_dict=response_dict)
+
+    def get_capabilities(self, url=None):
+        if not url:
+            url, _ = self.get_auth()
+        scheme = urlparse(url).scheme
+        netloc = urlparse(url).netloc
+        url = scheme + '://' + netloc + '/info'
+        http_conn = http_connection(url, ssl_compression=self.ssl_compression)
+        return get_capabilities(http_conn)
