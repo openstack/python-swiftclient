@@ -44,80 +44,80 @@ class TestPrtBytes(testtools.TestCase):
         bytes_ = 0
         raw = '0'
         human = '0'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_one_byte(self):
         bytes_ = 1
         raw = '1'
         human = '1'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_less_than_one_k(self):
         bytes_ = (2 ** 10) - 1
         raw = '1023'
         human = '1023'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_one_k(self):
         bytes_ = 2 ** 10
         raw = '1024'
         human = '1.0K'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_a_decimal_k(self):
         bytes_ = (3 * 2 ** 10) + 512
         raw = '3584'
         human = '3.5K'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_a_bit_less_than_one_meg(self):
         bytes_ = (2 ** 20) - (2 ** 10)
         raw = '1047552'
         human = '1023K'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_just_a_hair_less_than_one_meg(self):
         bytes_ = (2 ** 20) - (2 ** 10) + 1
         raw = '1047553'
         human = '1.0M'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_one_meg(self):
         bytes_ = 2 ** 20
         raw = '1048576'
         human = '1.0M'
-        self.assertEquals(raw, u.prt_bytes(bytes_, False).lstrip())
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(raw, u.prt_bytes(bytes_, False).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_ten_meg(self):
         bytes_ = 10 * 2 ** 20
         human = '10M'
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_bit_less_than_ten_meg(self):
         bytes_ = (10 * 2 ** 20) - (100 * 2 ** 10)
         human = '9.9M'
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_just_a_hair_less_than_ten_meg(self):
         bytes_ = (10 * 2 ** 20) - 1
         human = '10.0M'
-        self.assertEquals(human, u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual(human, u.prt_bytes(bytes_, True).lstrip())
 
     def test_a_yotta(self):
         bytes_ = 42 * 2 ** 80
-        self.assertEquals('42Y', u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual('42Y', u.prt_bytes(bytes_, True).lstrip())
 
     def test_overflow(self):
         bytes_ = 2 ** 90
-        self.assertEquals('1024Y', u.prt_bytes(bytes_, True).lstrip())
+        self.assertEqual('1024Y', u.prt_bytes(bytes_, True).lstrip())
 
 
 class TestGetEnvironProxy(testtools.TestCase):
@@ -151,49 +151,49 @@ class TestGetEnvironProxy(testtools.TestCase):
     def test_http_proxy(self):
         self.setup_env({'http_proxy': 'http://proxy.tests.com:8080'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(proxy_dict['http'], 'http://proxy.tests.com:8080')
-        self.assertEquals(proxy_dict.get('https'), None)
-        self.assertEquals(len(proxy_dict), 1)
+        self.assertEqual(proxy_dict['http'], 'http://proxy.tests.com:8080')
+        self.assertEqual(proxy_dict.get('https'), None)
+        self.assertEqual(len(proxy_dict), 1)
         self.setup_env({'HTTP_PROXY': 'http://proxy.tests.com:8080'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(proxy_dict['http'], 'http://proxy.tests.com:8080')
-        self.assertEquals(proxy_dict.get('https'), None)
-        self.assertEquals(len(proxy_dict), 1)
+        self.assertEqual(proxy_dict['http'], 'http://proxy.tests.com:8080')
+        self.assertEqual(proxy_dict.get('https'), None)
+        self.assertEqual(len(proxy_dict), 1)
 
     def test_https_proxy(self):
         self.setup_env({'https_proxy': 'http://proxy.tests.com:8080'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(proxy_dict['https'], 'http://proxy.tests.com:8080')
-        self.assertEquals(proxy_dict.get('http'), None)
-        self.assertEquals(len(proxy_dict), 1)
+        self.assertEqual(proxy_dict['https'], 'http://proxy.tests.com:8080')
+        self.assertEqual(proxy_dict.get('http'), None)
+        self.assertEqual(len(proxy_dict), 1)
         self.setup_env({'HTTPS_PROXY': 'http://proxy.tests.com:8080'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(proxy_dict['https'], 'http://proxy.tests.com:8080')
-        self.assertEquals(proxy_dict.get('http'), None)
-        self.assertEquals(len(proxy_dict), 1)
+        self.assertEqual(proxy_dict['https'], 'http://proxy.tests.com:8080')
+        self.assertEqual(proxy_dict.get('http'), None)
+        self.assertEqual(len(proxy_dict), 1)
 
     def test_http_https_proxy(self):
         self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
                         'https_proxy': 'http://proxy2.tests.com:8082'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(proxy_dict['http'], 'http://proxy1.tests.com:8081')
-        self.assertEquals(proxy_dict['https'], 'http://proxy2.tests.com:8082')
-        self.assertEquals(len(proxy_dict), 2)
+        self.assertEqual(proxy_dict['http'], 'http://proxy1.tests.com:8081')
+        self.assertEqual(proxy_dict['https'], 'http://proxy2.tests.com:8082')
+        self.assertEqual(len(proxy_dict), 2)
         self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
                         'HTTPS_PROXY': 'http://proxy2.tests.com:8082'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(proxy_dict['http'], 'http://proxy1.tests.com:8081')
-        self.assertEquals(proxy_dict['https'], 'http://proxy2.tests.com:8082')
-        self.assertEquals(len(proxy_dict), 2)
+        self.assertEqual(proxy_dict['http'], 'http://proxy1.tests.com:8081')
+        self.assertEqual(proxy_dict['https'], 'http://proxy2.tests.com:8082')
+        self.assertEqual(len(proxy_dict), 2)
 
     def test_proxy_exclusion(self):
         self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
                         'https_proxy': 'http://proxy2.tests.com:8082',
                         'no_proxy': 'www.tests.com'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(len(proxy_dict), 0)
+        self.assertEqual(len(proxy_dict), 0)
         self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
                         'HTTPS_PROXY': 'http://proxy2.tests.com:8082',
                         'NO_PROXY': 'www.tests.com'})
         proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEquals(len(proxy_dict), 0)
+        self.assertEqual(len(proxy_dict), 0)
