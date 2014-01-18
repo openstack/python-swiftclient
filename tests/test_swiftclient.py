@@ -713,6 +713,24 @@ class TestConnection(MockHttpTest):
         self.assertRaises(c.ClientException, conn.head_account)
         self.assertEqual(conn.attempts, conn.retries + 1)
 
+    def test_retry_on_ratelimit(self):
+        c.http_connection = self.fake_http_connection(498)
+
+        def quick_sleep(*args):
+            pass
+        c.sleep = quick_sleep
+
+        # test retries
+        conn = c.Connection('http://www.test.com', 'asdf', 'asdf',
+                            retry_on_ratelimit=True)
+        self.assertRaises(c.ClientException, conn.head_account)
+        self.assertEqual(conn.attempts, conn.retries + 1)
+
+        # test default no-retry
+        conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
+        self.assertRaises(c.ClientException, conn.head_account)
+        self.assertEqual(conn.attempts, 1)
+
     def test_resp_read_on_server_error(self):
         c.http_connection = self.fake_http_connection(500)
         conn = c.Connection('http://www.test.com', 'asdf', 'asdf', retries=0)
