@@ -32,7 +32,7 @@ try:
 except ImportError:
     import json
 
-from swiftclient import Connection, HTTPException
+from swiftclient import Connection, RequestException
 from swiftclient import command_helpers
 from swiftclient.utils import config_true_value, prt_bytes
 from swiftclient.multithreading import MultiThreadingManager
@@ -1388,16 +1388,16 @@ Examples:
     parser.add_option('--insecure',
                       action="store_true", dest="insecure",
                       default=default_val,
-                      help='Allow swiftclient to access insecure keystone '
-                           'server. The keystone\'s certificate will not '
-                           'be verified. '
+                      help='Allow swiftclient to access servers without '
+                           'having to verify the SSL certificate. '
                            'Defaults to env[SWIFTCLIENT_INSECURE] '
                            '(set to \'true\' to enable).')
     parser.add_option('--no-ssl-compression',
                       action='store_false', dest='ssl_compression',
                       default=True,
-                      help='Disable SSL compression when using https. '
-                           'This may increase performance.')
+                      help='This option is deprecated and not used anymore. '
+                           'SSL compression should be disabled by default '
+                           'by the system SSL library')
     parser.disable_interspersed_args()
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
@@ -1425,7 +1425,7 @@ Examples:
         parser.usage = globals()['st_%s_help' % args[0]]
         try:
             globals()['st_%s' % args[0]](parser, argv[1:], thread_manager)
-        except (ClientException, HTTPException, socket.error) as err:
+        except (ClientException, RequestException, socket.error) as err:
             thread_manager.error(str(err))
 
         had_error = thread_manager.error_count

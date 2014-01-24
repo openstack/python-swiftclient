@@ -15,7 +15,6 @@
 
 # TODO: More tests
 import mock
-import httplib
 import logging
 import socket
 import StringIO
@@ -107,7 +106,8 @@ class MockHttpTest(testtools.TestCase):
             query_string = kwargs.get('query_string')
             storage_url = kwargs.get('storage_url')
 
-            def wrapper(url, proxy=None, ssl_compression=True):
+            def wrapper(url, proxy=None, cacert=None, insecure=False,
+                        ssl_compression=True):
                 if storage_url:
                     self.assertEqual(storage_url, url)
 
@@ -138,10 +138,16 @@ class MockHttpTest(testtools.TestCase):
 
 
 class MockHttpResponse():
-    def __init__(self):
-        self.status = 200
+    def __init__(self, status=0):
+        self.status = status
+        self.status_code = status
         self.reason = "OK"
         self.buffer = []
+
+        class Raw:
+            def read():
+                pass
+        self.raw = Raw()
 
     def read(self):
         return ""
@@ -153,10 +159,15 @@ class MockHttpResponse():
         return {"key1": "value1", "key2": "value2"}
 
     def fake_response(self):
-        return MockHttpResponse()
+        return MockHttpResponse(self.status)
 
-    def fake_send(self, msg):
-        self.buffer.append(msg)
+    def _fake_request(self, *arg, **kwarg):
+        self.status = 200
+        # This simulate previous httplib implementation that would do a
+        # putrequest() and then use putheader() to send header.
+        for k, v in kwarg['headers'].iteritems():
+            self.buffer.append('%s: %s' % (k, v))
+        return self.fake_response()
 
 
 class TestHttpHelpers(MockHttpTest):
@@ -173,8 +184,7 @@ class TestHttpHelpers(MockHttpTest):
         self.assertTrue(isinstance(conn, c.HTTPConnection))
         url = 'https://www.test.com'
         _junk, conn = c.http_connection(url)
-        self.assertTrue(isinstance(conn, httplib.HTTPSConnection) or
-                        isinstance(conn, c.HTTPSConnectionNoSSLComp))
+        self.assertTrue(isinstance(conn, c.HTTPConnection))
         url = 'ftp://www.test.com'
         self.assertRaises(c.ClientException, c.http_connection, url)
 
@@ -560,7 +570,7 @@ class TestPutObject(MockHttpTest):
 
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
-        conn[1].send = resp.fake_send
+        conn[1]._request = resp._fake_request
         value = c.put_object(*args, headers=headers, http_conn=conn)
         self.assertTrue(isinstance(value, basestring))
         # Test for RFC-2616 encoded symbols
@@ -573,7 +583,7 @@ class TestPutObject(MockHttpTest):
         args = ('asdf', 'asdf', 'asdf', 'asdf', mock_file)
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
-        conn[1].send = resp.fake_send
+        conn[1]._request = resp._fake_request
         with warnings.catch_warnings(record=True) as w:
             c.put_object(*args, chunk_size=20, headers={}, http_conn=conn)
             self.assertEqual(len(w), 0)
@@ -621,7 +631,7 @@ class TestPostObject(MockHttpTest):
 
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
-        conn[1].send = resp.fake_send
+        conn[1]._request = resp._fake_request
         c.post_object(*args, headers=headers, http_conn=conn)
         # Test for RFC-2616 encoded symbols
         self.assertTrue("a-b: .x:yz mn:kl:qr" in resp.buffer[0],
@@ -853,7 +863,7 @@ class TestConnection(MockHttpTest):
                     self.port = parsed_url.netloc
 
             def putrequest(self, *args, **kwargs):
-                return
+                self.send()
 
             def putheader(self, *args, **kwargs):
                 return
@@ -880,7 +890,8 @@ class TestConnection(MockHttpTest):
             def read(self, *args, **kwargs):
                 return ''
 
-        def local_http_connection(url, proxy=None, ssl_compression=True):
+        def local_http_connection(url, proxy=None, cacert=None,
+                                  insecure=False, ssl_compression=True):
             parsed = urlparse(url)
             return parsed, LocalConnection()
 

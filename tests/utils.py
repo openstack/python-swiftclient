@@ -12,7 +12,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from httplib import HTTPException
+from requests import RequestException
 from time import sleep
 
 
@@ -74,7 +74,7 @@ def fake_http_connect(*code_iter, **kwargs):
 
         def getexpect(self):
             if self.status == -2:
-                raise HTTPException()
+                raise RequestException()
             if self.status == -3:
                 return FakeConn(507)
             return FakeConn(100)
@@ -141,7 +141,7 @@ def fake_http_connect(*code_iter, **kwargs):
         etag = etag_iter.next()
         timestamp = timestamps_iter.next()
         if status <= 0:
-            raise HTTPException()
+            raise RequestException()
         fake_conn = FakeConn(status, etag, body=kwargs.get('body', ''),
                              timestamp=timestamp)
         fake_conn.connect()

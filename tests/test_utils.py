@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import testtools
-import os
 
 from swiftclient import utils as u
 
@@ -118,82 +117,3 @@ class TestPrtBytes(testtools.TestCase):
     def test_overflow(self):
         bytes_ = 2 ** 90
         self.assertEqual('1024Y', u.prt_bytes(bytes_, True).lstrip())
-
-
-class TestGetEnvironProxy(testtools.TestCase):
-
-    ENV_VARS = ('http_proxy', 'https_proxy', 'no_proxy',
-                'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY')
-
-    def setUp(self):
-        self.proxy_dict = {}
-        super(TestGetEnvironProxy, self).setUp()
-        for proxy_s in TestGetEnvironProxy.ENV_VARS:
-            # Save old env value
-            self.proxy_dict[proxy_s] = os.environ.get(proxy_s, None)
-
-    def tearDown(self):
-        super(TestGetEnvironProxy, self).tearDown()
-        for proxy_s in TestGetEnvironProxy.ENV_VARS:
-            if self.proxy_dict[proxy_s]:
-                os.environ[proxy_s] = self.proxy_dict[proxy_s]
-            elif os.environ.get(proxy_s):
-                del os.environ[proxy_s]
-
-    def setup_env(self, new_env={}):
-        for proxy_s in TestGetEnvironProxy.ENV_VARS:
-            # Set new env value
-            if new_env.get(proxy_s):
-                os.environ[proxy_s] = new_env.get(proxy_s)
-            elif os.environ.get(proxy_s):
-                del os.environ[proxy_s]
-
-    def test_http_proxy(self):
-        self.setup_env({'http_proxy': 'http://proxy.tests.com:8080'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(proxy_dict['http'], 'http://proxy.tests.com:8080')
-        self.assertEqual(proxy_dict.get('https'), None)
-        self.assertEqual(len(proxy_dict), 1)
-        self.setup_env({'HTTP_PROXY': 'http://proxy.tests.com:8080'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(proxy_dict['http'], 'http://proxy.tests.com:8080')
-        self.assertEqual(proxy_dict.get('https'), None)
-        self.assertEqual(len(proxy_dict), 1)
-
-    def test_https_proxy(self):
-        self.setup_env({'https_proxy': 'http://proxy.tests.com:8080'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(proxy_dict['https'], 'http://proxy.tests.com:8080')
-        self.assertEqual(proxy_dict.get('http'), None)
-        self.assertEqual(len(proxy_dict), 1)
-        self.setup_env({'HTTPS_PROXY': 'http://proxy.tests.com:8080'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(proxy_dict['https'], 'http://proxy.tests.com:8080')
-        self.assertEqual(proxy_dict.get('http'), None)
-        self.assertEqual(len(proxy_dict), 1)
-
-    def test_http_https_proxy(self):
-        self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
-                        'https_proxy': 'http://proxy2.tests.com:8082'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(proxy_dict['http'], 'http://proxy1.tests.com:8081')
-        self.assertEqual(proxy_dict['https'], 'http://proxy2.tests.com:8082')
-        self.assertEqual(len(proxy_dict), 2)
-        self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
-                        'HTTPS_PROXY': 'http://proxy2.tests.com:8082'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(proxy_dict['http'], 'http://proxy1.tests.com:8081')
-        self.assertEqual(proxy_dict['https'], 'http://proxy2.tests.com:8082')
-        self.assertEqual(len(proxy_dict), 2)
-
-    def test_proxy_exclusion(self):
-        self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
-                        'https_proxy': 'http://proxy2.tests.com:8082',
-                        'no_proxy': 'www.tests.com'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(len(proxy_dict), 0)
-        self.setup_env({'http_proxy': 'http://proxy1.tests.com:8081',
-                        'HTTPS_PROXY': 'http://proxy2.tests.com:8082',
-                        'NO_PROXY': 'www.tests.com'})
-        proxy_dict = u.get_environ_proxies('www.tests.com:81')
-        self.assertEqual(len(proxy_dict), 0)
