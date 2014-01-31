@@ -21,6 +21,7 @@ import socket
 import sys
 import logging
 import warnings
+import threading
 from functools import wraps
 
 from urllib import quote as _quote
@@ -1094,7 +1095,6 @@ class Connection(object):
         self.user = user
         self.key = key
         self.retries = retries
-        self.http_conn = None
         self.url = preauthurl
         self.token = preauthtoken
         self.attempts = 0
@@ -1110,6 +1110,21 @@ class Connection(object):
         self.ssl_compression = ssl_compression
         self.auth_end_time = 0
         self.retry_on_ratelimit = retry_on_ratelimit
+        self.connection_pool = threading.local()
+
+    @property
+    def http_conn(self):
+        http_conn = getattr(self.connection_pool, 'http_conn', None)
+
+        if http_conn is None:
+            http_conn = self.http_connection()
+            setattr(self.connection_pool, 'http_conn', http_conn)
+
+        return http_conn
+
+    @http_conn.setter
+    def http_conn(self, http_conn):
+        setattr(self.connection_pool, 'http_conn', http_conn)
 
     def close(self):
         if self.http_conn and type(self.http_conn) is tuple\
@@ -1152,8 +1167,6 @@ class Connection(object):
                     self.url, self.token = self.get_auth()
                     self.http_conn = None
                 self.auth_end_time = time()
-                if not self.http_conn:
-                    self.http_conn = self.http_connection()
                 kwargs['http_conn'] = self.http_conn
                 if caller_response_dict is not None:
                     kwargs['response_dict'] = {}
