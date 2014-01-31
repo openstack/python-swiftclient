@@ -89,14 +89,20 @@ You can specify optional headers with the repeatable cURL-like option
 .RE
 
 \fBdelete\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
-
 .RS 4
 Deletes everything in the account (with --all), or everything in a container,
 or a list of objects depending on the args given. Segments of manifest objects
 will be deleted as well, unless you specify the --leave-segments option.
-
 .RE
 
+\fBcapabilities\fR [\fIproxy-url\fR]
+.RS 4
+Displays cluster capabilities. The output includes the list of the activated
+Swift middlewares as well as relevant options for each ones. Addtionaly the
+command displays relevant options for the Swift core. If the proxy-url option
+is not provided the storage-url retreived after authentication is used as
+proxy-url.
+.RE
 
 .SH OPTIONS
 .PD 0

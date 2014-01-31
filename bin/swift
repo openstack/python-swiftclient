@@ -1125,6 +1125,41 @@ def st_upload(parser, args, thread_manager):
             thread_manager.error('Account not found')
 
 
+st_capabilities_options = "[<proxy_url>]"
+st_capabilities_help = '''
+Retrieve capability of the proxy
+
+Optional positional arguments:
+  <proxy_url>           proxy URL of the cluster to retreive capabilities
+'''
+
+
+def st_capabilities(parser, args, thread_manager):
+    def _print_compo_cap(name, capabilities):
+        for feature, options in sorted(capabilities.items(),
+                                       key=lambda x: x[0]):
+            thread_manager.print_msg("%s: %s" % (name, feature))
+            if options:
+                thread_manager.print_msg(" Options:")
+                for key, value in sorted(options.items(),
+                                         key=lambda x: x[0]):
+                    thread_manager.print_msg("  %s: %s" % (key, value))
+    (options, args) = parse_args(parser, args)
+    if (args and len(args) > 2):
+        thread_manager.error('Usage: %s capabilities %s\n%s',
+                             basename(argv[0]),
+                             st_capabilities_options, st_capabilities_help)
+        return
+    conn = get_conn(options)
+    url = None
+    if len(args) == 2:
+        url = args[1]
+    capabilities = conn.get_capabilities(url)
+    _print_compo_cap('Core', {'swift': capabilities['swift']})
+    del capabilities['swift']
+    _print_compo_cap('Additional middleware', capabilities)
+
+
 def split_headers(options, prefix='', thread_manager=None):
     """
     Splits 'Key: Value' strings and returns them as a dictionary.
@@ -1177,6 +1212,9 @@ def parse_args(parser, args, enforce_requires=True):
         'region_name': options.os_region_name,
     }
 
+    if len(args) > 1 and args[0] == "capabilities":
+        return options, args
+
     if (options.os_options.get('object_storage_url') and
             options.os_options.get('auth_token') and
             options.auth_version == '2.0'):
@@ -1227,6 +1265,8 @@ Positional arguments:
     stat                 Displays information for the account, container,
                          or object
     upload               Uploads files or directories to the given container
+    capabilities         List cluster capabilities
+
 
 Examples:
   %%prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K api_key stat -v
@@ -1362,7 +1402,8 @@ Examples:
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
 
-    commands = ('delete', 'download', 'list', 'post', 'stat', 'upload')
+    commands = ('delete', 'download', 'list', 'post',
+                'stat', 'upload', 'capabilities')
     if not args or args[0] not in commands:
         parser.print_usage()
         if args:
