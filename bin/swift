@@ -1130,7 +1130,7 @@ st_capabilities_help = '''
 Retrieve capability of the proxy
 
 Optional positional arguments:
-  <proxy_url>           proxy URL of the cluster to retreive capabilities
+  <proxy_url>           proxy URL of the cluster to retrieve capabilities
 '''
 
 
