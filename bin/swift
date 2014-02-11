@@ -21,7 +21,8 @@ from errno import EEXIST, ENOENT
 from hashlib import md5
 from optparse import OptionParser, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
-from os.path import basename, dirname, getmtime, getsize, isdir, join
+from os.path import basename, dirname, getmtime, getsize, isdir, join, \
+    sep as os_path_sep
 from random import shuffle
 from sys import argv, exit, stderr, stdout
 from time import sleep, time, gmtime, strftime
@@ -274,7 +275,7 @@ Optional arguments:
                         Adds a customized request header to the query, like
                         "Range" or "If-Match". This argument is repeatable.
                         Example --header "content-type:text/plain"
-
+  --skip-identical      Skip downloading files that are identical on both sides
 '''.strip("\n")
 
 
@@ -310,6 +311,10 @@ def st_download(parser, args, thread_manager):
         'Adds a customized request header to the query, like "Range" or '
         '"If-Match". This argument is repeatable. Example'
         ' --header "content-type:text/plain"')
+    parser.add_option(
+        '--skip-identical', action='store_true', dest='skip_identical',
+        default=False, help='Skip downloading files that are identical on '
+        'both sides')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
@@ -330,6 +335,23 @@ def st_download(parser, args, thread_manager):
             container, obj, out_file = queue_arg
         else:
             raise Exception("Invalid queue_arg length of %s" % len(queue_arg))
+        path = options.yes_all and join(container, obj) or obj
+        path = path.lstrip(os_path_sep)
+        if options.skip_identical and out_file != '-':
+            filename = out_file if out_file else path
+            try:
+                fp = open(filename, 'rb')
+            except IOError:
+                pass
+            else:
+                with fp:
+                    md5sum = md5()
+                    while True:
+                        data = fp.read(65536)
+                        if not data:
+                            break
+                        md5sum.update(data)
+                    req_headers['If-None-Match'] = md5sum.hexdigest()
         try:
             start_time = time()
             headers, body = \
@@ -342,9 +364,6 @@ def st_download(parser, args, thread_manager):
             else:
                 content_length = None
             etag = headers.get('etag')
-            path = options.yes_all and join(container, obj) or obj
-            if path[:1] in ('/', '\\'):
-                path = path[1:]
             md5sum = None
             make_dir = not options.no_download and out_file != "-"
             if content_type.split(';', 1)[0] == 'text/directory':
@@ -409,6 +428,9 @@ def st_download(parser, args, thread_manager):
                 else:
                     thread_manager.print_msg('%s [%s]', path, time_str)
         except ClientException as err:
+            if err.http_status == 304 and options.skip_identical:
+                thread_manager.print_msg("Skipped identical file '%s'", path)
+                return
             if err.http_status != 404:
                 raise
             thread_manager.error("Object '%s/%s' not found", container, obj)
@@ -762,7 +784,7 @@ def st_post(parser, args, thread_manager):
         thread_manager.error('Usage: %s post %s\n%s', basename(argv[0]),
                              st_post_options, st_post_help)
 
-st_upload_options = '''[--changed] [--segment-size <size>]
+st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
                     [--header <header>] [--use-slo]
@@ -781,6 +803,7 @@ Positional arguments:
 Optional arguments:
   --changed             Only upload files that have changed since the last
                         upload
+  --skip-identical      Skip uploading files that are identical on both sides
   --segment-size <size> Upload files in segments no larger than <size> and
                         then create a "manifest" file that will download all
                         the segments as if it were the original file
@@ -815,6 +838,10 @@ def st_upload(parser, args, thread_manager):
         '-c', '--changed', action='store_true', dest='changed',
         default=False, help='Will only upload files that have changed since '
         'the last upload')
+    parser.add_option(
+        '--skip-identical', action='store_true', dest='skip_identical',
+        default=False, help='Skip uploading files that are identical on '
+        'both sides')
     parser.add_option(
         '-S', '--segment-size', dest='segment_size', help='Will '
         'upload files in segments no larger than <size> and then create a '
@@ -922,11 +949,32 @@ def st_upload(parser, args, thread_manager):
                 old_manifest = None
                 old_slo_manifest_paths = []
                 new_slo_manifest_paths = set()
-                if options.changed or not options.leave_segments:
+                if options.changed or options.skip_identical \
+                        or not options.leave_segments:
+                    if options.skip_identical:
+                        checksum = None
+                        try:
+                            fp = open(path, 'rb')
+                        except IOError:
+                            pass
+                        else:
+                            with fp:
+                                md5sum = md5()
+                                while True:
+                                    data = fp.read(65536)
+                                    if not data:
+                                        break
+                                    md5sum.update(data)
+                            checksum = md5sum.hexdigest()
                     try:
                         headers = conn.head_object(container, obj)
                         cl = int(headers.get('content-length'))
                         mt = headers.get('x-object-meta-mtime')
+                        if (options.skip_identical and
+                                checksum == headers.get('etag')):
+                            thread_manager.print_msg(
+                                "Skipped identical file '%s'", path)
+                            return
                         if options.changed and cl == getsize(path) and \
                                 mt == put_headers['x-object-meta-mtime']:
                             return
