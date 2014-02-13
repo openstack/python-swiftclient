@@ -1316,13 +1316,13 @@ Examples:
     parser.add_option('--os-username',
                       metavar='<auth-user-name>',
                       default=environ.get('OS_USERNAME'),
-                      help='Openstack username. Defaults to env[OS_USERNAME].')
+                      help='OpenStack username. Defaults to env[OS_USERNAME].')
     parser.add_option('--os_username',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-password',
                       metavar='<auth-password>',
                       default=environ.get('OS_PASSWORD'),
-                      help='Openstack password. Defaults to env[OS_PASSWORD].')
+                      help='OpenStack password. Defaults to env[OS_PASSWORD].')
     parser.add_option('--os_password',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-tenant-id',
@@ -1335,20 +1335,20 @@ Examples:
     parser.add_option('--os-tenant-name',
                       metavar='<auth-tenant-name>',
                       default=environ.get('OS_TENANT_NAME'),
-                      help='Openstack tenant name. '
+                      help='OpenStack tenant name. '
                            'Defaults to env[OS_TENANT_NAME].')
     parser.add_option('--os_tenant_name',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-auth-url',
                       metavar='<auth-url>',
                       default=environ.get('OS_AUTH_URL'),
-                      help='Openstack auth URL. Defaults to env[OS_AUTH_URL].')
+                      help='OpenStack auth URL. Defaults to env[OS_AUTH_URL].')
     parser.add_option('--os_auth_url',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-auth-token',
                       metavar='<auth-token>',
                       default=environ.get('OS_AUTH_TOKEN'),
-                      help='Openstack token. Defaults to env[OS_AUTH_TOKEN]. '
+                      help='OpenStack token. Defaults to env[OS_AUTH_TOKEN]. '
                            'Used with --os-storage-url to bypass the '
                            'usual username/password authentication.')
     parser.add_option('--os_auth_token',
@@ -1356,7 +1356,7 @@ Examples:
     parser.add_option('--os-storage-url',
                       metavar='<storage-url>',
                       default=environ.get('OS_STORAGE_URL'),
-                      help='Openstack storage URL. '
+                      help='OpenStack storage URL. '
                            'Defaults to env[OS_STORAGE_URL]. '
                            'Overrides the storage url returned during auth. '
                            'Will bypass authentication when used with '
@@ -1366,21 +1366,21 @@ Examples:
     parser.add_option('--os-region-name',
                       metavar='<region-name>',
                       default=environ.get('OS_REGION_NAME'),
-                      help='Openstack region name. '
+                      help='OpenStack region name. '
                            'Defaults to env[OS_REGION_NAME]')
     parser.add_option('--os_region_name',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-service-type',
                       metavar='<service-type>',
                       default=environ.get('OS_SERVICE_TYPE'),
-                      help='Openstack Service type. '
+                      help='OpenStack Service type. '
                            'Defaults to env[OS_SERVICE_TYPE]')
     parser.add_option('--os_service_type',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-endpoint-type',
                       metavar='<endpoint-type>',
                       default=environ.get('OS_ENDPOINT_TYPE'),
-                      help='Openstack Endpoint type. '
+                      help='OpenStack Endpoint type. '
                            'Defaults to env[OS_ENDPOINT_TYPE]')
     parser.add_option('--os-cacert',
                       metavar='<ca-certificate>',
