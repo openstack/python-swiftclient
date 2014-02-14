@@ -935,7 +935,12 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                     yield data
             conn.putrequest(path, headers=headers, data=chunk_reader())
         else:
-            conn.putrequest(path, headers=headers, files={"file": contents})
+            # Fixes https://github.com/kennethreitz/requests/issues/1648
+            try:
+                contents.len = content_length
+            except AttributeError:
+                pass
+            conn.putrequest(path, headers=headers, data=contents)
     else:
         if chunk_size is not None:
             warn_msg = '%s object has no \"read\" method, ignoring chunk_size'\
