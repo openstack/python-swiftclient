@@ -117,6 +117,9 @@ class MockHttpTest(testtools.TestCase):
                 def request(method, url, *args, **kwargs):
                     if query_string:
                         self.assertTrue(url.endswith('?' + query_string))
+                    if url.endswith('invalid_cert') and not insecure:
+                        from swiftclient import client as c
+                        raise c.ClientException("invalid_certificate")
                     return
                 conn.request = request
 
@@ -223,11 +226,25 @@ class TestGetAuth(MockHttpTest):
                           auth_version="foo")
 
     def test_auth_v1(self):
-        c.http_connection = self.fake_http_connection(200)
+        c.http_connection = self.fake_http_connection(200, auth_v1=True)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
                                 auth_version="1.0")
-        self.assertEqual(url, None)
-        self.assertEqual(token, None)
+        self.assertEqual(url, 'storageURL')
+        self.assertEqual(token, 'someauthtoken')
+
+    def test_auth_v1_insecure(self):
+        c.http_connection = self.fake_http_connection(200, auth_v1=True)
+        url, token = c.get_auth('http://www.test.com/invalid_cert',
+                                'asdf', 'asdf',
+                                auth_version='1.0',
+                                insecure=True)
+        self.assertEqual(url, 'storageURL')
+        self.assertEqual(token, 'someauthtoken')
+
+        self.assertRaises(c.ClientException, c.get_auth,
+                          'http://www.test.com/invalid_cert',
+                          'asdf', 'asdf',
+                          auth_version='1.0')
 
     def test_auth_v2(self):
         os_options = {'tenant_name': 'asdf'}

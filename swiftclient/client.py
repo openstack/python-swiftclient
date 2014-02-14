@@ -156,7 +156,7 @@ class HTTPConnection:
         if self.parsed_url.scheme not in ('http', 'https'):
             raise ClientException("Unsupported scheme")
         self.requests_args['verify'] = not insecure
-        if cacert:
+        if cacert and not insecure:
             # verify requests parameter is used to pass the CA_BUNDLE file
             # see: http://docs.python-requests.org/en/latest/user/advanced/
             self.requests_args['verify'] = cacert
@@ -219,8 +219,9 @@ def http_connection(*arg, **kwarg):
     return conn.parsed_url, conn
 
 
-def get_auth_1_0(url, user, key, snet):
-    parsed, conn = http_connection(url)
+def get_auth_1_0(url, user, key, snet, **kwargs):
+    insecure = kwargs.get('insecure', False)
+    parsed, conn = http_connection(url, insecure=insecure)
     method = 'GET'
     conn.request(method, parsed.path, '',
                  {'X-Auth-User': user, 'X-Auth-Key': key})
@@ -307,11 +308,13 @@ def get_auth(auth_url, user, key, **kwargs):
     os_options = kwargs.get('os_options', {})
 
     storage_url, token = None, None
+    insecure = kwargs.get('insecure', False)
     if auth_version in ['1.0', '1', 1]:
         storage_url, token = get_auth_1_0(auth_url,
                                           user,
                                           key,
-                                          kwargs.get('snet'))
+                                          kwargs.get('snet'),
+                                          insecure=insecure)
     elif auth_version in ['2.0', '2', 2]:
         # We are allowing to specify a token/storage-url to re-use
         # without having to re-authenticate.
@@ -335,7 +338,6 @@ def get_auth(auth_url, user, key, **kwargs):
         if (not 'tenant_name' in os_options):
             raise ClientException('No tenant specified')
 
-        insecure = kwargs.get('insecure', False)
         cacert = kwargs.get('cacert', None)
         storage_url, token = get_keystoneclient_2_0(auth_url, user,
                                                     key, os_options,
@@ -1101,8 +1103,8 @@ class Connection(object):
         :param os_options: The OpenStack options which can have tenant_id,
                            auth_token, service_type, endpoint_type,
                            tenant_name, object_storage_url, region_name
-        :param insecure: Allow to access insecure keystone server.
-                         The keystone's certificate will not be verified.
+        :param insecure: Allow to access servers without checking SSL certs.
+                         The server's certificate will not be verified.
         :param ssl_compression: Whether to enable compression at the SSL layer.
                                 If set to 'False' and the pyOpenSSL library is
                                 present an attempt to disable SSL compression

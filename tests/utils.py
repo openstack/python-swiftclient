@@ -100,6 +100,10 @@ def fake_http_connect(*code_iter, **kwargs):
                 headers['content-length'] = '4'
             if 'headers' in kwargs:
                 headers.update(kwargs['headers'])
+            if 'auth_v1' in kwargs:
+                headers.update(
+                    {'x-storage-url': 'storageURL',
+                     'x-auth-token': 'someauthtoken'})
             return headers.items()
 
         def read(self, amt=None):
