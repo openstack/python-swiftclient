@@ -18,24 +18,18 @@ OpenStack Swift client library used internally
 """
 
 import socket
+import requests
 import sys
 import logging
 import warnings
-from functools import wraps
 
+from distutils.version import StrictVersion
+from requests.exceptions import RequestException, SSLError
 from urllib import quote as _quote
 from urlparse import urlparse, urlunparse
-from httplib import HTTPException, HTTPConnection, HTTPSConnection
 from time import sleep, time
 
 from swiftclient.exceptions import ClientException, InvalidHeadersException
-from swiftclient.utils import get_environ_proxies
-
-try:
-    from swiftclient.https_connection import HTTPSConnectionNoSSLComp
-except ImportError:
-    HTTPSConnectionNoSSLComp = HTTPSConnection
-
 
 try:
     from logging import NullHandler
@@ -49,6 +43,18 @@ except ImportError:
 
         def createLock(self):
             self.lock = None
+
+# requests version 1.2.3 try to encode headers in ascii, preventing
+# utf-8 encoded header to be 'prepared'
+if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
+    from requests.structures import CaseInsensitiveDict
+
+    def prepare_unicode_headers(self, headers):
+        if headers:
+            self.headers = CaseInsensitiveDict(headers)
+        else:
+            self.headers = CaseInsensitiveDict()
+    requests.models.PreparedRequest.prepare_headers = prepare_unicode_headers
 
 logger = logging.getLogger("swiftclient")
 logger.addHandler(NullHandler())
@@ -124,68 +130,93 @@ except ImportError:
     from json import loads as json_loads
 
 
-def http_connection(url, proxy=None, ssl_compression=True):
-    """
-    Make an HTTPConnection or HTTPSConnection
+class HTTPConnection:
+    def __init__(self, url, proxy=None, cacert=None, insecure=False,
+                 ssl_compression=False):
+        """
+        Make an HTTPConnection or HTTPSConnection
 
-    :param url: url to connect to
-    :param proxy: proxy to connect through, if any; None by default; str of the
-                  format 'http://127.0.0.1:8888' to set one
-    :param ssl_compression: Whether to enable compression at the SSL layer.
-                            If set to 'False' and the pyOpenSSL library is
-                            present an attempt to disable SSL compression
-                            will be made. This may provide a performance
-                            increase for https upload/download operations.
-    :returns: tuple of (parsed url, connection object)
-    :raises ClientException: Unable to handle protocol scheme
-    """
-    url = encode_utf8(url)
-    parsed = urlparse(url)
-    if proxy:
-        proxy_parsed = urlparse(proxy)
-    else:
-        proxies = get_environ_proxies(parsed.netloc)
-        proxy = proxies.get(parsed.scheme, None)
-        proxy_parsed = urlparse(proxy) if proxy else None
-    host = proxy_parsed.netloc if proxy else parsed.netloc
-    if parsed.scheme == 'http':
-        conn = HTTPConnection(host)
-    elif parsed.scheme == 'https':
-        if ssl_compression is True:
-            conn = HTTPSConnection(host)
-        else:
-            conn = HTTPSConnectionNoSSLComp(host)
-    else:
-        raise ClientException('Cannot handle protocol scheme %s for url %s' %
-                              (parsed.scheme, repr(url)))
+        :param url: url to connect to
+        :param proxy: proxy to connect through, if any; None by default; str
+                      of the format 'http://127.0.0.1:8888' to set one
+        :param cacert: A CA bundle file to use in verifying a TLS server
+                       certificate.
+        :param insecure: Allow to access servers without checking SSL certs.
+                         The server's certificate will not be verified.
+        :param ssl_compression: SSL compression should be disabled by default
+                                and this setting is not usable as of now. The
+                                parameter is kept for backward compatibility.
+        :raises ClientException: Unable to handle protocol scheme
+        """
+        self.url = url
+        self.parsed_url = urlparse(url)
+        self.host = self.parsed_url.netloc
+        self.port = self.parsed_url.port
+        self.requests_args = {}
+        if self.parsed_url.scheme not in ('http', 'https'):
+            raise ClientException("Unsupported scheme")
+        self.requests_args['verify'] = not insecure
+        if cacert:
+            # verify requests parameter is used to pass the CA_BUNDLE file
+            # see: http://docs.python-requests.org/en/latest/user/advanced/
+            self.requests_args['verify'] = cacert
+        if proxy:
+            proxy_parsed = urlparse(proxy)
+            if not proxy_parsed.scheme:
+                raise ClientException("Proxy's missing scheme")
+            self.requests_args['proxies'] = {
+                proxy_parsed.scheme: '%s://%s' % (
+                    proxy_parsed.scheme, proxy_parsed.netloc
+                )
+            }
+        self.requests_args['stream'] = True
 
-    def putheader_wrapper(func):
+    def _request(self, *arg, **kwarg):
+        """ Final wrapper before requests call, to be patched in tests """
+        return requests.request(*arg, **kwarg)
 
-        @wraps(func)
-        def putheader_escaped(key, value):
-            func(encode_utf8(key), encode_utf8(value))
-        return putheader_escaped
-    conn.putheader = putheader_wrapper(conn.putheader)
+    def request(self, method, full_path, data=None, headers={}, files=None):
+        """ Encode url and header, then call requests.request """
+        headers = dict((encode_utf8(x), encode_utf8(y)) for x, y in
+                       headers.iteritems())
+        url = encode_utf8("%s://%s%s" % (
+            self.parsed_url.scheme,
+            self.parsed_url.netloc,
+            full_path))
+        self.resp = self._request(method, url, headers=headers, data=data,
+                                  files=files, **self.requests_args)
+        return self.resp
 
-    def request_wrapper(func):
+    def putrequest(self, full_path, data=None, headers={}, files=None):
+        """
+        Use python-requests files upload
 
-        @wraps(func)
-        def request_escaped(method, url, body=None, headers=None):
-            validate_headers(headers)
-            url = encode_utf8(url)
-            if body:
-                body = encode_utf8(body)
-            func(method, url, body=body, headers=headers or {})
-        return request_escaped
-    conn.request = request_wrapper(conn.request)
-    if proxy:
-        try:
-            # python 2.6 method
-            conn._set_tunnel(parsed.hostname, parsed.port)
-        except AttributeError:
-            # python 2.7 method
-            conn.set_tunnel(parsed.hostname, parsed.port)
-    return parsed, conn
+        :param data: Use data generator for chunked-transfer
+        :param files: Use files for default transfer
+        """
+        return self.request('PUT', full_path, data, headers, files)
+
+    def getresponse(self):
+        """ Adapt requests response to httplib interface """
+        self.resp.status = self.resp.status_code
+        old_getheader = self.resp.raw.getheader
+
+        def getheaders():
+            return self.resp.headers.items()
+
+        def getheader(k, v=None):
+            return old_getheader(k.lower(), v)
+
+        self.resp.getheaders = getheaders
+        self.resp.getheader = getheader
+        self.resp.read = self.resp.raw.read
+        return self.resp
+
+
+def http_connection(*arg, **kwarg):
+    """ :returns: tuple of (parsed url, connection object) """
+    conn = HTTPConnection(*arg, **kwarg)
+    return conn.parsed_url, conn
 
 
 def get_auth_1_0(url, user, key, snet):
@@ -893,27 +924,16 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     if hasattr(contents, 'read'):
         if chunk_size is None:
             chunk_size = 65536
-        conn.putrequest('PUT', path)
-        for header, value in headers.iteritems():
-            conn.putheader(header, value)
         if content_length is None:
-            conn.putheader('Transfer-Encoding', 'chunked')
-            conn.endheaders()
-            chunk = contents.read(chunk_size)
-            while chunk:
-                conn.send('%x\r\n%s\r\n' % (len(chunk), chunk))
-                chunk = contents.read(chunk_size)
-            conn.send('0\r\n\r\n')
+            def chunk_reader():
+                while True:
+                    data = contents.read(chunk_size)
+                    if not data:
+                        break
+                    yield data
+            conn.putrequest(path, headers=headers, data=chunk_reader())
         else:
-            conn.endheaders()
-            left = content_length
-            while left > 0:
-                size = chunk_size
-                if size > left:
-                    size = left
-                chunk = contents.read(size)
-                conn.send(chunk)
-                left -= len(chunk)
+            conn.putrequest(path, headers=headers, files={"file": contents})
     else:
         if chunk_size is not None:
             warn_msg = '%s object has no \"read\" method, ignoring chunk_size'\
@@ -1132,6 +1152,8 @@ class Connection(object):
 
     def http_connection(self):
         return http_connection(self.url,
+                               cacert=self.cacert,
+                               insecure=self.insecure,
                                ssl_compression=self.ssl_compression)
 
     def _add_response_dict(self, target_dict, kwargs):
@@ -1163,7 +1185,9 @@ class Connection(object):
                 rv = func(self.url, self.token, *args, **kwargs)
                 self._add_response_dict(caller_response_dict, kwargs)
                 return rv
-            except (socket.error, HTTPException) as e:
+            except SSLError:
+                raise
+            except (socket.error, RequestException) as e:
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:
                     logger.exception(e)
