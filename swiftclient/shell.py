@@ -45,6 +45,7 @@ from swiftclient import __version__ as client_version
 
 
 BASENAME = 'swift'
+POLICY = 'X-Storage-Policy'
 
 
 def get_conn(options):
@@ -1158,13 +1159,48 @@ def st_upload(parser, args, thread_manager):
     # fails, it might just be because the user doesn't have container PUT
     # permissions, so we'll ignore any error. If there's really a problem,
     # it'll surface on the first object PUT.
+    container_name = args[0]
     try:
-        conn.put_container(args[0])
+        policy_header = {}
+        _header = split_headers(options.header)
+        if POLICY in _header:
+            policy_header[POLICY] = \
+                _header[POLICY]
+        try:
+            conn.put_container(args[0], policy_header)
+        except ClientException as err:
+            if err.http_status != 409:
+                raise
+            if POLICY in _header:
+                thread_manager.error('Error trying to create %s with '
+                                     'Storage Policy %s', args[0],
+                                     _header[POLICY].strip())
         if options.segment_size is not None:
-            seg_container = args[0] + '_segments'
+            container_name = seg_container = args[0] + '_segments'
             if options.segment_container:
-                seg_container = options.segment_container
-            conn.put_container(seg_container)
+                container_name = seg_container = options.segment_container
+            seg_headers = {}
+            if POLICY in _header:
+                seg_headers[POLICY] = \
+                    _header[POLICY]
+            else:
+                # Since no storage policy was specified on the command line,
+                # rather than just letting swift pick the default storage
+                # policy, we'll try to create the segments container with the
+                # same as the upload container
+                _meta = conn.head_container(args[0])
+                if 'x-storage-policy' in _meta:
+                    seg_headers[POLICY] = \
+                        _meta.get('x-storage-policy')
+            try:
+                conn.put_container(seg_container, seg_headers)
+            except ClientException as err:
+                if err.http_status != 409:
+                    raise
+                if POLICY in seg_headers:
+                    thread_manager.error('Error trying to create %s with '
+                                         'Storage Policy %s', seg_container,
+                                         seg_headers[POLICY].strip())
     except ClientException as err:
         msg = ' '.join(str(x) for x in (err.http_status, err.http_reason))
         if err.http_response_content:
@@ -1172,11 +1208,11 @@ def st_upload(parser, args, thread_manager):
                 msg += ': '
             msg += err.http_response_content[:60]
         thread_manager.error(
-            'Error trying to create container %r: %s', args[0],
+            'Error trying to create container %r: %s', container_name,
             msg)
     except Exception as err:
         thread_manager.error(
-            'Error trying to create container %r: %s', args[0],
+            'Error trying to create container %r: %s', container_name,
             err)
 
     if options.object_name is not None:

@@ -208,14 +208,20 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
         connection.return_value.attempts = 0
-        argv = ["", "upload", "container", self.tmpfile]
+        argv = ["", "upload", "container", self.tmpfile,
+                "-H", "X-Storage-Policy:one"]
         swiftclient.shell.main(argv)
+        connection.return_value.put_container.assert_called_with(
+            'container',
+            {'X-Storage-Policy': mock.ANY})
+
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
             mock.ANY,
             content_length=0,
-            headers={'x-object-meta-mtime': mock.ANY})
+            headers={'x-object-meta-mtime': mock.ANY,
+                     'X-Storage-Policy': 'one'})
 
         # Upload whole directory
         argv = ["", "upload", "container", "/tmp"]
@@ -229,10 +235,15 @@ class TestShell(unittest.TestCase):
             headers={'x-object-meta-mtime': mock.ANY})
 
         # Upload in segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
         argv = ["", "upload", "container", self.tmpfile, "-S", "10"]
         with open(self.tmpfile, "wb") as fh:
             fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
+        connection.return_value.put_container.assert_called_with(
+            'container_segments',
+            {'X-Storage-Policy': mock.ANY})
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
