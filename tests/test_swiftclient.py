@@ -18,6 +18,8 @@ import mock
 import logging
 import six
 import socket
+import types
+import StringIO
 import testtools
 import warnings
 from six.moves.urllib.parse import urlparse
@@ -27,6 +29,7 @@ from six.moves import reload_module
 from .utils import fake_http_connect, fake_get_keystoneclient_2_0
 
 from swiftclient import client as c
+import swiftclient.utils
 
 
 class TestClientException(testtools.TestCase):
@@ -147,6 +150,7 @@ class MockHttpResponse():
         self.status_code = status
         self.reason = "OK"
         self.buffer = []
+        self.requests_params = None
 
         class Raw:
             def read():
@@ -167,6 +171,7 @@ class MockHttpResponse():
 
     def _fake_request(self, *arg, **kwarg):
         self.status = 200
+        self.requests_params = kwarg
         # This simulate previous httplib implementation that would do a
         # putrequest() and then use putheader() to send header.
         for k, v in kwarg['headers'].items():
@@ -675,6 +680,58 @@ class TestPutObject(MockHttpTest):
         c.put_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
                      query_string="hello=20")
 
+    def test_raw_upload(self):
+        # Raw upload happens when content_length is passed to put_object
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+        mock_file = StringIO.StringIO('asdf')
+
+        c.put_object(url='http://www.test.com', http_conn=conn,
+                     contents=mock_file, content_length=4)
+        self.assertTrue(isinstance(resp.requests_params['data'],
+                                   swiftclient.utils.LengthWrapper))
+        self.assertEqual(mock_file.len, 4)
+
+        c.put_object(url='http://www.test.com', http_conn=conn,
+                     headers={'Content-Length': '4'}, contents=mock_file)
+        self.assertTrue(isinstance(resp.requests_params['data'],
+                                   swiftclient.utils.LengthWrapper))
+        self.assertEqual(mock_file.len, 4)
+
+    def test_chunk_upload(self):
+        # Chunked upload happens when no content_length is passed to put_object
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+        raw_data = 'asdf' * 256
+        chunk_size = 16
+        mock_file = StringIO.StringIO(raw_data)
+
+        c.put_object(url='http://www.test.com', http_conn=conn,
+                     contents=mock_file, chunk_size=chunk_size)
+        request_data = resp.requests_params['data']
+        self.assertTrue(isinstance(request_data, types.GeneratorType))
+        data = ''
+        for chunk in request_data:
+            self.assertEqual(chunk_size, len(chunk))
+            data += chunk
+        self.assertEqual(data, raw_data)
+
+    def test_params(self):
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+
+        c.put_object(url='http://www.test.com', http_conn=conn,
+                     etag='1234-5678', content_type='text/plain')
+        request_header = resp.requests_params['headers']
+        self.assertTrue(request_header['etag'], '1234-5678')
+        self.assertTrue(request_header['content-type'], 'text/plain')
+
 
 class TestPostObject(MockHttpTest):
 
@@ -741,6 +798,30 @@ class TestGetCapabilities(MockHttpTest):
         conn = self.fake_http_connection(500)
         http_conn = conn('http://www.test.com/info')
         self.assertRaises(c.ClientException, c.get_capabilities, http_conn)
+
+
+class TestHTTPConnection(MockHttpTest):
+
+    def test_ok_proxy(self):
+        conn = c.http_connection(u'http://www.test.com/',
+                                 proxy='http://localhost:8080')
+        self.assertEquals(conn[1].requests_args['proxies']['http'],
+                          'http://localhost:8080')
+
+    def test_bad_proxy(self):
+        try:
+            c.http_connection(u'http://www.test.com/', proxy='localhost:8080')
+        except c.ClientException as e:
+            self.assertEqual(e.msg, "Proxy's missing scheme")
+
+    def test_cacert(self):
+        conn = c.http_connection(u'http://www.test.com/',
+                                 cacert='/dev/urandom')
+        self.assertEquals(conn[1].requests_args['verify'], '/dev/urandom')
+
+    def test_insecure(self):
+        conn = c.http_connection(u'http://www.test.com/', insecure=True)
+        self.assertEquals(conn[1].requests_args['verify'], False)
 
 
 class TestConnection(MockHttpTest):
