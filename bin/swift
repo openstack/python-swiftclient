@@ -230,8 +230,8 @@ def st_delete(parser, args, thread_manager):
                     thread_manager.error('Account not found')
             elif len(args) == 1:
                 if '/' in args[0]:
-                    print >> stderr, 'WARNING: / in container name; you '
-                    'might have meant %r instead of %r.' % (
+                    print >> stderr, 'WARNING: / in container name; you ' \
+                        'might have meant %r instead of %r.' % (
                         args[0].replace('/', ' ', 1), args[0])
                 container_queue.put(args[0])
             else:
