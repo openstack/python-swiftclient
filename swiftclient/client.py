@@ -166,6 +166,7 @@ class HTTPConnection:
         self.host = self.parsed_url.netloc
         self.port = self.parsed_url.port
         self.requests_args = {}
+        self.request_session = requests.Session()
         if self.parsed_url.scheme not in ('http', 'https'):
             raise ClientException("Unsupported scheme")
         self.requests_args['verify'] = not insecure
@@ -190,7 +191,7 @@ class HTTPConnection:
 
     def _request(self, *arg, **kwarg):
         """ Final wrapper before requests call, to be patched in tests """
-        return requests.request(*arg, **kwarg)
+        return self.request_session.request(*arg, **kwarg)
 
     def request(self, method, full_path, data=None, headers=None, files=None):
         """ Encode url and header, then call requests.request """
