@@ -434,7 +434,6 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
     if resp.status == 204:
-        body
         return resp_headers, []
     return resp_headers, json_loads(body)
 
