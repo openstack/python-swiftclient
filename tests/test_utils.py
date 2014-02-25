@@ -15,6 +15,9 @@
 
 import testtools
 
+from StringIO import StringIO
+import tempfile
+
 from swiftclient import utils as u
 
 
@@ -117,3 +120,41 @@ class TestPrtBytes(testtools.TestCase):
     def test_overflow(self):
         bytes_ = 2 ** 90
         self.assertEqual('1024Y', u.prt_bytes(bytes_, True).lstrip())
+
+
+class TestLengthWrapper(testtools.TestCase):
+
+    def test_stringio(self):
+        contents = StringIO('a' * 100)
+        data = u.LengthWrapper(contents, 42)
+        self.assertEqual(42, len(data))
+        read_data = ''.join(iter(data.read, ''))
+        self.assertEqual(42, len(read_data))
+        self.assertEqual('a' * 42, read_data)
+
+    def test_tempfile(self):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write('a' * 100)
+            f.flush()
+            contents = open(f.name)
+            data = u.LengthWrapper(contents, 42)
+            self.assertEqual(42, len(data))
+            read_data = ''.join(iter(data.read, ''))
+            self.assertEqual(42, len(read_data))
+            self.assertEqual('a' * 42, read_data)
+
+    def test_segmented_file(self):
+        with tempfile.NamedTemporaryFile() as f:
+            segment_length = 1024
+            segments = ('a', 'b', 'c', 'd')
+            for c in segments:
+                f.write(c * segment_length)
+            f.flush()
+            for i, c in enumerate(segments):
+                contents = open(f.name)
+                contents.seek(i * segment_length)
+                data = u.LengthWrapper(contents, segment_length)
+                self.assertEqual(segment_length, len(data))
+                read_data = ''.join(iter(data.read, ''))
+                self.assertEqual(segment_length, len(read_data))
+                self.assertEqual(c * segment_length, read_data)

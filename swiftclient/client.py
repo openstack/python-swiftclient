@@ -30,6 +30,7 @@ from urlparse import urlparse, urlunparse
 from time import sleep, time
 
 from swiftclient.exceptions import ClientException, InvalidHeadersException
+from swiftclient.utils import LengthWrapper
 
 try:
     from logging import NullHandler
@@ -935,11 +936,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
             conn.putrequest(path, headers=headers, data=chunk_reader())
         else:
             # Fixes https://github.com/kennethreitz/requests/issues/1648
-            try:
-                contents.len = content_length
-            except AttributeError:
-                pass
-            conn.putrequest(path, headers=headers, data=contents)
+            data = LengthWrapper(contents, content_length)
+            conn.putrequest(path, headers=headers, data=data)
     else:
         if chunk_size is not None:
             warn_msg = '%s object has no \"read\" method, ignoring chunk_size'\
