@@ -21,10 +21,10 @@ from errno import EEXIST, ENOENT
 from hashlib import md5
 from optparse import OptionParser, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
-from os.path import basename, dirname, getmtime, getsize, isdir, join, \
+from os.path import dirname, getmtime, getsize, isdir, join, \
     sep as os_path_sep
 from random import shuffle
-from sys import argv, exit, stderr, stdout
+from sys import argv as sys_argv, exit, stderr, stdout
 from time import sleep, time, gmtime, strftime
 from urllib import quote, unquote
 
@@ -39,6 +39,9 @@ from swiftclient.utils import config_true_value, prt_bytes
 from swiftclient.multithreading import MultiThreadingManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
+
+
+BASENAME = 'swift'
 
 
 def get_conn(options):
@@ -115,7 +118,7 @@ def st_delete(parser, args, thread_manager):
     args = args[1:]
     if (not args and not options.yes_all) or (args and options.yes_all):
         thread_manager.error('Usage: %s delete %s\n%s',
-                             basename(argv[0]), st_delete_options,
+                             BASENAME, st_delete_options,
                              st_delete_help)
         return
 
@@ -325,7 +328,7 @@ def st_download(parser, args, thread_manager):
     if options.out_file and len(args) != 2:
         exit('-o option only allowed for single file downloads')
     if (not args and not options.yes_all) or (args and options.yes_all):
-        thread_manager.error('Usage: %s download %s\n%s', basename(argv[0]),
+        thread_manager.error('Usage: %s download %s\n%s', BASENAME,
                              st_download_options, st_download_help)
         return
     req_headers = split_headers(options.header, '', thread_manager)
@@ -552,7 +555,7 @@ def st_list(parser, args, thread_manager):
     if options.delimiter and not args:
         exit('-d option only allowed for container listings')
     if len(args) > 1 or len(args) == 1 and args[0].find('/') >= 0:
-        thread_manager.error('Usage: %s list %s\n%s', basename(argv[0]),
+        thread_manager.error('Usage: %s list %s\n%s', BASENAME,
                              st_list_options, st_list_help)
         return
 
@@ -679,7 +682,7 @@ def st_stat(parser, args, thread_manager):
                 raise
             thread_manager.error("Object %s/%s not found", args[0], args[1])
     else:
-        thread_manager.error('Usage: %s stat %s\n%s', basename(argv[0]),
+        thread_manager.error('Usage: %s stat %s\n%s', BASENAME,
                              st_stat_options, st_stat_help)
 
 
@@ -786,7 +789,7 @@ def st_post(parser, args, thread_manager):
                 raise
             thread_manager.error("Object '%s/%s' not found", args[0], args[1])
     else:
-        thread_manager.error('Usage: %s post %s\n%s', basename(argv[0]),
+        thread_manager.error('Usage: %s post %s\n%s', BASENAME,
                              st_post_options, st_post_help)
 
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
@@ -889,7 +892,7 @@ def st_upload(parser, args, thread_manager):
     args = args[1:]
     if len(args) < 2:
         thread_manager.error(
-            'Usage: %s upload %s\n%s', basename(argv[0]), st_upload_options,
+            'Usage: %s upload %s\n%s', BASENAME, st_upload_options,
             st_upload_help)
         return
 
@@ -1209,7 +1212,7 @@ def st_capabilities(parser, args, thread_manager):
     (options, args) = parse_args(parser, args)
     if (args and len(args) > 2):
         thread_manager.error('Usage: %s capabilities %s\n%s',
-                             basename(argv[0]),
+                             BASENAME,
                              st_capabilities_options, st_capabilities_help)
         return
     conn = get_conn(options)
@@ -1297,7 +1300,12 @@ adding "-V 2" is necessary for this.'''.strip('\n'))
     return options, args
 
 
-if __name__ == '__main__':
+def main(arguments=None):
+    if arguments:
+        argv = arguments
+    else:
+        argv = sys_argv
+
     version = client_version
     parser = OptionParser(version='%%prog %s' % version,
                           usage='''
@@ -1477,7 +1485,7 @@ Examples:
     signal.signal(signal.SIGINT, immediate_exit)
 
     if options.debug or options.info:
-        logger = logging.getLogger("swiftclient")
+        logging.getLogger("swiftclient")
         if options.debug:
             logging.basicConfig(level=logging.DEBUG)
         elif options.info:
@@ -1496,3 +1504,7 @@ Examples:
 
     if had_error:
         exit(1)
+
+
+if __name__ == '__main__':
+    main()
