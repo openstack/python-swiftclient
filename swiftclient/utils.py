@@ -55,3 +55,21 @@ def prt_bytes(bytes, human_flag):
         bytes = '%12s' % bytes
 
     return(bytes)
+
+
+class LengthWrapper(object):
+
+    def __init__(self, readable, length):
+        self._length = self._remaining = length
+        self._readable = readable
+
+    def __len__(self):
+        return self._length
+
+    def read(self, *args, **kwargs):
+        if self._remaining <= 0:
+            return ''
+        chunk = self._readable.read(
+            *args, **kwargs)[:self._remaining]
+        self._remaining -= len(chunk)
+        return chunk
