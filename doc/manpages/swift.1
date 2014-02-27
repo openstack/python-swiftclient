@@ -46,12 +46,12 @@ as well.
 \fBlist\fR [\fIcommand-options\fR] [\fIcontainer\fR]
 .RS 4
 Lists the containers for the account or the objects for a container.
-The -p or --prefix is an option that will only list items beginning
-with that prefix. The -d or --delimiter is option (for container listings only)
+The \-p or \-\-prefix is an option that will only list items beginning
+with that prefix. The \-d or \-\-delimiter is option (for container listings only)
 that will roll up items with the given delimiter (see OpenStack Swift general
 documentation for what this means).
 
-The -l and --lh options provide more detail, similar to ls -l and ls -lh, the latter
+The \-l and \-\-lh options provide more detail, similar to ls \-l and ls \-lh, the latter
 providing sizes in human readable format (eg 3K, 12M, etc). These latter 2 switches
 use more overhead to get those details, which is directly proportional to the number
 of container or objects being listed.
@@ -60,11 +60,11 @@ of container or objects being listed.
 \fBupload\fR [\fIcommand-options\fR] container file_or_directory [\fIfile_or_directory\fR] [...]
 .RS 4
 Uploads to the given container the files and directories specified by the
-remaining args. The -c or --changed is an option that will only upload files
-that have changed since the last upload. The --object-name <object-name> is
+remaining args. The \-c or \-\-changed is an option that will only upload files
+that have changed since the last upload. The \-\-object-name <object\-name> is
 an option that will upload file and name object to <object-name> or upload dir
-and use <object-name> as object prefix. The -S <size> or --segment-size <size>
-and --leave-segments are options as well (see --help for more).
+and use <object\-name> as object prefix. The \-S <size> or \-\-segment\-size <size>
+and \-\-leave\-segments are options as well (see \-\-help for more).
 .RE
 
 \fBpost\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR]
@@ -72,27 +72,27 @@ and --leave-segments are options as well (see --help for more).
 Updates meta information for the account, container, or object depending
 on the args given. If the container is not found, it will be created
 automatically; but this is not true for accounts and objects. Containers
-also allow the -r (or --read-acl) and -w (or --write-acl) options. The -m
-or --meta option is allowed on all and used to define the user meta data
+also allow the \-r (or \-\-read\-acl) and \-w (or \-\-write\-acl) options. The \-m
+or \-\-meta option is allowed on all and used to define the user meta data
 items to set in the form Name:Value. This option can be repeated.
-\fBExample\fR: post -m Color:Blue -m Size:Large
+\fBExample\fR: post \-m Color:Blue \-m Size:Large
 .RE
 
 \fBdownload\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
 .RS 4
-Downloads everything in the account (with --all), or everything in a
+Downloads everything in the account (with \-\-all), or everything in a
 container, or a list of objects depending on the args given. For a single
-object download, you may use the -o [--output] <filename> option to
+object download, you may use the \-o [\-\-output] <filename> option to
 redirect the output to a specific file or if "-" then just redirect to stdout.
 You can specify optional headers with the repeatable cURL-like option
--H [--header].
+\-H [\-\-header].
 .RE
 
 \fBdelete\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
 .RS 4
-Deletes everything in the account (with --all), or everything in a container,
+Deletes everything in the account (with \-\-all), or everything in a container,
 or a list of objects depending on the args given. Segments of manifest objects
-will be deleted as well, unless you specify the --leave-segments option.
+will be deleted as well, unless you specify the \-\-leave\-segments option.
 .RE
 
 \fBcapabilities\fR [\fIproxy-url\fR]
@@ -100,7 +100,7 @@ will be deleted as well, unless you specify the --leave-segments option.
 Displays cluster capabilities. The output includes the list of the activated
 Swift middlewares as well as relevant options for each ones. Addtionaly the
 command displays relevant options for the Swift core. If the proxy-url option
-is not provided the storage-url retreived after authentication is used as
+is not provided the storage-url retrieved after authentication is used as
 proxy-url.
 .RE
 
@@ -122,7 +122,7 @@ proxy-url.
 
 .SH EXAMPLE
 .PP
-swift -A https://127.0.0.1:443/auth/v1.0 -U swiftops:swiftops -K swiftops stat
+swift \-A https://127.0.0.1:443/auth/v1.0 \-U swiftops:swiftops \-K swiftops stat
 
 .RS 2
 .PD 0
