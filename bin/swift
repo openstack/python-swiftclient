@@ -1186,12 +1186,14 @@ def st_upload(parser, args, thread_manager):
 
 
 st_capabilities_options = "[<proxy_url>]"
+st_info_options = st_capabilities_options
 st_capabilities_help = '''
 Retrieve capability of the proxy
 
 Optional positional arguments:
   <proxy_url>           proxy URL of the cluster to retrieve capabilities
 '''
+st_info_help = st_capabilities_help
 
 
 def st_capabilities(parser, args, thread_manager):
@@ -1218,6 +1220,8 @@ def st_capabilities(parser, args, thread_manager):
     _print_compo_cap('Core', {'swift': capabilities['swift']})
     del capabilities['swift']
     _print_compo_cap('Additional middleware', capabilities)
+
+st_info = st_capabilities
 
 
 def split_headers(options, prefix='', thread_manager=None):
@@ -1463,7 +1467,7 @@ Examples:
     parser.enable_interspersed_args()
 
     commands = ('delete', 'download', 'list', 'post',
-                'stat', 'upload', 'capabilities')
+                'stat', 'upload', 'capabilities', 'info')
     if not args or args[0] not in commands:
         parser.print_usage()
         if args:
