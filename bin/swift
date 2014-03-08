@@ -88,10 +88,10 @@ Optional arguments:
   --leave-segments      Do not delete segments of manifest objects.
   --object-threads <threads>
                         Number of threads to use for deleting objects.
-                        Default is 10
+                        Default is 10.
   --container-threads <threads>
                         Number of threads to use for deleting containers.
-                        Default is 10
+                        Default is 10.
 '''.strip("\n")
 
 
@@ -110,7 +110,7 @@ def st_delete(parser, args, thread_manager):
     parser.add_option('', '--container-threads', type=int,
                       default=10, help='Number of threads to use for '
                       'deleting containers. '
-                      'Default is 10')
+                      'Default is 10.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (not args and not options.yes_all) or (args and options.yes_all):
@@ -294,16 +294,16 @@ def st_download(parser, args, thread_manager):
         help='Only download items beginning with the <prefix>.')
     parser.add_option(
         '-o', '--output', dest='out_file', help='For a single '
-        'For a single file download, stream the output to <out_file>. '
+        'download, stream the output to <out_file>. '
         'Specifying "-" as <out_file> will redirect to stdout.')
     parser.add_option(
         '', '--object-threads', type=int,
         default=10, help='Number of threads to use for downloading objects. '
-        'Default is 10')
+        'Default is 10.')
     parser.add_option(
         '', '--container-threads', type=int, default=10,
         help='Number of threads to use for downloading containers. '
-        'Default is 10')
+        'Default is 10.')
     parser.add_option(
         '', '--no-download', action='store_true',
         default=False,
@@ -534,7 +534,7 @@ def st_list(parser, args, thread_manager):
         help='Long listing format, similar to ls -l.')
     parser.add_option(
         '--lh', dest='human', action='store_true',
-        default=False, help='Report sizes in human readable format '
+        default=False, help='Report sizes in human readable format, '
         "similar to ls -lh.")
     parser.add_option(
         '-t', '--totals', dest='totals', action='store_true', default=False,
@@ -546,7 +546,7 @@ def st_list(parser, args, thread_manager):
         '-d', '--delimiter', dest='delimiter',
         help='Roll up items with the given delimiter. '
         'For containers only. See OpenStack Swift API documentation for '
-        'what this means)')
+        'what this means.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.delimiter and not args:
@@ -878,7 +878,7 @@ def st_upload(parser, args, thread_manager):
         '-H "Content-Length: 4000"')
     parser.add_option(
         '', '--use-slo', action='store_true', default=False,
-        help='When used in conjunction with --segment-size it will '
+        help='When used in conjunction with --segment-size, it will '
         'create a Static Large Object instead of the default '
         'Dynamic Large Object.')
     parser.add_option(
@@ -1345,9 +1345,9 @@ Examples:
   %%prog list --lh
 '''.strip('\n') % globals())
     parser.add_option('-s', '--snet', action='store_true', dest='snet',
-                      default=False, help='Use SERVICENET internal network')
+                      default=False, help='Use SERVICENET internal network.')
     parser.add_option('-v', '--verbose', action='count', dest='verbose',
-                      default=1, help='Print more info')
+                      default=1, help='Print more info.')
     parser.add_option('--debug', action='store_true', dest='debug',
                       default=False, help='Show the curl commands and results '
                       'of all http queries regardless of result status.')
@@ -1355,10 +1355,10 @@ Examples:
                       default=False, help='Show the curl commands and results '
                       ' of all http queries which return an error.')
     parser.add_option('-q', '--quiet', action='store_const', dest='verbose',
-                      const=0, default=1, help='Suppress status output')
+                      const=0, default=1, help='Suppress status output.')
     parser.add_option('-A', '--auth', dest='auth',
                       default=environ.get('ST_AUTH'),
-                      help='URL for obtaining an auth token')
+                      help='URL for obtaining an auth token.')
     parser.add_option('-V', '--auth-version',
                       dest='auth_version',
                       default=environ.get('ST_AUTH_VERSION', '1.0'),
@@ -1389,7 +1389,7 @@ Examples:
                       metavar='<auth-tenant-id>',
                       default=environ.get('OS_TENANT_ID'),
                       help='OpenStack tenant ID. '
-                      'Defaults to env[OS_TENANT_ID]')
+                      'Defaults to env[OS_TENANT_ID].')
     parser.add_option('--os_tenant_id',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-tenant-name',
@@ -1427,27 +1427,27 @@ Examples:
                       metavar='<region-name>',
                       default=environ.get('OS_REGION_NAME'),
                       help='OpenStack region name. '
-                           'Defaults to env[OS_REGION_NAME]')
+                           'Defaults to env[OS_REGION_NAME].')
     parser.add_option('--os_region_name',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-service-type',
                       metavar='<service-type>',
                       default=environ.get('OS_SERVICE_TYPE'),
                       help='OpenStack Service type. '
-                           'Defaults to env[OS_SERVICE_TYPE]')
+                           'Defaults to env[OS_SERVICE_TYPE].')
     parser.add_option('--os_service_type',
                       help=SUPPRESS_HELP)
     parser.add_option('--os-endpoint-type',
                       metavar='<endpoint-type>',
                       default=environ.get('OS_ENDPOINT_TYPE'),
                       help='OpenStack Endpoint type. '
-                           'Defaults to env[OS_ENDPOINT_TYPE]')
+                           'Defaults to env[OS_ENDPOINT_TYPE].')
     parser.add_option('--os-cacert',
                       metavar='<ca-certificate>',
                       default=environ.get('OS_CACERT'),
                       help='Specify a CA bundle file to use in verifying a '
                       'TLS (https) server certificate. '
-                      'Defaults to env[OS_CACERT]')
+                      'Defaults to env[OS_CACERT].')
     default_val = config_true_value(environ.get('SWIFTCLIENT_INSECURE'))
     parser.add_option('--insecure',
                       action="store_true", dest="insecure",
