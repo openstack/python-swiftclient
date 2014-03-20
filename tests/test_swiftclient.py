@@ -16,8 +16,8 @@
 # TODO: More tests
 import mock
 import logging
+import six
 import socket
-import StringIO
 import testtools
 import warnings
 from urlparse import urlparse
@@ -576,7 +576,7 @@ class TestPutObject(MockHttpTest):
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
-        mock_file = StringIO.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        mock_file = six.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
@@ -596,7 +596,7 @@ class TestPutObject(MockHttpTest):
 
     def test_chunk_warning(self):
         conn = c.http_connection('http://www.test.com/')
-        mock_file = StringIO.StringIO('asdf')
+        mock_file = six.StringIO('asdf')
         args = ('asdf', 'asdf', 'asdf', 'asdf', mock_file)
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
