@@ -20,7 +20,8 @@ import six
 import socket
 import testtools
 import warnings
-from urlparse import urlparse
+from six.moves.urllib.parse import urlparse
+from six.moves import reload_module
 
 # TODO: mock http connection class with more control over headers
 from .utils import fake_http_connect, fake_get_keystoneclient_2_0
@@ -62,14 +63,14 @@ class TestJsonImport(testtools.TestCase):
         except ImportError:
             pass
         else:
-            reload(json)
+            reload_module(json)
 
         try:
             import simplejson
         except ImportError:
             pass
         else:
-            reload(simplejson)
+            reload_module(simplejson)
         super(TestJsonImport, self).tearDown()
 
     def test_any(self):
@@ -84,7 +85,7 @@ class TestJsonImport(testtools.TestCase):
             pass
         else:
             delattr(simplejson, 'loads')
-            reload(c)
+            reload_module(c)
 
         try:
             from json import loads
@@ -137,7 +138,7 @@ class MockHttpTest(testtools.TestCase):
 
     def tearDown(self):
         super(MockHttpTest, self).tearDown()
-        reload(c)
+        reload_module(c)
 
 
 class MockHttpResponse():

@@ -18,8 +18,8 @@ import time
 import mock
 import testtools
 import threading
-from cStringIO import StringIO
-from Queue import Queue, Empty
+import six
+from six.moves.queue import Queue, Empty
 
 from swiftclient import multithreading as mt
 from swiftclient.exceptions import ClientException
@@ -287,8 +287,8 @@ class TestMultiThreadingManager(ThreadTestCase):
         ], mock_qfq.call_args_list)
 
     def test_printers(self):
-        out_stream = StringIO()
-        err_stream = StringIO()
+        out_stream = six.StringIO()
+        err_stream = six.StringIO()
 
         with mt.MultiThreadingManager(
                 print_stream=out_stream,

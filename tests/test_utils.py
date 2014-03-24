@@ -15,7 +15,7 @@
 
 import testtools
 
-from StringIO import StringIO
+import six
 import tempfile
 
 from swiftclient import utils as u
@@ -125,7 +125,7 @@ class TestPrtBytes(testtools.TestCase):
 class TestLengthWrapper(testtools.TestCase):
 
     def test_stringio(self):
-        contents = StringIO('a' * 100)
+        contents = six.StringIO('a' * 100)
         data = u.LengthWrapper(contents, 42)
         self.assertEqual(42, len(data))
         read_data = ''.join(iter(data.read, ''))

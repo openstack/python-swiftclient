@@ -15,7 +15,7 @@
 from itertools import chain
 import sys
 from time import sleep
-from Queue import Queue
+from six.moves.queue import Queue
 from threading import Thread
 from traceback import format_exception
 

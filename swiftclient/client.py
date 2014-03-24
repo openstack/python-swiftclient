@@ -25,8 +25,8 @@ import warnings
 
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
-from urllib import quote as _quote
-from urlparse import urlparse, urlunparse
+from six.moves.urllib.parse import quote as _quote
+from six.moves.urllib.parse import urlparse, urlunparse
 from time import sleep, time
 
 from swiftclient.exceptions import ClientException, InvalidHeadersException
