@@ -177,9 +177,9 @@ class TestHttpHelpers(MockHttpTest):
 
     def test_quote(self):
         value = 'standard string'
-        self.assertEqual('standard%20string', c.quote(value))
+        self.assertEqual(b'standard%20string', c.quote(value))
         value = u'\u0075nicode string'
-        self.assertEqual('unicode%20string', c.quote(value))
+        self.assertEqual(b'unicode%20string', c.quote(value))
 
     def test_http_connection(self):
         url = 'http://www.test.com'
@@ -204,7 +204,10 @@ class TestHttpHelpers(MockHttpTest):
                           headers)
 
     def test_validate_headers_with_other_than_str(self):
-        for t in (None, 1, 1.0, 1L, u"A"):
+        values = [None, 1, 1.0, u"A"]
+        if six.PY2:
+            values.append(long(1))
+        for t in values:
             self.assertEqual(c.validate_headers({'key': t}),
                              None)
 
@@ -572,7 +575,7 @@ class TestPutObject(MockHttpTest):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
         value = c.put_object(*args)
-        self.assertTrue(isinstance(value, basestring))
+        self.assertTrue(isinstance(value, six.string_types))
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
@@ -589,7 +592,7 @@ class TestPutObject(MockHttpTest):
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
         value = c.put_object(*args, headers=headers, http_conn=conn)
-        self.assertTrue(isinstance(value, basestring))
+        self.assertTrue(isinstance(value, six.string_types))
         # Test for RFC-2616 encoded symbols
         self.assertTrue("a-b: .x:yz mn:fg:lp" in resp.buffer[0],
                         "[a-b: .x:yz mn:fg:lp] header is missing")
@@ -969,7 +972,7 @@ class TestLogging(MockHttpTest):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
         value = c.put_object(*args)
-        self.assertTrue(isinstance(value, basestring))
+        self.assertTrue(isinstance(value, six.string_types))
 
     def test_head_error(self):
         c.http_connection = self.fake_http_connection(500)

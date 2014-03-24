@@ -14,6 +14,8 @@
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
 
+import six
+
 TRUE_VALUES = set(('true', '1', 'yes', 'on', 't', 'y'))
 
 
@@ -24,7 +26,7 @@ def config_true_value(value):
     This function come from swift.common.utils.config_true_value()
     """
     return value is True or \
-        (isinstance(value, basestring) and value.lower() in TRUE_VALUES)
+        (isinstance(value, six.string_types) and value.lower() in TRUE_VALUES)
 
 
 def prt_bytes(bytes, human_flag):
