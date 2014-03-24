@@ -133,7 +133,7 @@ class TestLengthWrapper(testtools.TestCase):
         self.assertEqual('a' * 42, read_data)
 
     def test_tempfile(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(mode='w') as f:
             f.write('a' * 100)
             f.flush()
             contents = open(f.name)
@@ -144,7 +144,7 @@ class TestLengthWrapper(testtools.TestCase):
             self.assertEqual('a' * 42, read_data)
 
     def test_segmented_file(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(mode='w') as f:
             segment_length = 1024
             segments = ('a', 'b', 'c', 'd')
             for c in segments:
