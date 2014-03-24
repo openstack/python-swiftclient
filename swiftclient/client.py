@@ -105,7 +105,7 @@ def quote(value, safe='/'):
 
 def validate_headers(headers):
     if headers:
-        for key, raw_value in headers.iteritems():
+        for key, raw_value in headers.items():
             value = str(encode_utf8(raw_value))
 
             if '\n' in value:
@@ -179,7 +179,7 @@ class HTTPConnection:
     def request(self, method, full_path, data=None, headers={}, files=None):
         """ Encode url and header, then call requests.request """
         headers = dict((encode_utf8(x), encode_utf8(y)) for x, y in
-                       headers.iteritems())
+                       headers.items())
         url = encode_utf8("%s://%s%s" % (
             self.parsed_url.scheme,
             self.parsed_url.netloc,
@@ -911,7 +911,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     if content_length is not None:
         headers['Content-Length'] = str(content_length)
     else:
-        for n, v in headers.iteritems():
+        for n, v in headers.items():
             if n.lower() == 'content-length':
                 content_length = int(v)
     if content_type is not None:

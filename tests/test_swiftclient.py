@@ -168,7 +168,7 @@ class MockHttpResponse():
         self.status = 200
         # This simulate previous httplib implementation that would do a
         # putrequest() and then use putheader() to send header.
-        for k, v in kwarg['headers'].iteritems():
+        for k, v in kwarg['headers'].items():
             self.buffer.append('%s: %s' % (k, v))
         return self.fake_response()
 
