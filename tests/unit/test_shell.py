@@ -378,3 +378,281 @@ class TestSubcommandHelp(unittest.TestCase):
             self.assertRaises(SystemExit, swiftclient.shell.main, argv)
         expected = 'no help for bad_command'
         self.assertEqual(out.getvalue().strip('\n'), expected)
+
+
+class TestParsing(unittest.TestCase):
+
+    def _make_fake_command(self, result):
+        def fake_command(parser, args, thread_manager):
+            result[0], result[1] = swiftclient.shell.parse_args(parser, args)
+        return fake_command
+
+    def _make_args(self, cmd, opts, os_opts, separator='-'):
+        """
+        Construct command line arguments for given options.
+        """
+        args = [""]
+        for k, v in opts.items():
+            arg = "--" + k.replace("_", "-")
+            args = args + [arg, v]
+        for k, v in os_opts.items():
+            arg = "--os" + separator + k.replace("_", separator)
+            args = args + [arg, v]
+        args = args + [cmd]
+        return args
+
+    def _make_env(self, opts, os_opts):
+        """
+        Construct a dict of environment variables for given options.
+        """
+        env = {}
+        for k, v in opts.items():
+            key = 'ST_' + k.upper()
+            env[key] = v
+        for k, v in os_opts.items():
+            key = 'OS_' + k.upper()
+            env[key] = v
+        return env
+
+    def _verify_opts(self, actual_opts, opts, os_opts={}, os_opts_dict={}):
+        """
+        Check parsed options are correct.
+
+        :param opts: v1 style options.
+        :param os_opts: openstack style options.
+        :param os_opts_dict: openstack options that should be found in the
+                             os_options dict.
+        """
+        # check the expected opts are set
+        for key, v in opts.items():
+            actual = getattr(actual_opts, key)
+            self.assertEqual(v, actual, 'Expected %s for key %s, found %s'
+                                        % (v, key, actual))
+
+        for key, v in os_opts.items():
+            actual = getattr(actual_opts, "os_" + key)
+            self.assertEqual(v, actual, 'Expected %s for key %s, found %s'
+                                        % (v, key, actual))
+
+        # check the os_options dict values are set
+        self.assertTrue(hasattr(actual_opts, 'os_options'))
+        actual_os_opts_dict = getattr(actual_opts, 'os_options')
+        expected_os_opts_keys = ['project_name', 'region_name',
+                                 'tenant_name',
+                                 'user_domain_name', 'endpoint_type',
+                                 'object_storage_url', 'project_domain_id',
+                                 'user_id', 'user_domain_id', 'tenant_id',
+                                 'service_type', 'project_id', 'auth_token',
+                                 'project_domain_name']
+        for key in expected_os_opts_keys:
+            self.assertTrue(key in actual_os_opts_dict)
+            cli_key = key
+            if key == 'object_storage_url':
+                # exceptions to the pattern...
+                cli_key = 'storage_url'
+            if cli_key in os_opts_dict:
+                expect = os_opts_dict[cli_key]
+            else:
+                expect = None
+            actual = actual_os_opts_dict[key]
+            self.assertEqual(expect, actual, 'Expected %s for %s, got %s'
+                             % (expect, key, actual))
+        for key in actual_os_opts_dict:
+            self.assertTrue(key in expected_os_opts_keys)
+
+        # check that equivalent keys have equal values
+        equivalents = [('os_username', 'user'),
+                       ('os_auth_url', 'auth'),
+                       ('os_password', 'key')]
+        for pair in equivalents:
+            self.assertEqual(getattr(actual_opts, pair[0]),
+                             getattr(actual_opts, pair[1]))
+
+    def test_minimum_required_args_v3(self):
+        opts = {"auth_version": "3"}
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3"}
+
+        # username with domain is sufficient in args because keystone will
+        # assume user is in default domain
+        args = self._make_args("stat", opts, os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, {})
+
+        # check its ok to have user_id instead of username
+        os_opts = {"password": "secret",
+                   "auth_url": "http://example.com:5000/v3"}
+        os_opts_dict = {"user_id": "user_ID"}
+        all_os_opts = os_opts.copy()
+        all_os_opts.update(os_opts_dict)
+
+        args = self._make_args("stat", opts, all_os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+        # check no user credentials required if token and url supplied
+        os_opts = {}
+        os_opts_dict = {"storage_url": "http://example.com:8080/v1",
+                        "auth_token": "0123abcd"}
+
+        args = self._make_args("stat", opts, os_opts_dict, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+    def test_args_v3(self):
+        opts = {"auth_version": "3"}
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3"}
+        os_opts_dict = {"user_id": "user_ID",
+                        "project_id": "project_ID",
+                        "tenant_id": "tenant_ID",
+                        "project_domain_id": "project_domain_ID",
+                        "user_domain_id": "user_domain_ID",
+                        "tenant_name": "tenant",
+                        "project_name": "project",
+                        "project_domain_name": "project_domain",
+                        "user_domain_name": "user_domain",
+                        "auth_token": "token",
+                        "storage_url": "http://example.com:8080/v1",
+                        "region_name": "region",
+                        "service_type": "service",
+                        "endpoint_type": "endpoint"}
+        all_os_opts = os_opts.copy()
+        all_os_opts.update(os_opts_dict)
+
+        # check using hyphen separator
+        args = self._make_args("stat", opts, all_os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+        # check using underscore separator
+        args = self._make_args("stat", opts, all_os_opts, '_')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+        # check using environment variables
+        args = self._make_args("stat", {}, {})
+        env = self._make_env(opts, all_os_opts)
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+        # check again using OS_AUTH_VERSION instead of ST_AUTH_VERSION
+        env = self._make_env({}, all_os_opts)
+        env.update({'OS_AUTH_VERSION': '3'})
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+    def test_command_args_v3(self):
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        opts = {"auth_version": "3"}
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3"}
+        args = self._make_args("stat", opts, os_opts)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+            self.assertEqual(['stat'], result[1])
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            args = args + ["container_name"]
+            swiftclient.shell.main(args)
+            self.assertEqual(["stat", "container_name"], result[1])
+
+    def test_insufficient_args_v3(self):
+        opts = {"auth_version": "3"}
+        os_opts = {"password": "secret",
+                   "auth_url": "http://example.com:5000/v3"}
+        args = self._make_args("stat", opts, os_opts)
+        self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+        os_opts = {"username": "user",
+                   "auth_url": "http://example.com:5000/v3"}
+        args = self._make_args("stat", opts, os_opts)
+        self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+        os_opts = {"username": "user",
+                   "password": "secret"}
+        args = self._make_args("stat", opts, os_opts)
+        self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+    def test_insufficient_env_vars_v3(self):
+        args = self._make_args("stat", {}, {})
+        opts = {"auth_version": "3"}
+        os_opts = {"password": "secret",
+                   "auth_url": "http://example.com:5000/v3"}
+        env = self._make_env(opts, os_opts)
+        with mock.patch.dict(os.environ, env):
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+        os_opts = {"username": "user",
+                   "auth_url": "http://example.com:5000/v3"}
+        env = self._make_env(opts, os_opts)
+        with mock.patch.dict(os.environ, env):
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+        os_opts = {"username": "user",
+                   "password": "secret"}
+        env = self._make_env(opts, os_opts)
+        with mock.patch.dict(os.environ, env):
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+    def test_help(self):
+        # --help returns condensed help message
+        opts = {"help": ""}
+        os_opts = {}
+        args = self._make_args("stat", opts, os_opts)
+        mock_stdout = six.StringIO()
+        with mock.patch('sys.stdout', mock_stdout):
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        out = mock_stdout.getvalue()
+        self.assertTrue(out.find('[--key <api_key>]') > 0)
+        self.assertEqual(-1, out.find('--os-username=<auth-user-name>'))
+
+        # --help returns condensed help message, overrides --os-help
+        opts = {"help": ""}
+        os_opts = {"help": ""}
+                   # "password": "secret",
+                   # "username": "user",
+                   # "auth_url": "http://example.com:5000/v3"}
+        args = self._make_args("", opts, os_opts)
+        mock_stdout = six.StringIO()
+        with mock.patch('sys.stdout', mock_stdout):
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        out = mock_stdout.getvalue()
+        self.assertTrue(out.find('[--key <api_key>]') > 0)
+        self.assertEqual(-1, out.find('--os-username=<auth-user-name>'))
+
+        ## --os-help return os options help
+        opts = {}
+        args = self._make_args("", opts, os_opts)
+        mock_stdout = six.StringIO()
+        with mock.patch('sys.stdout', mock_stdout):
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        out = mock_stdout.getvalue()
+        self.assertTrue(out.find('[--key <api_key>]') > 0)
+        self.assertTrue(out.find('--os-username=<auth-user-name>') > 0)
