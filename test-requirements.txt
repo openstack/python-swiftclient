@@ -4,7 +4,6 @@ coverage>=3.6
 discover
 mock>=1.0
 python-keystoneclient>=0.6.0
-six>=1.5.2
 sphinx>=1.1.2,<1.2
 testrepository>=0.0.18
 testtools>=0.9.34
