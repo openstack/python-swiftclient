@@ -191,6 +191,48 @@ class TestHttpHelpers(MockHttpTest):
         url = 'ftp://www.test.com'
         self.assertRaises(c.ClientException, c.http_connection, url)
 
+    def test_set_user_agent_default(self):
+        _junk, conn = c.http_connection('http://www.example.com')
+        req_headers = {}
+
+        def my_request_handler(*a, **kw):
+            req_headers.update(kw.get('headers', {}))
+        conn._request = my_request_handler
+
+        # test the default
+        conn.request('GET', '/')
+        ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
+        self.assert_(ua.startswith('python-swiftclient-'))
+
+    def test_set_user_agent_per_request_override(self):
+        _junk, conn = c.http_connection('http://www.example.com')
+        req_headers = {}
+
+        def my_request_handler(*a, **kw):
+            req_headers.update(kw.get('headers', {}))
+        conn._request = my_request_handler
+
+        # test if it's actually set
+        conn.request('GET', '/', headers={'User-Agent': 'Me'})
+        ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
+        self.assertEqual(ua, 'Me', req_headers)
+
+    def test_set_user_agent_default_override(self):
+        _junk, conn = c.http_connection(
+            'http://www.example.com',
+            default_user_agent='a-new-default')
+        req_headers = {}
+
+        def my_request_handler(*a, **kw):
+            req_headers.update(kw.get('headers', {}))
+        conn._request = my_request_handler
+
+        # test setting a default
+        conn._request = my_request_handler
+        conn.request('GET', '/')
+        ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
+        self.assertEqual(ua, 'a-new-default')
+
     def test_validate_headers(self):
         headers = {'key': 'value'}
         self.assertEqual(c.validate_headers(headers), None)
