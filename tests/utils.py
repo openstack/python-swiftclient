@@ -92,7 +92,7 @@ def fake_http_connect(*code_iter, **kwargs):
             if not self.timestamp:
                 del headers['x-timestamp']
             try:
-                if container_ts_iter.next() is False:
+                if next(container_ts_iter) is False:
                     headers['x-container-timestamp'] = '1'
             except StopIteration:
                 pass
@@ -141,9 +141,9 @@ def fake_http_connect(*code_iter, **kwargs):
                 kwargs['give_content_type']('')
         if 'give_connect' in kwargs:
             kwargs['give_connect'](*args, **ckwargs)
-        status = code_iter.next()
-        etag = etag_iter.next()
-        timestamp = timestamps_iter.next()
+        status = next(code_iter)
+        etag = next(etag_iter)
+        timestamp = next(timestamps_iter)
         if status <= 0:
             raise RequestException()
         fake_conn = FakeConn(status, etag, body=kwargs.get('body', ''),
