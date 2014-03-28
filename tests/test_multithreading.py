@@ -141,7 +141,7 @@ class TestQueueFunctionManager(ThreadTestCase):
             input_queue.put('go boom')
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
-        error_strs = map(str, self.thread_manager.error.call_args_list)
+        error_strs = list(map(str, self.thread_manager.error.call_args_list))
         self.assertEqual(1, len(error_strs))
         self.assertTrue('Exception: I went boom!' in error_strs[0])
 
@@ -174,7 +174,7 @@ class TestQueueFunctionManager(ThreadTestCase):
                 input_queue.put('item%d' % i if i % 2 == 0 else 'go boom')
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
-        error_strs = map(str, self.thread_manager.error.call_args_list)
+        error_strs = list(map(str, self.thread_manager.error.call_args_list))
         self.assertEqual(10, len(error_strs))
         self.assertTrue(all(['Exception: I went boom!' in s for s in
                              error_strs]))
@@ -196,7 +196,7 @@ class TestQueueFunctionManager(ThreadTestCase):
                 input_queue.put('item%d' % i if i % 2 == 0 else 'c boom')
 
         self.assertEqual(self.starting_thread_count, threading.active_count())
-        error_strs = map(str, self.thread_manager.error.call_args_list)
+        error_strs = list(map(str, self.thread_manager.error.call_args_list))
         self.assertEqual(10, len(error_strs))
         stringification = 'Client Boom: ' \
             'http://192.168.22.1:80/booze 404 to much   no sir!'
