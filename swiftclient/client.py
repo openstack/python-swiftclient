@@ -187,8 +187,10 @@ class HTTPConnection:
         """ Final wrapper before requests call, to be patched in tests """
         return requests.request(*arg, **kwarg)
 
-    def request(self, method, full_path, data=None, headers={}, files=None):
+    def request(self, method, full_path, data=None, headers=None, files=None):
         """ Encode url and header, then call requests.request """
+        if headers is None:
+            headers = {}
         headers = dict((encode_utf8(x.lower()), encode_utf8(y)) for x, y in
                        headers.items())
         # set a default User-Agent header if it wasn't passed in
@@ -202,7 +204,7 @@ class HTTPConnection:
                                   files=files, **self.requests_args)
         return self.resp
 
-    def putrequest(self, full_path, data=None, headers={}, files=None):
+    def putrequest(self, full_path, data=None, headers=None, files=None):
         """
         Use python-requests files upload
 
