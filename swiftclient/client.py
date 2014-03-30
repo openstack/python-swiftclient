@@ -28,6 +28,7 @@ from requests.exceptions import RequestException, SSLError
 from six.moves.urllib.parse import quote as _quote
 from six.moves.urllib.parse import urlparse, urlunparse
 from time import sleep, time
+import six
 
 from swiftclient.exceptions import ClientException, InvalidHeadersException
 from swiftclient.utils import LengthWrapper
@@ -97,7 +98,7 @@ def quote(value, safe='/'):
     Patched version of urllib.quote that encodes utf8 strings before quoting
     """
     value = encode_utf8(value)
-    if isinstance(value, str):
+    if isinstance(value, bytes):
         return _quote(value, safe)
     else:
         return value
@@ -117,7 +118,7 @@ def validate_headers(headers):
 
 
 def encode_utf8(value):
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
         value = value.encode('utf8')
     return value
 
