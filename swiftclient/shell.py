@@ -122,7 +122,8 @@ def st_delete(parser, args, thread_manager):
                              st_delete_help)
         return
 
-    def _delete_segment((container, obj), conn):
+    def _delete_segment(item, conn):
+        (container, obj) = item
         conn.delete_object(container, obj)
         if options.verbose:
             if conn.attempts > 2:
@@ -132,7 +133,8 @@ def st_delete(parser, args, thread_manager):
             else:
                 thread_manager.print_msg('%s/%s', container, obj)
 
-    def _delete_object((container, obj), conn):
+    def _delete_object(item, conn):
+        (container, obj) = item
         try:
             old_manifest = None
             query_string = None
