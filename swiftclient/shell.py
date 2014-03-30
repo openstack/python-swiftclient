@@ -13,6 +13,9 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
+
 import signal
 import socket
 import logging
@@ -233,9 +236,11 @@ def st_delete(parser, args, thread_manager):
                     thread_manager.error('Account not found')
             elif len(args) == 1:
                 if '/' in args[0]:
-                    print >> stderr, 'WARNING: / in container name; you ' \
-                        'might have meant %r instead of %r.' % (
-                        args[0].replace('/', ' ', 1), args[0])
+                    print(
+                        'WARNING: / in container name; you might have meant '
+                        '%r instead of %r.' % (
+                            args[0].replace('/', ' ', 1), args[0]),
+                        file=stderr)
                 container_queue.put(args[0])
             else:
                 for obj in args[1:]:
@@ -497,10 +502,11 @@ def st_download(parser, args, thread_manager):
                     thread_manager.error('Account not found')
             elif len(args) == 1:
                 if '/' in args[0]:
-                    print >> stderr, (
+                    print(
                         'WARNING: / in container name; you might have meant '
                         '%r instead of %r.' % (
-                            args[0].replace('/', ' ', 1), args[0]))
+                            args[0].replace('/', ' ', 1), args[0]),
+                        file=stderr)
                 container_queue.put((args[0], object_queue, options.prefix))
             else:
                 if len(args) == 2:
@@ -664,9 +670,11 @@ def st_stat(parser, args, thread_manager):
             thread_manager.error('Account not found')
     elif len(args) == 1:
         if '/' in args[0]:
-            print >> stderr, 'WARNING: / in container name; you might have ' \
-                             'meant %r instead of %r.' % \
-                             (args[0].replace('/', ' ', 1), args[0])
+            print(
+                'WARNING: / in container name; you might have meant %r instead'
+                ' of %r.' % (
+                    args[0].replace('/', ' ', 1), args[0]),
+                file=stderr)
         try:
             command_helpers.stat_container(conn, options, args,
                                            thread_manager)
@@ -758,9 +766,11 @@ def st_post(parser, args, thread_manager):
             thread_manager.error('Account not found')
     elif len(args) == 1:
         if '/' in args[0]:
-            print >> stderr, 'WARNING: / in container name; you might have ' \
-                             'meant %r instead of %r.' % \
-                             (args[0].replace('/', ' ', 1), args[0])
+            print(
+                'WARNING: / in container name; you might have meant %r instead'
+                ' of %r.' % (
+                    args[0].replace('/', ' ', 1), args[0]),
+                file=stderr)
         headers = split_headers(options.meta, 'X-Container-Meta-',
                                 thread_manager)
         headers.update(split_headers(options.header, '', thread_manager))
