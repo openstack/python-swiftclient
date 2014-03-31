@@ -97,8 +97,11 @@ def http_log(args, kwargs, resp, body):
 
 def quote(value, safe='/'):
     """
-    Patched version of urllib.quote that encodes utf8 strings before quoting
+    Patched version of urllib.quote that encodes utf8 strings before quoting.
+    On Python 3, call directly urllib.parse.quote().
     """
+    if six.PY3:
+        return _quote(value, safe=safe)
     value = encode_utf8(value)
     if isinstance(value, bytes):
         return _quote(value, safe)

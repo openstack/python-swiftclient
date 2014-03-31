@@ -182,10 +182,14 @@ class MockHttpResponse():
 class TestHttpHelpers(MockHttpTest):
 
     def test_quote(self):
-        value = 'standard string'
-        self.assertEqual(b'standard%20string', c.quote(value))
-        value = u'\u0075nicode string'
-        self.assertEqual(b'unicode%20string', c.quote(value))
+        value = b'bytes\xff'
+        self.assertEqual('bytes%FF', c.quote(value))
+        value = 'native string'
+        self.assertEqual('native%20string', c.quote(value))
+        value = u'unicode string'
+        self.assertEqual('unicode%20string', c.quote(value))
+        value = u'unicode:\xe9\u20ac'
+        self.assertEqual('unicode%3A%C3%A9%E2%82%AC', c.quote(value))
 
     def test_http_connection(self):
         url = 'http://www.test.com'
