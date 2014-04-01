@@ -22,6 +22,7 @@ import requests
 import sys
 import logging
 import warnings
+import functools
 
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
@@ -211,7 +212,8 @@ class HTTPConnection:
 
         self.resp.getheaders = getheaders
         self.resp.getheader = getheader
-        self.resp.read = self.resp.raw.read
+        self.resp.read = functools.partial(self.resp.raw.read,
+                                           decode_content=True)
         return self.resp
 
 
