@@ -31,6 +31,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 from time import sleep, time
 import six
 
+from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException, InvalidHeadersException
 from swiftclient.utils import LengthWrapper
 
@@ -135,7 +136,7 @@ except ImportError:
 
 class HTTPConnection:
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
-                 ssl_compression=False):
+                 ssl_compression=False, default_user_agent=None):
         """
         Make an HTTPConnection or HTTPSConnection
 
@@ -149,6 +150,12 @@ class HTTPConnection:
         :param ssl_compression: SSL compression should be disabled by default
                                 and this setting is not usable as of now. The
                                 parameter is kept for backward compatibility.
+        :param default_user_agent: Set the User-Agent header on every request.
+                                   If set to None (default), the user agent
+                                   will be "python-swiftclient-<version>". This
+                                   may be overridden on a per-request basis by
+                                   explicitly setting the user-agent header on
+                                   a call to request().
         :raises ClientException: Unable to handle protocol scheme
         """
         self.url = url
@@ -173,6 +180,10 @@ class HTTPConnection:
                 )
             }
         self.requests_args['stream'] = True
+        if default_user_agent is None:
+            default_user_agent = \
+                'python-swiftclient-%s' % swiftclient_version.version_string
+        self.default_user_agent = default_user_agent
 
     def _request(self, *arg, **kwarg):
         """ Final wrapper before requests call, to be patched in tests """
@@ -180,8 +191,11 @@ class HTTPConnection:
 
     def request(self, method, full_path, data=None, headers={}, files=None):
         """ Encode url and header, then call requests.request """
-        headers = dict((encode_utf8(x), encode_utf8(y)) for x, y in
+        headers = dict((encode_utf8(x.lower()), encode_utf8(y)) for x, y in
                        headers.items())
+        # set a default User-Agent header if it wasn't passed in
+        if 'user-agent' not in headers:
+            headers['user-agent'] = self.default_user_agent
         url = encode_utf8("%s://%s%s" % (
             self.parsed_url.scheme,
             self.parsed_url.netloc,
