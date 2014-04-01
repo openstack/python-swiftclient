@@ -12,6 +12,9 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
+
 from itertools import chain
 import sys
 from time import sleep
@@ -258,7 +261,7 @@ class MultiThreadingManager(object):
             stream = self.print_stream
         if isinstance(item, unicode):
             item = item.encode('utf8')
-        print >>stream, item
+        print(item, file=stream)
 
     def _print_error(self, item):
         self.error_count += 1
