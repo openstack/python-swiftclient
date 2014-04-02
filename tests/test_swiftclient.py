@@ -170,7 +170,7 @@ class MockHttpResponse():
         # This simulate previous httplib implementation that would do a
         # putrequest() and then use putheader() to send header.
         for k, v in kwarg['headers'].items():
-            self.buffer.append('%s: %s' % (k, v))
+            self.buffer.append((k, v))
         return self.fake_response()
 
 
@@ -628,7 +628,8 @@ class TestPutObject(MockHttpTest):
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 mock_file)
-        headers = {'X-Header1': u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+        text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+        headers = {'X-Header1': text,
                    'X-2': 1, 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:fg:lp'}
 
         resp = MockHttpResponse()
@@ -637,8 +638,11 @@ class TestPutObject(MockHttpTest):
         value = c.put_object(*args, headers=headers, http_conn=conn)
         self.assertTrue(isinstance(value, six.string_types))
         # Test for RFC-2616 encoded symbols
-        self.assertTrue("a-b: .x:yz mn:fg:lp" in resp.buffer[0],
-                        "[a-b: .x:yz mn:fg:lp] header is missing")
+        self.assertIn((b"a-b", b".x:yz mn:fg:lp"),
+                      resp.buffer)
+        # Test unicode header
+        self.assertIn((b'x-header1', text.encode('utf8')),
+                      resp.buffer)
 
     def test_chunk_warning(self):
         conn = c.http_connection('http://www.test.com/')
@@ -689,7 +693,8 @@ class TestPostObject(MockHttpTest):
                 '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
-        headers = {'X-Header1': u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+        text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+        headers = {'X-Header1': text,
                    'X-2': '1', 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr'}
 
         resp = MockHttpResponse()
@@ -697,8 +702,10 @@ class TestPostObject(MockHttpTest):
         conn[1]._request = resp._fake_request
         c.post_object(*args, headers=headers, http_conn=conn)
         # Test for RFC-2616 encoded symbols
-        self.assertTrue("a-b: .x:yz mn:kl:qr" in resp.buffer[0],
-                        "[a-b: .x:yz mn:kl:qr] header is missing")
+        self.assertTrue((b'a-b', b"a-b: .x:yz mn:kl:qr"), resp.buffer)
+        # Test unicode header
+        self.assertIn((b'x-header1', text.encode('utf8')),
+                      resp.buffer)
 
     def test_server_error(self):
         body = 'c' * 60
