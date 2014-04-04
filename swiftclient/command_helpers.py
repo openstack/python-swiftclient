@@ -14,114 +14,167 @@
 from swiftclient.utils import prt_bytes
 
 
-def stat_account(conn, options, thread_manager):
-    items_to_print = []
+POLICY_HEADER_PREFIX = 'x-account-storage-policy-'
+
+
+def stat_account(conn, options):
+    items = []
 
     headers = conn.head_account()
-    if options.verbose > 1:
-        items_to_print.extend((
+    if options['verbose'] > 1:
+        items.extend([
             ('StorageURL', conn.url),
             ('Auth Token', conn.token),
-        ))
+        ])
     container_count = int(headers.get('x-account-container-count', 0))
     object_count = prt_bytes(headers.get('x-account-object-count', 0),
-                             options.human).lstrip()
+                             options['human']).lstrip()
     bytes_used = prt_bytes(headers.get('x-account-bytes-used', 0),
-                           options.human).lstrip()
-    items_to_print.extend((
+                           options['human']).lstrip()
+    items.extend([
         ('Account', conn.url.rsplit('/', 1)[-1]),
         ('Containers', container_count),
         ('Objects', object_count),
         ('Bytes', bytes_used),
-    ))
+    ])
+
     policies = set()
-    exclude_policy_headers = []
-    ps_header_prefix = 'x-account-storage-policy-'
     for header_key, header_value in headers.items():
-        if header_key.lower().startswith(ps_header_prefix):
+        if header_key.lower().startswith(POLICY_HEADER_PREFIX):
             policy_name = header_key.rsplit('-', 2)[0].split('-', 4)[-1]
             policies.add(policy_name)
-            exclude_policy_headers.append(header_key)
+
     for policy in policies:
-        items_to_print.extend((
+        items.extend((
             ('Objects in policy "' + policy + '"',
-             prt_bytes(headers.get(ps_header_prefix + policy + '-object-count',
-                                   0), options.human).lstrip()),
+             prt_bytes(
+                 headers.get(
+                     POLICY_HEADER_PREFIX + policy + '-object-count', 0),
+                 options['human']
+             ).lstrip()),
             ('Bytes in policy "' + policy + '"',
-             prt_bytes(headers.get(ps_header_prefix + policy + '-bytes-used',
-                                   0), options.human).lstrip()),
+             prt_bytes(
+                 headers.get(
+                     POLICY_HEADER_PREFIX + policy + '-bytes-used', 0),
+                 options['human']
+             ).lstrip()),
         ))
 
-    items_to_print.extend(thread_manager.headers_to_items(
+    return items, headers
+
+
+def print_account_stats(items, headers, output_manager):
+    exclude_policy_headers = []
+    for header_key, header_value in headers.items():
+        if header_key.lower().startswith(POLICY_HEADER_PREFIX):
+            exclude_policy_headers.append(header_key)
+
+    items.extend(headers_to_items(
         headers, meta_prefix='x-account-meta-',
         exclude_headers=([
             'content-length', 'date',
             'x-account-container-count',
             'x-account-object-count',
             'x-account-bytes-used'] + exclude_policy_headers)))
+
     # line up the items nicely
-    offset = max(len(item) for item, value in items_to_print)
-    thread_manager.print_items(items_to_print, offset=offset)
+    offset = max(len(item) for item, value in items)
+    output_manager.print_items(items, offset=offset)
 
 
-def stat_container(conn, options, args, thread_manager):
-    headers = conn.head_container(args[0])
-    if options.verbose > 1:
-        path = '%s/%s' % (conn.url, args[0])
-        thread_manager.print_items((
+def stat_container(conn, options, container):
+    headers = conn.head_container(container)
+    items = []
+    if options['verbose'] > 1:
+        path = '%s/%s' % (conn.url, container)
+        items.extend([
             ('URL', path),
-            ('Auth Token', conn.token),
-        ))
+            ('Auth Token', conn.token)
+        ])
     object_count = prt_bytes(
         headers.get('x-container-object-count', 0),
-        options.human).lstrip()
+        options['human']).lstrip()
     bytes_used = prt_bytes(headers.get('x-container-bytes-used', 0),
-                           options.human).lstrip()
-    thread_manager.print_items((
+                           options['human']).lstrip()
+    items.extend([
         ('Account', conn.url.rsplit('/', 1)[-1]),
-        ('Container', args[0]),
+        ('Container', container),
         ('Objects', object_count),
         ('Bytes', bytes_used),
         ('Read ACL', headers.get('x-container-read', '')),
         ('Write ACL', headers.get('x-container-write', '')),
         ('Sync To', headers.get('x-container-sync-to', '')),
-        ('Sync Key', headers.get('x-container-sync-key', '')),
+        ('Sync Key', headers.get('x-container-sync-key', ''))
+    ])
+    return items, headers
+
+
+def print_container_stats(items, headers, output_manager):
+    items.extend(headers_to_items(
+        headers,
+        meta_prefix='x-container-meta-',
+        exclude_headers=(
+            'content-length', 'date',
+            'x-container-object-count',
+            'x-container-bytes-used',
+            'x-container-read',
+            'x-container-write',
+            'x-container-sync-to',
+            'x-container-sync-key'
+        )
     ))
-    thread_manager.print_headers(headers,
-                                 meta_prefix='x-container-meta-',
-                                 exclude_headers=(
-                                     'content-length', 'date',
-                                     'x-container-object-count',
-                                     'x-container-bytes-used',
-                                     'x-container-read',
-                                     'x-container-write',
-                                     'x-container-sync-to',
-                                     'x-container-sync-key'))
+    # line up the items nicely
+    offset = max(len(item) for item, value in items)
+    output_manager.print_items(items, offset=offset)
 
 
-def stat_object(conn, options, args, thread_manager):
-    headers = conn.head_object(args[0], args[1])
-    if options.verbose > 1:
-        path = '%s/%s/%s' % (conn.url, args[0], args[1])
-        thread_manager.print_items((
+def stat_object(conn, options, container, obj):
+    headers = conn.head_object(container, obj)
+    items = []
+    if options['verbose'] > 1:
+        path = '%s/%s/%s' % (conn.url, container, obj)
+        items.extend([
             ('URL', path),
-            ('Auth Token', conn.token),
-        ))
+            ('Auth Token', conn.token)
+        ])
     content_length = prt_bytes(headers.get('content-length', 0),
-                               options.human).lstrip()
-    thread_manager.print_items((
+                               options['human']).lstrip()
+    items.extend([
         ('Account', conn.url.rsplit('/', 1)[-1]),
-        ('Container', args[0]),
-        ('Object', args[1]),
+        ('Container', container),
+        ('Object', obj),
         ('Content Type', headers.get('content-type')),
         ('Content Length', content_length),
         ('Last Modified', headers.get('last-modified')),
         ('ETag', headers.get('etag')),
-        ('Manifest', headers.get('x-object-manifest')),
-    ), skip_missing=True)
-    thread_manager.print_headers(headers,
-                                 meta_prefix='x-object-meta-',
-                                 exclude_headers=(
-                                     'content-type', 'content-length',
-                                     'last-modified', 'etag', 'date',
-                                     'x-object-manifest'))
+        ('Manifest', headers.get('x-object-manifest'))
+    ])
+    return items, headers
+
+
+def print_object_stats(items, headers, output_manager):
+    items.extend(headers_to_items(
+        headers,
+        meta_prefix='x-object-meta-',
+        exclude_headers=(
+            'content-type', 'content-length',
+            'last-modified', 'etag', 'date',
+            'x-object-manifest')
+    ))
+    # line up the items nicely
+    offset = max(len(item) for item, value in items)
+    output_manager.print_items(items, offset=offset, skip_missing=True)
+
+
+def headers_to_items(headers, meta_prefix='', exclude_headers=None):
+    exclude_headers = exclude_headers or []
+    other_items = []
+    meta_items = []
+    for key, value in headers.items():
+        if key not in exclude_headers:
+            if key.startswith(meta_prefix):
+                meta_key = 'Meta %s' % key[len(meta_prefix):].title()
+                meta_items.append((meta_key, value))
+            else:
+                other_items.append((key.title(), value))
+    return meta_items + other_items

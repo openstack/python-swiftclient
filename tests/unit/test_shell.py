@@ -24,6 +24,7 @@ import swiftclient
 import swiftclient.shell
 import swiftclient.utils
 
+from os.path import basename, dirname
 
 if six.PY2:
     BUILTIN_OPEN = '__builtin__.open'
@@ -50,8 +51,8 @@ class TestShell(unittest.TestCase):
         except OSError:
             pass
 
-    @mock.patch('swiftclient.shell.MultiThreadingManager._print')
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_account(self, connection, mock_print):
         argv = ["", "stat"]
         return_headers = {
@@ -66,12 +67,11 @@ class TestShell(unittest.TestCase):
         calls = [mock.call('   Account: AUTH_account\n' +
                            'Containers: 1\n' +
                            '   Objects: 2\n' +
-                           '     Bytes: 3'),
-                 ]
+                           '     Bytes: 3')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.MultiThreadingManager._print')
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_container(self, connection, mock_print):
         return_headers = {
             'x-container-object-count': '1',
@@ -85,19 +85,18 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_container.return_value = return_headers
         connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
         swiftclient.shell.main(argv)
-        calls = [mock.call('       Account: AUTH_account\n' +
-                           '     Container: container\n' +
-                           '       Objects: 1\n' +
-                           '         Bytes: 2\n' +
-                           '      Read ACL: test2:tester2\n' +
-                           '     Write ACL: test3:tester3\n' +
-                           '       Sync To: other\n' +
-                           '      Sync Key: secret'),
-                 mock.call('')]
+        calls = [mock.call('  Account: AUTH_account\n' +
+                           'Container: container\n' +
+                           '  Objects: 1\n' +
+                           '    Bytes: 2\n' +
+                           ' Read ACL: test2:tester2\n' +
+                           'Write ACL: test3:tester3\n' +
+                           '  Sync To: other\n' +
+                           ' Sync Key: secret')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.MultiThreadingManager._print')
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_object(self, connection, mock_print):
         return_headers = {
             'x-object-manifest': 'manifest',
@@ -117,12 +116,11 @@ class TestShell(unittest.TestCase):
                            'Content Length: 42\n' +
                            ' Last Modified: yesterday\n' +
                            '          ETag: md5\n' +
-                           '      Manifest: manifest'),
-                 mock.call('')]
+                           '      Manifest: manifest')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.MultiThreadingManager._print')
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
     def test_list_account(self, connection, mock_print):
         # Test account listing
         connection.return_value.get_account.side_effect = [
@@ -138,8 +136,8 @@ class TestShell(unittest.TestCase):
         calls = [mock.call('container')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.MultiThreadingManager._print')
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
     def test_list_container(self, connection, mock_print):
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object_a'}]],
@@ -173,8 +171,8 @@ class TestShell(unittest.TestCase):
                  mock.call('           0')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.makedirs')
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.makedirs')
+    @mock.patch('swiftclient.service.Connection')
     def test_download(self, connection, makedirs):
         connection.return_value.get_object.return_value = [
             {'content-type': 'text/plain',
@@ -194,9 +192,11 @@ class TestShell(unittest.TestCase):
             argv = ["", "download", "container"]
             swiftclient.shell.main(argv)
             calls = [mock.call('container', 'object',
-                               headers={}, resp_chunk_size=65536),
+                               headers={}, resp_chunk_size=65536,
+                               response_dict={}),
                      mock.call('container', 'pseudo/',
-                               headers={}, resp_chunk_size=65536)]
+                               headers={}, resp_chunk_size=65536,
+                               response_dict={})]
             connection.return_value.get_object.assert_has_calls(
                 calls, any_order=True)
             mock_open.assert_called_once_with('object', 'wb')
@@ -206,12 +206,13 @@ class TestShell(unittest.TestCase):
             argv = ["", "download", "container", "object"]
             swiftclient.shell.main(argv)
             connection.return_value.get_object.assert_called_with(
-                'container', 'object', headers={}, resp_chunk_size=65536)
+                'container', 'object', headers={}, resp_chunk_size=65536,
+                response_dict={})
             mock_open.assert_called_with('object', 'wb')
 
-    @mock.patch('swiftclient.shell.listdir')
-    @mock.patch('swiftclient.shell.Connection')
-    def test_upload(self, connection, listdir):
+    @mock.patch('swiftclient.shell.walk')
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload(self, connection, walk):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
         connection.return_value.attempts = 0
@@ -220,7 +221,8 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         connection.return_value.put_container.assert_called_with(
             'container',
-            {'X-Storage-Policy': mock.ANY})
+            {'X-Storage-Policy': mock.ANY},
+            response_dict={})
 
         connection.return_value.put_object.assert_called_with(
             'container',
@@ -228,18 +230,23 @@ class TestShell(unittest.TestCase):
             mock.ANY,
             content_length=0,
             headers={'x-object-meta-mtime': mock.ANY,
-                     'X-Storage-Policy': 'one'})
+                     'X-Storage-Policy': 'one'},
+            response_dict={})
 
         # Upload whole directory
         argv = ["", "upload", "container", "/tmp"]
-        listdir.return_value = [self.tmpfile]
+        _tmpfile = self.tmpfile
+        _tmpfile_dir = dirname(_tmpfile)
+        _tmpfile_base = basename(_tmpfile)
+        walk.return_value = [(_tmpfile_dir, [], [_tmpfile_base])]
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
             mock.ANY,
             content_length=0,
-            headers={'x-object-meta-mtime': mock.ANY})
+            headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
 
         # Upload in segments
         connection.return_value.head_container.return_value = {
@@ -250,16 +257,18 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         connection.return_value.put_container.assert_called_with(
             'container_segments',
-            {'X-Storage-Policy': mock.ANY})
+            {'X-Storage-Policy': mock.ANY},
+            response_dict={})
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
             '',
             content_length=0,
             headers={'x-object-manifest': mock.ANY,
-                     'x-object-meta-mtime': mock.ANY})
+                     'x-object-meta-mtime': mock.ANY},
+            response_dict={})
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_delete_account(self, connection):
         connection.return_value.get_account.side_effect = [
             [None, [{'name': 'container'}]],
@@ -274,11 +283,11 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.delete_container.assert_called_with(
-            'container')
+            'container', response_dict={})
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None)
+            'container', 'object', query_string=None, response_dict={})
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_delete_container(self, connection):
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object'}]],
@@ -289,34 +298,34 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.delete_container.assert_called_with(
-            'container')
+            'container', response_dict={})
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None)
+            'container', 'object', query_string=None, response_dict={})
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_delete_object(self, connection):
         argv = ["", "delete", "container", "object"]
         connection.return_value.head_object.return_value = {}
         connection.return_value.attempts = 0
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None)
+            'container', 'object', query_string=None, response_dict={})
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_post_account(self, connection):
         argv = ["", "post"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.post_account.assert_called_with(
-            headers={})
+            headers={}, response_dict={})
 
         argv = ["", "post", "container"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.post_container.assert_called_with(
-            'container', headers={})
+            'container', headers={}, response_dict={})
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_post_container(self, connection):
         argv = ["", "post", "container",
                 "--read-acl", "test2:tester2",
@@ -331,9 +340,9 @@ class TestShell(unittest.TestCase):
                 'X-Container-Write': 'test3:tester3 test4',
                 'X-Container-Read': 'test2:tester2',
                 'X-Container-Sync-Key': 'secret',
-                'X-Container-Sync-To': 'othersite'})
+                'X-Container-Sync-To': 'othersite'}, response_dict={})
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_post_object(self, connection):
         argv = ["", "post", "container", "object",
                 "--meta", "Color:Blue",
@@ -344,7 +353,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.post_object.assert_called_with(
             'container', 'object', headers={
                 'Content-Type': 'text/plain',
-                'X-Object-Meta-Color': 'Blue'})
+                'X-Object-Meta-Color': 'Blue'}, response_dict={})
 
     @mock.patch('swiftclient.shell.generate_temp_url')
     def test_temp_url(self, temp_url):
@@ -356,7 +365,7 @@ class TestShell(unittest.TestCase):
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', 60, 'secret_key', 'GET')
 
-    @mock.patch('swiftclient.shell.Connection')
+    @mock.patch('swiftclient.service.Connection')
     def test_capabilities(self, connection):
         argv = ["", "capabilities"]
         connection.return_value.get_capabilities.return_value = {'swift': None}

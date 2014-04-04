@@ -10,6 +10,11 @@ swiftclient.client
 
 .. automodule:: swiftclient.client
 
+swiftclient.service
+===================
+
+.. automodule:: swiftclient.service
+
 swiftclient.exceptions
 ======================
 

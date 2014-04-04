@@ -20,58 +20,25 @@ import signal
 import socket
 import logging
 
-from errno import EEXIST, ENOENT
-from hashlib import md5
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
-from os import environ, listdir, makedirs, utime, _exit as os_exit
-from os.path import basename, dirname, getmtime, getsize, isdir, join, \
-    sep as os_path_sep
-from random import shuffle
-from sys import argv as sys_argv, exit, stderr, stdout
-from time import sleep, time, gmtime, strftime
-from six.moves.urllib.parse import quote, unquote
+from os import environ, walk, _exit as os_exit
+from os.path import isfile, isdir, join
+from sys import argv as sys_argv, exit, stderr
+from time import gmtime, strftime
 
-try:
-    import simplejson as json
-except ImportError:
-    import json
-
-from swiftclient import Connection, RequestException
-from swiftclient import command_helpers
-from swiftclient.utils import config_true_value, prt_bytes, generate_temp_url
-from swiftclient.multithreading import MultiThreadingManager
+from swiftclient import RequestException
+from swiftclient.utils import config_true_value, generate_temp_url, prt_bytes
+from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
+from swiftclient.service import SwiftService, SwiftError, SwiftUploadObject
+from swiftclient.command_helpers import print_account_stats, \
+    print_container_stats, print_object_stats
 
 
 BASENAME = 'swift'
-POLICY = 'X-Storage-Policy'
 commands = ('delete', 'download', 'list', 'post',
             'stat', 'upload', 'capabilities', 'info', 'tempurl')
-
-
-def get_conn(options):
-    """
-    Return a connection building it from the options.
-    """
-    return Connection(options.auth,
-                      options.user,
-                      options.key,
-                      options.retries,
-                      auth_version=options.auth_version,
-                      os_options=options.os_options,
-                      snet=options.snet,
-                      cacert=options.os_cacert,
-                      insecure=options.insecure,
-                      ssl_compression=options.ssl_compression)
-
-
-def mkdirs(path):
-    try:
-        makedirs(path)
-    except OSError as err:
-        if err.errno != EEXIST:
-            raise
 
 
 def immediate_exit(signum, frame):
@@ -104,7 +71,7 @@ Optional arguments:
 '''.strip("\n")
 
 
-def st_delete(parser, args, thread_manager):
+def st_delete(parser, args, output_manager):
     parser.add_option(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Delete all containers and objects.')
@@ -115,7 +82,7 @@ def st_delete(parser, args, thread_manager):
     parser.add_option(
         '', '--object-threads', type=int,
         default=10, help='Number of threads to use for deleting objects. '
-        'Default is 10')
+        'Default is 10.')
     parser.add_option('', '--container-threads', type=int,
                       default=10, help='Number of threads to use for '
                       'deleting containers. '
@@ -123,138 +90,70 @@ def st_delete(parser, args, thread_manager):
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (not args and not options.yes_all) or (args and options.yes_all):
-        thread_manager.error('Usage: %s delete %s\n%s',
+        output_manager.error('Usage: %s delete %s\n%s',
                              BASENAME, st_delete_options,
                              st_delete_help)
         return
 
-    def _delete_segment(item, conn):
-        (container, obj) = item
-        conn.delete_object(container, obj)
-        if options.verbose:
-            if conn.attempts > 2:
-                thread_manager.print_msg(
-                    '%s/%s [after %d attempts]', container,
-                    obj, conn.attempts)
-            else:
-                thread_manager.print_msg('%s/%s', container, obj)
-
-    def _delete_object(item, conn):
-        (container, obj) = item
+    _opts = vars(options)
+    _opts['object_dd_threads'] = options.object_threads
+    with SwiftService(options=_opts) as swift:
         try:
-            old_manifest = None
-            query_string = None
-            if not options.leave_segments:
-                try:
-                    headers = conn.head_object(container, obj)
-                    old_manifest = headers.get('x-object-manifest')
-                    if config_true_value(
-                            headers.get('x-static-large-object')):
-                        query_string = 'multipart-manifest=delete'
-                except ClientException as err:
-                    if err.http_status != 404:
-                        raise
-            conn.delete_object(container, obj, query_string=query_string)
-            if old_manifest:
-                segment_manager = thread_manager.queue_manager(
-                    _delete_segment, options.object_threads,
-                    connection_maker=create_connection)
-                segment_queue = segment_manager.queue
-                scontainer, sprefix = old_manifest.split('/', 1)
-                scontainer = unquote(scontainer)
-                sprefix = unquote(sprefix).rstrip('/') + '/'
-                for delobj in conn.get_container(scontainer,
-                                                 prefix=sprefix)[1]:
-                    segment_queue.put((scontainer, delobj['name']))
-                if not segment_queue.empty():
-                    with segment_manager:
-                        pass
-            if options.verbose:
-                path = options.yes_all and join(container, obj) or obj
-                if path[:1] in ('/', '\\'):
-                    path = path[1:]
-                if conn.attempts > 1:
-                    thread_manager.print_msg('%s [after %d attempts]', path,
-                                             conn.attempts)
-                else:
-                    thread_manager.print_msg(path)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error("Object '%s/%s' not found", container, obj)
-
-    def _delete_container(container, conn, object_queue):
-        try:
-            marker = ''
-            while True:
-                objects = [o['name'] for o in
-                           conn.get_container(container, marker=marker)[1]]
-                if not objects:
-                    break
-                for obj in objects:
-                    object_queue.put((container, obj))
-                marker = objects[-1]
-            while not object_queue.empty():
-                sleep(0.05)
-            attempts = 1
-            while True:
-                try:
-                    conn.delete_container(container)
-                    break
-                except ClientException as err:
-                    if err.http_status != 409:
-                        raise
-                    if attempts > 10:
-                        raise
-                    attempts += 1
-                    sleep(1)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error('Container %r not found', container)
-
-    create_connection = lambda: get_conn(options)
-    obj_manager = thread_manager.queue_manager(
-        _delete_object, options.object_threads,
-        connection_maker=create_connection)
-    with obj_manager as object_queue:
-        cont_manager = thread_manager.queue_manager(
-            _delete_container, options.container_threads, object_queue,
-            connection_maker=create_connection)
-        with cont_manager as container_queue:
             if not args:
-                conn = create_connection()
-                try:
-                    marker = ''
-                    while True:
-                        containers = [
-                            c['name']
-                            for c in conn.get_account(marker=marker)[1]]
-                        if not containers:
-                            break
-                        for container in containers:
-                            container_queue.put(container)
-                        marker = containers[-1]
-                except ClientException as err:
-                    if err.http_status != 404:
-                        raise
-                    thread_manager.error('Account not found')
-            elif len(args) == 1:
-                if '/' in args[0]:
-                    print(
-                        'WARNING: / in container name; you might have meant '
-                        '%r instead of %r.' % (
-                            args[0].replace('/', ' ', 1), args[0]),
-                        file=stderr)
-                container_queue.put(args[0])
+                del_iter = swift.delete()
             else:
-                for obj in args[1:]:
-                    object_queue.put((args[0], obj))
+                container = args[0]
+                if '/' in container:
+                    output_manager.error(
+                        'WARNING: / in container name; you '
+                        'might have meant %r instead of %r.' % (
+                        container.replace('/', ' ', 1), container)
+                    )
+                    return
+                objects = args[1:]
+                if objects:
+                    del_iter = swift.delete(container=container,
+                                            objects=objects)
+                else:
+                    del_iter = swift.delete(container=container)
+
+            for r in del_iter:
+                if r['success']:
+                    if options.verbose:
+                        if r['action'] == 'delete_object':
+                            c = r['container']
+                            o = r['object']
+                            p = '%s/%s' % (c, o) if options.yes_all else o
+                            a = r['attempts']
+                            if a > 1:
+                                output_manager.print_msg(
+                                    '%s [after %d attempts]', p, a)
+                            else:
+                                output_manager.print_msg(p)
+
+                        elif r['action'] == 'delete_segment':
+                            c = r['container']
+                            o = r['object']
+                            p = '%s/%s' % (c, o)
+                            a = r['attempts']
+                            if a > 1:
+                                output_manager.print_msg(
+                                    '%s [after %d attempts]', p, a)
+                            else:
+                                output_manager.print_msg(p)
+
+                else:
+                    # Special case error prints
+                    output_manager.error("An unexpected error occurred whilst "
+                                         "deleting: %s" % r['error'])
+        except SwiftError as err:
+            output_manager.error(err.value)
+
 
 st_download_options = '''[--all] [--marker] [--prefix <prefix>]
                       [--output <out_file>] [--object-threads <threads>]
                       [--container-threads <threads>] [--no-download]
-                      <container> [object]
+                      [--skip-identical] <container> <object>
 '''
 
 st_download_help = '''
@@ -263,25 +162,25 @@ Download objects from containers.
 Positional arguments:
   <container>           Name of container to download from. To download a
                         whole account, omit this and specify --all.
-  [object]              Name of object to download. Specify multiple times
+  <object>              Name of object to download. Specify multiple times
                         for multiple objects. Omit this to download all
                         objects from the container.
 
 Optional arguments:
-  --all                 Indicates that you really want to download everything
-                        in the account.
+  --all                 Indicates that you really want to download
+                        everything in the account.
   --marker              Marker to use when starting a container or account
                         download.
-  --prefix <prefix>     Only download items beginning with <prefix>.
+  --prefix <prefix>     Only download items beginning with <prefix>
   --output <out_file>   For a single file download, stream the output to
                         <out_file>. Specifying "-" as <out_file> will
                         redirect to stdout.
   --object-threads <threads>
                         Number of threads to use for downloading objects.
-                        Default is 10
+                        Default is 10.
   --container-threads <threads>
                         Number of threads to use for downloading containers.
-                        Default is 10
+                        Default is 10.
   --no-download         Perform download(s), but don't actually write anything
                         to disk.
   --header <header_name:header_value>
@@ -293,7 +192,7 @@ Optional arguments:
 '''.strip("\n")
 
 
-def st_download(parser, args, thread_manager):
+def st_download(parser, args, output_manager):
     parser.add_option(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Indicates that you really want to download '
@@ -335,205 +234,107 @@ def st_download(parser, args, thread_manager):
     args = args[1:]
     if options.out_file == '-':
         options.verbose = 0
+
     if options.out_file and len(args) != 2:
         exit('-o option only allowed for single file downloads')
+
     if (not args and not options.yes_all) or (args and options.yes_all):
-        thread_manager.error('Usage: %s download %s\n%s', BASENAME,
+        output_manager.error('Usage: %s download %s\n%s', BASENAME,
                              st_download_options, st_download_help)
         return
-    req_headers = split_headers(options.header, '', thread_manager)
 
-    def _download_object(queue_arg, conn):
-        if len(queue_arg) == 2:
-            container, obj = queue_arg
-            out_file = None
-        elif len(queue_arg) == 3:
-            container, obj, out_file = queue_arg
-        else:
-            raise Exception("Invalid queue_arg length of %s" % len(queue_arg))
-        path = options.yes_all and join(container, obj) or obj
-        path = path.lstrip(os_path_sep)
-        if options.skip_identical and out_file != '-':
-            filename = out_file if out_file else path
-            try:
-                fp = open(filename, 'rb')
-            except IOError:
-                pass
-            else:
-                with fp:
-                    md5sum = md5()
-                    while True:
-                        data = fp.read(65536)
-                        if not data:
-                            break
-                        md5sum.update(data)
-                    req_headers['If-None-Match'] = md5sum.hexdigest()
+    _opts = vars(options)
+    _opts['object_dd_threads'] = options.object_threads
+    with SwiftService(options=_opts) as swift:
         try:
-            start_time = time()
-            headers, body = \
-                conn.get_object(container, obj, resp_chunk_size=65536,
-                                headers=req_headers)
-            headers_receipt = time()
-            content_type = headers.get('content-type')
-            if 'content-length' in headers:
-                content_length = int(headers.get('content-length'))
-            else:
-                content_length = None
-            etag = headers.get('etag')
-            md5sum = None
-            pseudodir = False
-            no_file = options.no_download
-            make_dir = not no_file and out_file != "-"
-            if content_type.split(';', 1)[0] == 'text/directory':
-                if make_dir and not isdir(path):
-                    mkdirs(path)
-                read_length = 0
-                if 'x-object-manifest' not in headers and \
-                        'x-static-large-object' not in headers:
-                    md5sum = md5()
-                for chunk in body:
-                    read_length += len(chunk)
-                    if md5sum:
-                        md5sum.update(chunk)
-            else:
-                dirpath = dirname(path)
-                if make_dir and dirpath and not isdir(dirpath):
-                    mkdirs(dirpath)
-                if not no_file:
-                    if out_file == "-":
-                        fp = stdout
-                    elif out_file:
-                        fp = open(out_file, 'wb')
-                    else:
-                        if basename(path):
-                            fp = open(path, 'wb')
-                        else:
-                            pseudodir = True
-                            no_file = True
-                read_length = 0
-                if 'x-object-manifest' not in headers and \
-                        'x-static-large-object' not in headers:
-                    md5sum = md5()
-                for chunk in body:
-                    if not no_file:
-                        fp.write(chunk)
-                    read_length += len(chunk)
-                    if md5sum:
-                        md5sum.update(chunk)
-                if not no_file:
-                    fp.close()
-            if md5sum and md5sum.hexdigest() != etag:
-                thread_manager.error('%s: md5sum != etag, %s != %s',
-                                     path, md5sum.hexdigest(), etag)
-            if content_length is not None and read_length != content_length:
-                thread_manager.error(
-                    '%s: read_length != content_length, %d != %d',
-                    path, read_length, content_length)
-            if 'x-object-meta-mtime' in headers and not options.out_file \
-                    and not no_file:
-                mtime = float(headers['x-object-meta-mtime'])
-                utime(path, (mtime, mtime))
-            if options.verbose:
-                finish_time = time()
-                auth_time = conn.auth_end_time - start_time
-                headers_receipt = headers_receipt - start_time
-                total_time = finish_time - start_time
-                download_time = total_time - auth_time
-                if pseudodir:
-                    time_str = (
-                        'auth %.3fs, headers %.3fs, total %.3fs, pseudo' % (
-                            auth_time, headers_receipt, total_time))
-                else:
-                    time_str = (
-                        'auth %.3fs, headers %.3fs, total %.3fs, %.3f MB/s' % (
-                            auth_time, headers_receipt, total_time,
-                            float(read_length) / download_time / 1000000))
-                if conn.attempts > 1:
-                    thread_manager.print_msg('%s [%s after %d attempts]', path,
-                                             time_str, conn.attempts)
-                else:
-                    thread_manager.print_msg('%s [%s]', path, time_str)
-        except ClientException as err:
-            if err.http_status == 304 and options.skip_identical:
-                thread_manager.print_msg("Skipped identical file '%s'", path)
-                return
-            if err.http_status != 404:
-                raise
-            thread_manager.error("Object '%s/%s' not found", container, obj)
-
-    def _download_container(queue_arg, conn):
-        if len(queue_arg) == 2:
-            container, object_queue = queue_arg
-            prefix = None
-        elif len(queue_arg) == 3:
-            container, object_queue, prefix = queue_arg
-        else:
-            raise Exception("Invalid queue_arg length of %s" % len(queue_arg))
-        try:
-            marker = options.marker
-            while True:
-                objects = [
-                    o['name'] for o in
-                    conn.get_container(container, marker=marker,
-                                       prefix=prefix)[1]]
-                if not objects:
-                    break
-                marker = objects[-1]
-                shuffle(objects)
-                for obj in objects:
-                    object_queue.put((container, obj))
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error('Container %r not found', container)
-
-    create_connection = lambda: get_conn(options)
-    obj_manager = thread_manager.queue_manager(
-        _download_object, options.object_threads,
-        connection_maker=create_connection)
-    with obj_manager as object_queue:
-        cont_manager = thread_manager.queue_manager(
-            _download_container, options.container_threads,
-            connection_maker=create_connection)
-        with cont_manager as container_queue:
             if not args:
-                # --all case
-                conn = create_connection()
-                try:
-                    marker = options.marker
-                    while True:
-                        containers = [
-                            c['name'] for c in conn.get_account(
-                                marker=marker, prefix=options.prefix)[1]]
-                        if not containers:
-                            break
-                        marker = containers[-1]
-                        shuffle(containers)
-                        for container in containers:
-                            container_queue.put((container, object_queue))
-                except ClientException as err:
-                    if err.http_status != 404:
-                        raise
-                    thread_manager.error('Account not found')
-            elif len(args) == 1:
-                if '/' in args[0]:
-                    print(
-                        'WARNING: / in container name; you might have meant '
-                        '%r instead of %r.' % (
-                            args[0].replace('/', ' ', 1), args[0]),
-                        file=stderr)
-                container_queue.put((args[0], object_queue, options.prefix))
+                down_iter = swift.download()
             else:
-                if len(args) == 2:
-                    obj = args[1]
-                    object_queue.put((args[0], obj, options.out_file))
+                container = args[0]
+                if '/' in container:
+                    output_manager.error(
+                        'WARNING: / in container name; you '
+                        'might have meant %r instead of %r.' % (
+                        container.replace('/', ' ', 1), container)
+                    )
+                    return
+                objects = args[1:]
+                if not objects:
+                    down_iter = swift.download(container)
                 else:
-                    for obj in args[1:]:
-                        object_queue.put((args[0], obj))
+                    down_iter = swift.download(container, objects)
+
+            for down in down_iter:
+                if options.out_file == '-' and 'contents' in down:
+                    for chunk in down['contents']:
+                        output_manager.print_msg(chunk)
+                else:
+                    if down['success']:
+                        if options.verbose:
+                            start_time = down['start_time']
+                            headers_receipt = \
+                                down['headers_receipt'] - start_time
+                            auth_time = down['auth_end_time'] - start_time
+                            finish_time = down['finish_time']
+                            read_length = down['read_length']
+                            attempts = down['attempts']
+                            total_time = finish_time - start_time
+                            down_time = total_time - auth_time
+                            _mega = 1000000
+                            if down['pseudodir']:
+                                time_str = (
+                                    'auth %.3fs, headers %.3fs, total %.3fs, '
+                                    'pseudo' % (
+                                        auth_time, headers_receipt,
+                                        total_time
+                                    )
+                                )
+                            else:
+                                speed = float(read_length) / down_time / _mega
+                                time_str = (
+                                    'auth %.3fs, headers %.3fs, total %.3fs, '
+                                    '%.3f MB/s' % (
+                                        auth_time, headers_receipt,
+                                        total_time, speed
+                                    )
+                                )
+                            path = down['path']
+                            if attempts > 1:
+                                output_manager.print_msg(
+                                    '%s [%s after %d attempts]',
+                                    path, time_str, attempts
+                                )
+                            else:
+                                output_manager.print_msg(
+                                    '%s [%s]', path, time_str
+                                )
+                    else:
+                        error = down['error']
+                        path = down['path']
+                        container = down['container']
+                        obj = down['object']
+                        if isinstance(error, ClientException):
+                            if error.http_status == 304 and \
+                                    options.skip_identical:
+                                output_manager.print_msg(
+                                    "Skipped identical file '%s'", path)
+                                continue
+                            if error.http_status == 404:
+                                output_manager.error(
+                                    "Object '%s/%s' not found", container, obj)
+                                continue
+                        output_manager.error(
+                            "Error downloading object '%s/%s': %s",
+                            container, obj, error)
+
+        except SwiftError as e:
+            output_manager.error(e.value)
+
 
 st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
                   [--delimiter <delimiter>]
 '''
+
 st_list_help = '''
 Lists the containers for the account or the objects for a container.
 
@@ -552,7 +353,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_list(parser, args, thread_manager):
+def st_list(parser, args, output_manager):
     parser.add_option(
         '-l', '--long', dest='long', action='store_true', default=False,
         help='Long listing format, similar to ls -l.')
@@ -561,95 +362,104 @@ def st_list(parser, args, thread_manager):
         default=False, help='Report sizes in human readable format, '
         "similar to ls -lh.")
     parser.add_option(
-        '-t', '--totals', dest='totals', action='store_true', default=False,
-        help='Used with -l or --lh, only report totals.')
+        '-t', '--totals', dest='totals',
+        help='used with -l or --lh, only report totals.',
+        action='store_true', default=False)
     parser.add_option(
         '-p', '--prefix', dest='prefix',
         help='Only list items beginning with the prefix.')
     parser.add_option(
         '-d', '--delimiter', dest='delimiter',
-        help='Roll up items with the given delimiter. '
-        'For containers only. See OpenStack Swift API documentation for '
-        'what this means.')
+        help='Roll up items with the given delimiter. For containers '
+             'only. See OpenStack Swift API documentation for '
+             'what this means.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.delimiter and not args:
         exit('-d option only allowed for container listings')
-    if len(args) > 1 or len(args) == 1 and args[0].find('/') >= 0:
-        thread_manager.error('Usage: %s list %s\n%s', BASENAME,
-                             st_list_options, st_list_help)
-        return
 
-    conn = get_conn(options)
-    try:
-        marker = ''
-        total_count = total_bytes = 0
-        while True:
+    _opts = vars(options).copy()
+    if _opts['human']:
+        _opts.pop('human')
+        _opts['long'] = True
+
+    with SwiftService(options=_opts) as swift:
+        try:
             if not args:
-                items = \
-                    conn.get_account(marker=marker, prefix=options.prefix)[1]
+                stats_parts_gen = swift.list()
             else:
-                items = conn.get_container(
-                    args[0], marker=marker,
-                    prefix=options.prefix, delimiter=options.delimiter)[1]
-            if not items:
-                break
-            for item in items:
-                item_name = item.get('name')
-
-                if not options.long and not options.human:
-                    thread_manager.print_msg(
-                        item.get('name', item.get('subdir')))
+                container = args[0]
+                args = args[1:]
+                if "/" in container or args:
+                    output_manager.error(
+                        'Usage: %s list %s\n%s', BASENAME,
+                        st_list_options, st_list_help)
+                    return
                 else:
-                    item_bytes = item.get('bytes')
-                    total_bytes += item_bytes
-                    if len(args) == 0:    # listing containers
-                        byte_str = prt_bytes(item_bytes, options.human)
-                        count = item.get('count')
-                        total_count += count
-                        try:
-                            meta = conn.head_container(item_name)
-                            utc = gmtime(float(meta.get('x-timestamp')))
-                            datestamp = strftime('%Y-%m-%d %H:%M:%S', utc)
-                        except ClientException:
-                            datestamp = '????-??-?? ??:??:??'
-                        if not options.totals:
-                            thread_manager.print_msg("%5s %s %s %s", count,
-                                                     byte_str, datestamp,
-                                                     item_name)
-                    else:    # list container contents
-                        subdir = item.get('subdir')
-                        if subdir is None:
-                            byte_str = prt_bytes(item_bytes, options.human)
-                            date, xtime = item.get('last_modified').split('T')
-                            xtime = xtime.split('.')[0]
+                    stats_parts_gen = swift.list(container=container)
+
+            for stats in stats_parts_gen:
+                total_count = total_bytes = 0
+                container = stats.get("container", None)
+                if stats["success"]:
+                    for item in stats["listing"]:
+                        item_name = item.get('name')
+
+                        if not options.long and not options.human:
+                            output_manager.print_msg(
+                                item.get('name', item.get('subdir')))
                         else:
-                            byte_str = prt_bytes(0, options.human)
-                            date = xtime = ''
-                            item_name = subdir
-                        if not options.totals:
-                            thread_manager.print_msg("%s %10s %8s %s",
-                                                     byte_str, date, xtime,
-                                                     item_name)
+                            item_bytes = item.get('bytes')
+                            total_bytes += item_bytes
+                            if not container:    # listing containers
+                                byte_str = prt_bytes(item_bytes, options.human)
+                                count = item.get('count')
+                                total_count += count
+                                try:
+                                    meta = item.get('meta')
+                                    utc = gmtime(
+                                        float(meta.get('x-timestamp')))
+                                    datestamp = strftime(
+                                        '%Y-%m-%d %H:%M:%S', utc)
+                                except ClientException:
+                                    datestamp = '????-??-?? ??:??:??'
+                                if not options.totals:
+                                    output_manager.print_msg(
+                                        "%5s %s %s %s", count, byte_str,
+                                        datestamp, item_name)
+                            else:    # list container contents
+                                subdir = item.get('subdir')
+                                if subdir is None:
+                                    byte_str = prt_bytes(
+                                        item_bytes, options.human)
+                                    date, xtime = item.get(
+                                        'last_modified').split('T')
+                                    xtime = xtime.split('.')[0]
+                                else:
+                                    byte_str = prt_bytes(0, options.human)
+                                    date = xtime = ''
+                                    item_name = subdir
+                                if not options.totals:
+                                    output_manager.print_msg(
+                                        "%s %10s %8s %s", byte_str, date,
+                                        xtime, item_name)
 
-                marker = items[-1].get('name', items[-1].get('subdir'))
+                    # report totals
+                    if options.long or options.human:
+                        if not container:
+                            output_manager.print_msg(
+                                "%5s %s", prt_bytes(total_count, True),
+                                prt_bytes(total_bytes, options.human))
+                        else:
+                            output_manager.print_msg(
+                                prt_bytes(total_bytes, options.human))
 
-        # report totals
-        if options.long or options.human:
-            if len(args) == 0:
-                thread_manager.print_msg(
-                    "%5s %s", prt_bytes(total_count, True),
-                    prt_bytes(total_bytes, options.human))
-            else:
-                thread_manager.print_msg(prt_bytes(total_bytes, options.human))
+                else:
+                    raise stats["error"]
 
-    except ClientException as err:
-        if err.http_status != 404:
-            raise
-        if not args:
-            thread_manager.error('Account not found')
-        else:
-            thread_manager.error('Container %r not found', args[0])
+        except SwiftError as e:
+            output_manager.error(e.value)
+
 
 st_stat_options = '''[--lh]
                   [container] [object]
@@ -660,8 +470,7 @@ Displays information for the account, container, or object.
 
 Positional arguments:
   [container]           Name of container to stat from.
-  [object]              Name of object to stat. Specify multiple times
-                        for multiple objects.
+  [object]              Name of object to stat.
 
 Optional arguments:
   --lh                  Report sizes in human readable format similar to
@@ -669,44 +478,57 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_stat(parser, args, thread_manager):
+def st_stat(parser, args, output_manager):
     parser.add_option(
         '--lh', dest='human', action='store_true', default=False,
         help='Report sizes in human readable format similar to ls -lh.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
-    conn = get_conn(options)
-    if not args:
-        try:
-            command_helpers.stat_account(conn, options, thread_manager)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error('Account not found')
-    elif len(args) == 1:
-        if '/' in args[0]:
-            print(
-                'WARNING: / in container name; you might have meant %r instead'
-                ' of %r.' % (
-                    args[0].replace('/', ' ', 1), args[0]),
-                file=stderr)
-        try:
-            command_helpers.stat_container(conn, options, args,
-                                           thread_manager)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error('Container %r not found', args[0])
-    elif len(args) == 2:
-        try:
-            command_helpers.stat_object(conn, options, args, thread_manager)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error("Object %s/%s not found", args[0], args[1])
-    else:
-        thread_manager.error('Usage: %s stat %s\n%s', BASENAME,
-                             st_stat_options, st_stat_help)
+
+    _opts = vars(options)
+
+    with SwiftService(options=_opts) as swift:
+        if not args:
+            stat_result = swift.stat()
+            items = stat_result['items']
+            headers = stat_result['headers']
+            print_account_stats(items, headers, output_manager)
+        else:
+            try:
+                container = args[0]
+                if '/' in container:
+                    output_manager.error(
+                        'WARNING: / in container name; you might have '
+                        'meant %r instead of %r.' %
+                        (container.replace('/', ' ', 1), container))
+                    return
+                args = args[1:]
+                if not args:
+                    stat_result = swift.stat(container=container)
+                    items = stat_result['items']
+                    headers = stat_result['headers']
+                    print_container_stats(items, headers, output_manager)
+                else:
+                    if len(args) == 1:
+                        objects = [args[0]]
+                        stat_results = swift.stat(
+                            container=container, objects=objects)
+                        for stat_result in stat_results:  # only 1 result
+                            if stat_result["success"]:
+                                items = stat_result['items']
+                                headers = stat_result['headers']
+                                print_object_stats(
+                                    items, headers, output_manager
+                                )
+                            else:
+                                raise(stat_result["error"])
+                    else:
+                        output_manager.error(
+                            'Usage: %s stat %s\n%s', BASENAME,
+                            st_stat_options, st_stat_help)
+
+            except SwiftError as e:
+                output_manager.error(e.value)
 
 
 st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to]
@@ -739,7 +561,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_post(parser, args, thread_manager):
+def st_post(parser, args, output_manager):
     parser.add_option(
         '-r', '--read-acl', dest='read_acl', help='Read ACL for containers. '
         'Quick summary of ACL syntax: .r:*, .r:-.example.com, '
@@ -768,54 +590,41 @@ def st_post(parser, args, thread_manager):
     if (options.read_acl or options.write_acl or options.sync_to or
             options.sync_key) and not args:
         exit('-r, -w, -t, and -k options only allowed for containers')
-    conn = get_conn(options)
-    if not args:
-        headers = split_headers(
-            options.meta, 'X-Account-Meta-', thread_manager)
-        headers.update(split_headers(options.header, '', thread_manager))
+
+    _opts = vars(options)
+
+    with SwiftService(options=_opts) as swift:
         try:
-            conn.post_account(headers=headers)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error('Account not found')
-    elif len(args) == 1:
-        if '/' in args[0]:
-            print(
-                'WARNING: / in container name; you might have meant %r instead'
-                ' of %r.' % (
-                    args[0].replace('/', ' ', 1), args[0]),
-                file=stderr)
-        headers = split_headers(options.meta, 'X-Container-Meta-',
-                                thread_manager)
-        headers.update(split_headers(options.header, '', thread_manager))
-        if options.read_acl is not None:
-            headers['X-Container-Read'] = options.read_acl
-        if options.write_acl is not None:
-            headers['X-Container-Write'] = options.write_acl
-        if options.sync_to is not None:
-            headers['X-Container-Sync-To'] = options.sync_to
-        if options.sync_key is not None:
-            headers['X-Container-Sync-Key'] = options.sync_key
-        try:
-            conn.post_container(args[0], headers=headers)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            conn.put_container(args[0], headers=headers)
-    elif len(args) == 2:
-        headers = split_headers(options.meta, 'X-Object-Meta-', thread_manager)
-        # add header options to the headers object for the request.
-        headers.update(split_headers(options.header, '', thread_manager))
-        try:
-            conn.post_object(args[0], args[1], headers=headers)
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error("Object '%s/%s' not found", args[0], args[1])
-    else:
-        thread_manager.error('Usage: %s post %s\n%s', BASENAME,
-                             st_post_options, st_post_help)
+            if not args:
+                swift.post()
+            else:
+                container = args[0]
+                if '/' in container:
+                    output_manager.error(
+                        'WARNING: / in container name; you might have '
+                        'meant %r instead of %r.' %
+                        (args[0].replace('/', ' ', 1), args[0]))
+                    return
+                args = args[1:]
+                if args:
+                    if len(args) == 1:
+                        objects = [args[0]]
+                        results_iterator = swift.post(
+                            container=container, objects=objects
+                        )
+                        for result in results_iterator:  # only 1 result
+                            if not result["success"]:
+                                raise(result["error"])
+                    else:
+                        output_manager.error(
+                            'Usage: %s post %s\n%s', BASENAME,
+                            st_post_options, st_post_help)
+                else:
+                    swift.post(container=container)
+
+        except SwiftError as e:
+            output_manager.error(e.value)
+
 
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
@@ -867,7 +676,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_upload(parser, args, thread_manager):
+def st_upload(parser, args, output_manager):
     parser.add_option(
         '-c', '--changed', action='store_true', dest='changed',
         default=False, help='Only upload files that have changed since '
@@ -917,336 +726,112 @@ def st_upload(parser, args, thread_manager):
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if len(args) < 2:
-        thread_manager.error(
+        output_manager.error(
             'Usage: %s upload %s\n%s', BASENAME, st_upload_options,
             st_upload_help)
         return
-
-    def _segment_job(job, conn):
-        if job.get('delete', False):
-            conn.delete_object(job['container'], job['obj'])
-        else:
-            fp = open(job['path'], 'rb')
-            fp.seek(job['segment_start'])
-            seg_container = args[0] + '_segments'
-            if options.segment_container:
-                seg_container = options.segment_container
-            etag = conn.put_object(job.get('container', seg_container),
-                                   job['obj'], fp,
-                                   content_length=job['segment_size'])
-            job['segment_location'] = '/%s/%s' % (seg_container, job['obj'])
-            job['segment_etag'] = etag
-        if options.verbose and 'log_line' in job:
-            if conn.attempts > 1:
-                thread_manager.print_msg('%s [after %d attempts]',
-                                         job['log_line'], conn.attempts)
-            else:
-                thread_manager.print_msg(job['log_line'])
-        return job
-
-    def _object_job(job, conn):
-        path = job['path']
-        container = job.get('container', args[0])
-        dir_marker = job.get('dir_marker', False)
-        object_name = job['object_name']
-        try:
-            if object_name is not None:
-                object_name.replace("\\", "/")
-                obj = object_name
-            else:
-                obj = path
-                if obj.startswith('./') or obj.startswith('.\\'):
-                    obj = obj[2:]
-                if obj.startswith('/'):
-                    obj = obj[1:]
-            put_headers = {'x-object-meta-mtime': "%f" % getmtime(path)}
-            if dir_marker:
-                if options.changed:
-                    try:
-                        headers = conn.head_object(container, obj)
-                        ct = headers.get('content-type')
-                        cl = int(headers.get('content-length'))
-                        et = headers.get('etag')
-                        mt = headers.get('x-object-meta-mtime')
-                        if ct.split(';', 1)[0] == 'text/directory' and \
-                                cl == 0 and \
-                                et == 'd41d8cd98f00b204e9800998ecf8427e' and \
-                                mt == put_headers['x-object-meta-mtime']:
-                            return
-                    except ClientException as err:
-                        if err.http_status != 404:
-                            raise
-                conn.put_object(container, obj, '', content_length=0,
-                                content_type='text/directory',
-                                headers=put_headers)
-            else:
-                # We need to HEAD all objects now in case we're overwriting a
-                # manifest object and need to delete the old segments
-                # ourselves.
-                old_manifest = None
-                old_slo_manifest_paths = []
-                new_slo_manifest_paths = set()
-                if options.changed or options.skip_identical \
-                        or not options.leave_segments:
-                    if options.skip_identical:
-                        checksum = None
-                        try:
-                            fp = open(path, 'rb')
-                        except IOError:
-                            pass
-                        else:
-                            with fp:
-                                md5sum = md5()
-                                while True:
-                                    data = fp.read(65536)
-                                    if not data:
-                                        break
-                                    md5sum.update(data)
-                            checksum = md5sum.hexdigest()
-                    try:
-                        headers = conn.head_object(container, obj)
-                        cl = int(headers.get('content-length'))
-                        mt = headers.get('x-object-meta-mtime')
-                        if (options.skip_identical and
-                                checksum == headers.get('etag')):
-                            thread_manager.print_msg(
-                                "Skipped identical file '%s'", path)
-                            return
-                        if options.changed and cl == getsize(path) and \
-                                mt == put_headers['x-object-meta-mtime']:
-                            return
-                        if not options.leave_segments:
-                            old_manifest = headers.get('x-object-manifest')
-                            if config_true_value(
-                                    headers.get('x-static-large-object')):
-                                headers, manifest_data = conn.get_object(
-                                    container, obj,
-                                    query_string='multipart-manifest=get')
-                                for old_seg in json.loads(manifest_data):
-                                    seg_path = old_seg['name'].lstrip('/')
-                                    if isinstance(seg_path, unicode):
-                                        seg_path = seg_path.encode('utf-8')
-                                    old_slo_manifest_paths.append(seg_path)
-                    except ClientException as err:
-                        if err.http_status != 404:
-                            raise
-                # Merge the command line header options to the put_headers
-                put_headers.update(split_headers(options.header, '',
-                                                 thread_manager))
-                # Don't do segment job if object is not big enough
-                if options.segment_size and \
-                        getsize(path) > int(options.segment_size):
-                    seg_container = container + '_segments'
-                    if options.segment_container:
-                        seg_container = options.segment_container
-                    full_size = getsize(path)
-
-                    slo_segments = []
-                    error_counter = [0]
-                    segment_manager = thread_manager.queue_manager(
-                        _segment_job, options.segment_threads,
-                        store_results=slo_segments,
-                        error_counter=error_counter,
-                        connection_maker=create_connection)
-                    with segment_manager as segment_queue:
-                        segment = 0
-                        segment_start = 0
-                        while segment_start < full_size:
-                            segment_size = int(options.segment_size)
-                            if segment_start + segment_size > full_size:
-                                segment_size = full_size - segment_start
-                            if options.use_slo:
-                                segment_name = '%s/slo/%s/%s/%s/%08d' % (
-                                    obj, put_headers['x-object-meta-mtime'],
-                                    full_size, options.segment_size, segment)
-                            else:
-                                segment_name = '%s/%s/%s/%s/%08d' % (
-                                    obj, put_headers['x-object-meta-mtime'],
-                                    full_size, options.segment_size, segment)
-                            segment_queue.put(
-                                {'path': path, 'obj': segment_name,
-                                 'segment_start': segment_start,
-                                 'segment_size': segment_size,
-                                 'segment_index': segment,
-                                 'log_line': '%s segment %s' % (obj, segment)})
-                            segment += 1
-                            segment_start += segment_size
-                    if error_counter[0]:
-                        raise ClientException(
-                            'Aborting manifest creation '
-                            'because not all segments could be uploaded. %s/%s'
-                            % (container, obj))
-                    if options.use_slo:
-                        slo_segments.sort(key=lambda d: d['segment_index'])
-                        for seg in slo_segments:
-                            seg_loc = seg['segment_location'].lstrip('/')
-                            if isinstance(seg_loc, unicode):
-                                seg_loc = seg_loc.encode('utf-8')
-                            new_slo_manifest_paths.add(seg_loc)
-
-                        manifest_data = json.dumps([
-                            {'path': d['segment_location'],
-                             'etag': d['segment_etag'],
-                             'size_bytes': d['segment_size']}
-                            for d in slo_segments])
-
-                        put_headers['x-static-large-object'] = 'true'
-                        conn.put_object(container, obj, manifest_data,
-                                        headers=put_headers,
-                                        query_string='multipart-manifest=put')
-                    else:
-                        new_object_manifest = '%s/%s/%s/%s/%s/' % (
-                            quote(seg_container), quote(obj),
-                            put_headers['x-object-meta-mtime'], full_size,
-                            options.segment_size)
-                        if old_manifest and old_manifest.rstrip('/') == \
-                                new_object_manifest.rstrip('/'):
-                            old_manifest = None
-                        put_headers['x-object-manifest'] = new_object_manifest
-                        conn.put_object(container, obj, '', content_length=0,
-                                        headers=put_headers)
-                else:
-                    conn.put_object(
-                        container, obj, open(path, 'rb'),
-                        content_length=getsize(path), headers=put_headers)
-                if old_manifest or old_slo_manifest_paths:
-                    segment_manager = thread_manager.queue_manager(
-                        _segment_job, options.segment_threads,
-                        connection_maker=create_connection)
-                    segment_queue = segment_manager.queue
-                    if old_manifest:
-                        scontainer, sprefix = old_manifest.split('/', 1)
-                        scontainer = unquote(scontainer)
-                        sprefix = unquote(sprefix).rstrip('/') + '/'
-                        for delobj in conn.get_container(scontainer,
-                                                         prefix=sprefix)[1]:
-                            segment_queue.put(
-                                {'delete': True,
-                                 'container': scontainer,
-                                 'obj': delobj['name']})
-                    if old_slo_manifest_paths:
-                        for seg_to_delete in old_slo_manifest_paths:
-                            if seg_to_delete in new_slo_manifest_paths:
-                                continue
-                            scont, sobj = \
-                                seg_to_delete.split('/', 1)
-                            segment_queue.put(
-                                {'delete': True,
-                                 'container': scont, 'obj': sobj})
-                    if not segment_queue.empty():
-                        with segment_manager:
-                            pass
-            if options.verbose:
-                if conn.attempts > 1:
-                    thread_manager.print_msg('%s [after %d attempts]', obj,
-                                             conn.attempts)
-                else:
-                    thread_manager.print_msg(obj)
-        except OSError as err:
-            if err.errno != ENOENT:
-                raise
-            thread_manager.error('Local file %r not found', path)
-
-    def _upload_dir(path, object_queue, object_name):
-        names = listdir(path)
-        if not names:
-            object_queue.put({'path': path, 'object_name': object_name,
-                             'dir_marker': True})
-        else:
-            for name in listdir(path):
-                subpath = join(path, name)
-                subobjname = None
-                if object_name is not None:
-                    subobjname = join(object_name, name)
-                if isdir(subpath):
-                    _upload_dir(subpath, object_queue, subobjname)
-                else:
-                    object_queue.put({'path': subpath,
-                                     'object_name': subobjname})
-
-    create_connection = lambda: get_conn(options)
-    conn = create_connection()
-
-    # Try to create the container, just in case it doesn't exist. If this
-    # fails, it might just be because the user doesn't have container PUT
-    # permissions, so we'll ignore any error. If there's really a problem,
-    # it'll surface on the first object PUT.
-    container_name = args[0]
-    try:
-        policy_header = {}
-        _header = split_headers(options.header)
-        if POLICY in _header:
-            policy_header[POLICY] = \
-                _header[POLICY]
-        try:
-            conn.put_container(args[0], policy_header)
-        except ClientException as err:
-            if err.http_status != 409:
-                raise
-            if POLICY in _header:
-                thread_manager.error('Error trying to create %s with '
-                                     'Storage Policy %s', args[0],
-                                     _header[POLICY].strip())
-        if options.segment_size is not None:
-            container_name = seg_container = args[0] + '_segments'
-            if options.segment_container:
-                container_name = seg_container = options.segment_container
-            seg_headers = {}
-            if POLICY in _header:
-                seg_headers[POLICY] = \
-                    _header[POLICY]
-            else:
-                # Since no storage policy was specified on the command line,
-                # rather than just letting swift pick the default storage
-                # policy, we'll try to create the segments container with the
-                # same as the upload container
-                _meta = conn.head_container(args[0])
-                if 'x-storage-policy' in _meta:
-                    seg_headers[POLICY] = \
-                        _meta.get('x-storage-policy')
-            try:
-                conn.put_container(seg_container, seg_headers)
-            except ClientException as err:
-                if err.http_status != 409:
-                    raise
-                if POLICY in seg_headers:
-                    thread_manager.error('Error trying to create %s with '
-                                         'Storage Policy %s', seg_container,
-                                         seg_headers[POLICY].strip())
-    except ClientException as err:
-        msg = ' '.join(str(x) for x in (err.http_status, err.http_reason))
-        if err.http_response_content:
-            if msg:
-                msg += ': '
-            msg += err.http_response_content[:60]
-        thread_manager.error(
-            'Error trying to create container %r: %s', container_name,
-            msg)
-    except Exception as err:
-        thread_manager.error(
-            'Error trying to create container %r: %s', container_name,
-            err)
+    else:
+        container = args[0]
+        files = args[1:]
 
     if options.object_name is not None:
-        if len(args[1:]) > 1:
-            thread_manager.error('object-name only be used with 1 file or dir')
+        if len(files) > 1:
+            output_manager.error('object-name only be used with 1 file or dir')
             return
-    object_name = options.object_name
+        else:
+            orig_path = files[0]
 
-    object_manager = thread_manager.queue_manager(
-        _object_job, options.object_threads,
-        connection_maker=create_connection)
-    with object_manager as object_queue:
+    _opts = vars(options)
+    _opts['object_uu_threads'] = options.object_threads
+    with SwiftService(options=_opts) as swift:
         try:
-            for arg in args[1:]:
-                if isdir(arg):
-                    _upload_dir(arg, object_queue, object_name)
+            objs = []
+            dir_markers = []
+            for f in files:
+                if isfile(f):
+                    objs.append(f)
+                elif isdir(f):
+                    for (_dir, _ds, _fs) in walk(f):
+                        if not (_ds + _fs):
+                            dir_markers.append(_dir)
+                        else:
+                            objs.extend([join(_dir, _f) for _f in _fs])
                 else:
-                    object_queue.put({'path': arg, 'object_name': object_name})
-        except ClientException as err:
-            if err.http_status != 404:
-                raise
-            thread_manager.error('Account not found')
+                    output_manager.error("Local file '%s' not found" % f)
+
+            # Now that we've collected all the required files and dir markers
+            # build the tuples for the call to upload
+            if options.object_name is not None:
+                objs = [
+                    SwiftUploadObject(
+                        o, object_name=o.replace(
+                            orig_path, options.object_name, 1
+                        )
+                    ) for o in objs
+                ]
+                dir_markers = [
+                    SwiftUploadObject(
+                        None, object_name=d.replace(
+                            orig_path, options.object_name, 1
+                        ), options={'dir_marker': True}
+                    ) for d in dir_markers
+                ]
+
+            for r in swift.upload(container, objs + dir_markers):
+                if r['success']:
+                    if options.verbose:
+                        if 'attempts' in r and r['attempts'] > 1:
+                            if 'object' in r:
+                                output_manager.print_msg(
+                                    '%s [after %d attempts]' %
+                                    (r['object'],
+                                     r['attempts'])
+                                )
+                        else:
+                            if 'object' in r:
+                                output_manager.print_msg(r['object'])
+                            elif 'for_object' in r:
+                                output_manager.print_msg(
+                                    '%s segment %s' % (r['for_object'],
+                                                       r['segment_index'])
+                                )
+                else:
+                    error = r['error']
+                    if isinstance(error, SwiftError):
+                        output_manager.error("%s" % error)
+                    elif isinstance(error, ClientException):
+                        if r['action'] == "create_container":
+                            if 'X-Storage-Policy' in r['headers']:
+                                output_manager.error(
+                                    'Error trying to create container %s with '
+                                    'Storage Policy %s', container,
+                                    r['headers']['X-Storage-Policy'].strip()
+                                )
+                            else:
+                                msg = ' '.join(str(x) for x in (
+                                    error.http_status, error.http_reason)
+                                )
+                                if error.http_response_content:
+                                    if msg:
+                                        msg += ': '
+                                    msg += error.http_response_content[:60]
+                                output_manager.error(
+                                    'Error trying to create container %r: %s',
+                                    container, msg
+                                )
+                        else:
+                            output_manager.error("%s" % error)
+                    else:
+                        if r['action'] == "create_container":
+                            output_manager.error(
+                                'Error trying to create container %r: %s',
+                                container, error
+                            )
+                        else:
+                            output_manager.error("%s" % error)
+
+        except SwiftError as e:
+            output_manager.error("%s" % e)
 
 
 st_capabilities_options = "[<proxy_url>]"
@@ -1260,35 +845,47 @@ Optional positional arguments:
 st_info_help = st_capabilities_help
 
 
-def st_capabilities(parser, args, thread_manager):
+def st_capabilities(parser, args, output_manager):
     def _print_compo_cap(name, capabilities):
         for feature, options in sorted(capabilities.items(),
                                        key=lambda x: x[0]):
-            thread_manager.print_msg("%s: %s" % (name, feature))
+            output_manager.print_msg("%s: %s" % (name, feature))
             if options:
-                thread_manager.print_msg(" Options:")
+                output_manager.print_msg(" Options:")
                 for key, value in sorted(options.items(),
                                          key=lambda x: x[0]):
-                    thread_manager.print_msg("  %s: %s" % (key, value))
+                    output_manager.print_msg("  %s: %s" % (key, value))
+
     (options, args) = parse_args(parser, args)
-    if (args and len(args) > 2):
-        thread_manager.error('Usage: %s capabilities %s\n%s',
+    if args and len(args) > 2:
+        output_manager.error('Usage: %s capabilities %s\n%s',
                              BASENAME,
                              st_capabilities_options, st_capabilities_help)
         return
-    conn = get_conn(options)
-    url = None
-    if len(args) == 2:
-        url = args[1]
-    capabilities = conn.get_capabilities(url)
-    _print_compo_cap('Core', {'swift': capabilities['swift']})
-    del capabilities['swift']
-    _print_compo_cap('Additional middleware', capabilities)
+
+    _opts = vars(options)
+    with SwiftService(options=_opts) as swift:
+        try:
+            if len(args) == 2:
+                url = args[1]
+                capabilities_result = swift.capabilities(url)
+                capabilities = capabilities_result['capabilities']
+            else:
+                capabilities_result = swift.capabilities()
+                capabilities = capabilities_result['capabilities']
+
+            _print_compo_cap('Core', {'swift': capabilities['swift']})
+            del capabilities['swift']
+            _print_compo_cap('Additional middleware', capabilities)
+        except SwiftError as e:
+            output_manager.error(e.value)
+
 
 st_info = st_capabilities
 
 
 st_tempurl_options = '<method> <seconds> <path> <key>'
+
 
 st_tempurl_help = '''
 Generates a temporary URL for a Swift object.
@@ -1325,30 +922,6 @@ def st_tempurl(parser, args, thread_manager):
                                  method.upper())
     url = generate_temp_url(path, seconds, key, method)
     thread_manager.print_msg(url)
-
-
-def split_headers(options, prefix='', thread_manager=None):
-    """
-    Splits 'Key: Value' strings and returns them as a dictionary.
-
-    :param options: An array of 'Key: Value' strings
-    :param prefix: String to prepend to all of the keys in the dictionary.
-    :param thread_manager: MultiThreadingManager for thread safe error
-        reporting.
-    """
-    headers = {}
-    for item in options:
-        split_item = item.split(':', 1)
-        if len(split_item) == 2:
-            headers[(prefix + split_item[0]).title()] = split_item[1]
-        else:
-            error_string = "Metadata parameter %s must contain a ':'.\n%s" \
-                           % (item, st_post_help)
-            if thread_manager:
-                thread_manager.error(error_string)
-            else:
-                exit(error_string)
-    return headers
 
 
 def parse_args(parser, args, enforce_requires=True):
@@ -1480,7 +1053,6 @@ Positional arguments:
     capabilities         List cluster capabilities.
     tempurl              Create a temporary URL
 
-
 Examples:
   %%prog download --help
 
@@ -1517,7 +1089,7 @@ Examples:
                       'of all http queries regardless of result status.')
     parser.add_option('--info', action='store_true', dest='info',
                       default=False, help='Show the curl commands and results '
-                      ' of all http queries which return an error.')
+                      'of all http queries which return an error.')
     parser.add_option('-q', '--quiet', action='store_const', dest='verbose',
                       const=0, default=1, help='Suppress status output.')
     parser.add_option('-A', '--auth', dest='auth',
@@ -1708,16 +1280,15 @@ Examples:
         elif options.info:
             logging.basicConfig(level=logging.INFO)
 
-    had_error = False
+    with OutputManager() as output:
 
-    with MultiThreadingManager() as thread_manager:
         parser.usage = globals()['st_%s_help' % args[0]]
         try:
-            globals()['st_%s' % args[0]](parser, argv[1:], thread_manager)
+            globals()['st_%s' % args[0]](parser, argv[1:], output)
         except (ClientException, RequestException, socket.error) as err:
-            thread_manager.error(str(err))
+            output.error(str(err))
 
-        had_error = thread_manager.error_count
+        had_error = output.error_count > 0
 
     if had_error:
         exit(1)
