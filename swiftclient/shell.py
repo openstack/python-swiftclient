@@ -824,9 +824,10 @@ Optional arguments:
   --changed             Only upload files that have changed since the last
                         upload.
   --skip-identical      Skip uploading files that are identical on both sides.
-  --segment-size <size> Upload files in segments no larger than <size> and
-                        then create a "manifest" file that will download all
-                        the segments as if it were the original file.
+  --segment-size <size> Upload files in segments no larger than <size> (in
+                        Bytes) and then create a "manifest" file that will
+                        download all the segments as if it were the original
+                        file.
   --segment-container <container>
                         Upload the segments into the specified container. If
                         not specified, the segments will be uploaded to a
@@ -864,9 +865,9 @@ def st_upload(parser, args, thread_manager):
         'both sides.')
     parser.add_option(
         '-S', '--segment-size', dest='segment_size', help='Upload files '
-        'in segments no larger than <size> and then create a "manifest" '
-        'file that will download all the segments as if it were the original '
-        'file.')
+        'in segments no larger than <size> (in Bytes) and then create a '
+        '"manifest" file that will download all the segments as if it were '
+        'the original file.')
     parser.add_option(
         '-C', '--segment-container', dest='segment_container',
         help='Upload the segments into the specified container. '
