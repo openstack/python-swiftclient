@@ -15,7 +15,12 @@
 
 import sys
 import time
-import mock
+
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
 import testtools
 import threading
 import six

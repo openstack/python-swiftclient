@@ -14,8 +14,13 @@
 # limitations under the License.
 
 # TODO: More tests
-import mock
 import logging
+
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
 import six
 import socket
 import testtools

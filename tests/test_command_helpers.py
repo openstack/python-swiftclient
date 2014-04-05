@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
 from six import StringIO
-import mock
 import testtools
 
 from swiftclient import command_helpers as h
