@@ -19,7 +19,9 @@ import mock
 import os
 import tempfile
 import unittest
+import textwrap
 from testtools import ExpectedException
+
 
 import six
 
@@ -46,6 +48,11 @@ mocked_os_environ = {
     'ST_USER': 'test:tester',
     'ST_KEY': 'testing'
 }
+clean_os_environ = {}
+environ_prefixes = ('ST_', 'OS_')
+for key in os.environ:
+    if any(key.startswith(m) for m in environ_prefixes):
+        clean_os_environ[key] = ''
 
 clean_os_environ = {}
 environ_prefixes = ('ST_', 'OS_')
@@ -1528,6 +1535,101 @@ class TestAuth(MockHttpTest):
                 'x-auth-token': token + '_new',
             }),
         ])
+
+    def test_auth(self):
+        headers = {
+            'x-auth-token': 'AUTH_tk5b6b12',
+            'x-storage-url': 'https://swift.storage.example.com/v1/AUTH_test',
+        }
+        mock_resp = self.fake_http_connection(200, headers=headers)
+        with mock.patch('swiftclient.client.http_connection', new=mock_resp):
+            stdout = six.StringIO()
+            with mock.patch('sys.stdout', new=stdout):
+                argv = [
+                    '',
+                    'auth',
+                    '--auth', 'https://swift.storage.example.com/auth/v1.0',
+                    '--user', 'test:tester', '--key', 'testing',
+                ]
+                swiftclient.shell.main(argv)
+
+        expected = """
+        export OS_STORAGE_URL=https://swift.storage.example.com/v1/AUTH_test
+        export OS_AUTH_TOKEN=AUTH_tk5b6b12
+        """
+        self.assertEquals(textwrap.dedent(expected).lstrip(),
+                          stdout.getvalue())
+
+    def test_auth_verbose(self):
+        with mock.patch('swiftclient.client.http_connection') as mock_conn:
+            stdout = six.StringIO()
+            with mock.patch('sys.stdout', new=stdout):
+                argv = [
+                    '',
+                    'auth',
+                    '--auth', 'https://swift.storage.example.com/auth/v1.0',
+                    '--user', 'test:tester', '--key', 'te$tin&',
+                    '--verbose',
+                ]
+                swiftclient.shell.main(argv)
+
+        expected = """
+        export ST_AUTH=https://swift.storage.example.com/auth/v1.0
+        export ST_USER=test:tester
+        export ST_KEY='te$tin&'
+        """
+        self.assertEquals(textwrap.dedent(expected).lstrip(),
+                          stdout.getvalue())
+        self.assertEqual([], mock_conn.mock_calls)
+
+    def test_auth_v2(self):
+        os_options = {'tenant_name': 'demo'}
+        with mock.patch('swiftclient.client.get_auth_keystone',
+                        new=fake_get_auth_keystone(os_options)):
+            stdout = six.StringIO()
+            with mock.patch('sys.stdout', new=stdout):
+                argv = [
+                    '',
+                    'auth', '-V2',
+                    '--auth', 'https://keystone.example.com/v2.0/',
+                    '--os-tenant-name', 'demo',
+                    '--os-username', 'demo', '--os-password', 'admin',
+                ]
+                swiftclient.shell.main(argv)
+
+        expected = """
+        export OS_STORAGE_URL=http://url/
+        export OS_AUTH_TOKEN=token
+        """
+        self.assertEquals(textwrap.dedent(expected).lstrip(),
+                          stdout.getvalue())
+
+    def test_auth_verbose_v2(self):
+        with mock.patch('swiftclient.client.get_auth_keystone') \
+                as mock_keystone:
+            stdout = six.StringIO()
+            with mock.patch('sys.stdout', new=stdout):
+                argv = [
+                    '',
+                    'auth', '-V2',
+                    '--auth', 'https://keystone.example.com/v2.0/',
+                    '--os-tenant-name', 'demo',
+                    '--os-username', 'demo', '--os-password', '$eKr3t',
+                    '--verbose',
+                ]
+                swiftclient.shell.main(argv)
+
+        expected = """
+        export OS_IDENTITY_API_VERSION=2.0
+        export OS_AUTH_VERSION=2.0
+        export OS_AUTH_URL=https://keystone.example.com/v2.0/
+        export OS_PASSWORD='$eKr3t'
+        export OS_TENANT_NAME=demo
+        export OS_USERNAME=demo
+        """
+        self.assertEquals(textwrap.dedent(expected).lstrip(),
+                          stdout.getvalue())
+        self.assertEqual([], mock_keystone.mock_calls)
 
 
 class TestCrossAccountObjectAccess(TestBase, MockHttpTest):

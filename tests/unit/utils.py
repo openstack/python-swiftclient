@@ -38,8 +38,10 @@ def fake_get_auth_keystone(expected_os_options=None, exc=None,
         if exc:
             raise exc('test')
         # TODO: some way to require auth_url, user and key?
-        if expected_os_options and actual_os_options != expected_os_options:
-            return "", None
+        if expected_os_options:
+            for key, value in actual_os_options.items():
+                if value and value != expected_os_options.get(key):
+                    return "", None
         if 'required_kwargs' in kwargs:
             for k, v in kwargs['required_kwargs'].items():
                 if v != actual_kwargs.get(k):
