@@ -248,26 +248,6 @@ class TestHttpHelpers(MockHttpTest):
         ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
         self.assertEqual(ua, 'a-new-default')
 
-    def test_validate_headers(self):
-        headers = {'key': 'value'}
-        self.assertEqual(c.validate_headers(headers), None)
-
-        headers = {'key': 'value1\nvalue2'}
-        self.assertRaises(c.InvalidHeadersException, c.validate_headers,
-                          headers)
-
-        headers = {'key': 'value1\rvalue2'}
-        self.assertRaises(c.InvalidHeadersException, c.validate_headers,
-                          headers)
-
-    def test_validate_headers_with_other_than_str(self):
-        values = [None, 1, 1.0, u"A"]
-        if six.PY2:
-            values.append(long(1))
-        for t in values:
-            self.assertEqual(c.validate_headers({'key': t}),
-                             None)
-
 # TODO: following tests are placeholders, need more tests, better coverage
 
 
