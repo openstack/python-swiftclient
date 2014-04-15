@@ -679,19 +679,25 @@ class TestPutObject(MockHttpTest):
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
-        mock_file = StringIO.StringIO('asdf')
+        astring = 'asdf'
+        astring_len = len(astring)
+        mock_file = StringIO.StringIO(astring)
 
         c.put_object(url='http://www.test.com', http_conn=conn,
-                     contents=mock_file, content_length=4)
+                     contents=mock_file, content_length=astring_len)
         self.assertTrue(isinstance(resp.requests_params['data'],
                                    swiftclient.utils.LengthWrapper))
-        self.assertEqual(mock_file.len, 4)
+        self.assertEqual(astring_len,
+                         len(resp.requests_params['data'].read()))
 
+        mock_file = StringIO.StringIO(astring)
         c.put_object(url='http://www.test.com', http_conn=conn,
-                     headers={'Content-Length': '4'}, contents=mock_file)
+                     headers={'Content-Length': str(astring_len)},
+                     contents=mock_file)
         self.assertTrue(isinstance(resp.requests_params['data'],
                                    swiftclient.utils.LengthWrapper))
-        self.assertEqual(mock_file.len, 4)
+        self.assertEqual(astring_len,
+                         len(resp.requests_params['data'].read()))
 
     def test_chunk_upload(self):
         # Chunked upload happens when no content_length is passed to put_object
