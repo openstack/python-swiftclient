@@ -229,7 +229,7 @@ class TestHttpHelpers(MockHttpTest):
         # test if it's actually set
         conn.request('GET', '/', headers={'User-Agent': 'Me'})
         ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
-        self.assertEqual(ua, 'Me', req_headers)
+        self.assertEqual(ua, b'Me', req_headers)
 
     def test_set_user_agent_default_override(self):
         _junk, conn = c.http_connection(
@@ -631,10 +631,10 @@ class TestPutObject(MockHttpTest):
         value = c.put_object(*args, headers=headers, http_conn=conn)
         self.assertTrue(isinstance(value, six.string_types))
         # Test for RFC-2616 encoded symbols
-        self.assertIn((b"a-b", b".x:yz mn:fg:lp"),
+        self.assertIn(("a-b", b".x:yz mn:fg:lp"),
                       resp.buffer)
         # Test unicode header
-        self.assertIn((b'x-header1', text.encode('utf8')),
+        self.assertIn(('x-header1', text.encode('utf8')),
                       resp.buffer)
 
     def test_chunk_warning(self):
@@ -741,7 +741,7 @@ class TestPostObject(MockHttpTest):
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
         args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
@@ -753,9 +753,9 @@ class TestPostObject(MockHttpTest):
         conn[1]._request = resp._fake_request
         c.post_object(*args, headers=headers, http_conn=conn)
         # Test for RFC-2616 encoded symbols
-        self.assertTrue((b'a-b', b"a-b: .x:yz mn:kl:qr"), resp.buffer)
+        self.assertIn(('a-b', b".x:yz mn:kl:qr"), resp.buffer)
         # Test unicode header
-        self.assertIn((b'x-header1', text.encode('utf8')),
+        self.assertIn(('x-header1', text.encode('utf8')),
                       resp.buffer)
 
     def test_server_error(self):

@@ -180,12 +180,26 @@ class HTTPConnection:
         """ Final wrapper before requests call, to be patched in tests """
         return self.request_session.request(*arg, **kwarg)
 
+    def _encode_meta_headers(self, items):
+        """Only encode metadata headers keys"""
+        ret = {}
+        for header, value in items:
+            value = encode_utf8(value)
+            header = header.lower()
+            for target_type in 'container', 'account', 'object':
+                prefix = 'x-%s-meta-' % target_type
+                if header.startswith(prefix):
+                    header = encode_utf8(header)
+            ret[header] = value
+        return ret
+
     def request(self, method, full_path, data=None, headers=None, files=None):
         """ Encode url and header, then call requests.request """
         if headers is None:
             headers = {}
-        headers = dict((encode_utf8(x.lower()), encode_utf8(y)) for x, y in
-                       headers.items())
+        else:
+            headers = self._encode_meta_headers(headers.items())
+
         # set a default User-Agent header if it wasn't passed in
         if 'user-agent' not in headers:
             headers['user-agent'] = self.default_user_agent
