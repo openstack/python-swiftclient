@@ -320,16 +320,22 @@ class TestMultiThreadingManager(ThreadTestCase):
         self.assertEqual(self.starting_thread_count, threading.active_count())
 
         out_stream.seek(0)
+        if six.PY3:
+            over_the = "over the '\u062a\u062a'\n"
+        else:
+            over_the = "over the u'\\u062a\\u062a'\n"
         self.assertEqual([
             'one-argument\n',
             'one fish, 88 fish\n',
-            'some\n', 'where\n', "over the u'\\u062a\\u062a'\n",
+            'some\n', 'where\n', over_the,
         ], list(out_stream.readlines()))
 
         err_stream.seek(0)
+        first_item = u'I have 99 problems, but a \u062A\u062A is not one\n'
+        if six.PY2:
+            first_item = first_item.encode('utf8')
         self.assertEqual([
-            u'I have 99 problems, but a \u062A\u062A is not one\n'.encode(
-                'utf8'),
+            first_item,
             'one-error-argument\n',
             'Sometimes\n', '3.1% just\n', 'does not\n', 'work!\n',
         ], list(err_stream.readlines()))
