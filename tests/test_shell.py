@@ -18,8 +18,16 @@ import os
 import tempfile
 import unittest
 
+import six
+
 import swiftclient
 import swiftclient.shell
+
+
+if six.PY2:
+    BUILTIN_OPEN = '__builtin__.open'
+else:
+    BUILTIN_OPEN = 'builtins.open'
 
 mocked_os_environ = {
     'ST_AUTH': 'http://localhost:8080/auth/v1.0',
@@ -164,7 +172,7 @@ class TestShell(unittest.TestCase):
                  mock.call('           0')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch(BUILTIN_OPEN)
     @mock.patch('swiftclient.shell.Connection')
     def test_download(self, connection, mock_open):
         connection.return_value.get_object.return_value = [
@@ -217,7 +225,7 @@ class TestShell(unittest.TestCase):
         # Upload in segments
         argv = ["", "upload", "container", self.tmpfile, "-S", "10"]
         with open(self.tmpfile, "wb") as fh:
-            fh.write('12345678901234567890')
+            fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
             'container',
