@@ -32,7 +32,7 @@ from time import sleep, time
 import six
 
 from swiftclient import version as swiftclient_version
-from swiftclient.exceptions import ClientException, InvalidHeadersException
+from swiftclient.exceptions import ClientException
 from swiftclient.utils import LengthWrapper
 
 try:
@@ -107,19 +107,6 @@ def quote(value, safe='/'):
         return _quote(value, safe)
     else:
         return value
-
-
-def validate_headers(headers):
-    if headers:
-        for key, raw_value in headers.items():
-            value = str(encode_utf8(raw_value))
-
-            if '\n' in value:
-                raise InvalidHeadersException("%r header contained a "
-                                              "newline" % key)
-            if '\r' in value:
-                raise InvalidHeadersException("%r header contained a "
-                                              "carriage return" % key)
 
 
 def encode_utf8(value):
