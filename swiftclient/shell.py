@@ -29,7 +29,7 @@ from os.path import dirname, getmtime, getsize, isdir, join, \
 from random import shuffle
 from sys import argv as sys_argv, exit, stderr, stdout
 from time import sleep, time, gmtime, strftime
-from urllib import quote, unquote
+from six.moves.urllib.parse import quote, unquote
 
 try:
     import simplejson as json
