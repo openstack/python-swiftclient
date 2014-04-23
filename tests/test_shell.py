@@ -177,6 +177,7 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'object'}]],
             [None, []],
         ]
+        connection.return_value.attempts = 0
 
         argv = ["", "download", "container"]
         swiftclient.shell.main(argv)
@@ -194,6 +195,7 @@ class TestShell(unittest.TestCase):
     def test_upload(self, connection, listdir):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
+        connection.return_value.attempts = 0
         argv = ["", "upload", "container", self.tmpfile]
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
@@ -237,6 +239,7 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'object'}]],
             [None, []],
         ]
+        connection.return_value.attempts = 0
         argv = ["", "delete", "--all"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
@@ -251,6 +254,7 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'object'}]],
             [None, []],
         ]
+        connection.return_value.attempts = 0
         argv = ["", "delete", "container"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
@@ -263,6 +267,7 @@ class TestShell(unittest.TestCase):
     def test_delete_object(self, connection):
         argv = ["", "delete", "container", "object"]
         connection.return_value.head_object.return_value = {}
+        connection.return_value.attempts = 0
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_called_with(
             'container', 'object', query_string=None)
