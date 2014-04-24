@@ -24,7 +24,6 @@ except ImportError:
 import six
 import socket
 import types
-import StringIO
 import testtools
 import warnings
 from six.moves.urllib.parse import urlparse
@@ -681,7 +680,7 @@ class TestPutObject(MockHttpTest):
         conn[1]._request = resp._fake_request
         astring = 'asdf'
         astring_len = len(astring)
-        mock_file = StringIO.StringIO(astring)
+        mock_file = six.StringIO(astring)
 
         c.put_object(url='http://www.test.com', http_conn=conn,
                      contents=mock_file, content_length=astring_len)
@@ -690,7 +689,7 @@ class TestPutObject(MockHttpTest):
         self.assertEqual(astring_len,
                          len(resp.requests_params['data'].read()))
 
-        mock_file = StringIO.StringIO(astring)
+        mock_file = six.StringIO(astring)
         c.put_object(url='http://www.test.com', http_conn=conn,
                      headers={'Content-Length': str(astring_len)},
                      contents=mock_file)
@@ -707,7 +706,7 @@ class TestPutObject(MockHttpTest):
         conn[1]._request = resp._fake_request
         raw_data = 'asdf' * 256
         chunk_size = 16
-        mock_file = StringIO.StringIO(raw_data)
+        mock_file = six.StringIO(raw_data)
 
         c.put_object(url='http://www.test.com', http_conn=conn,
                      contents=mock_file, chunk_size=chunk_size)
