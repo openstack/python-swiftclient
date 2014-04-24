@@ -189,10 +189,10 @@ class HTTPConnection:
         # set a default User-Agent header if it wasn't passed in
         if 'user-agent' not in headers:
             headers['user-agent'] = self.default_user_agent
-        url = encode_utf8("%s://%s%s" % (
+        url = "%s://%s%s" % (
             self.parsed_url.scheme,
             self.parsed_url.netloc,
-            full_path))
+            full_path)
         self.resp = self._request(method, url, headers=headers, data=data,
                                   files=files, **self.requests_args)
         return self.resp
