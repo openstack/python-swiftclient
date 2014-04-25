@@ -883,7 +883,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                            encoding will be used
     :param etag: etag of contents; if None, no etag will be sent
     :param chunk_size: chunk size of data to write; it defaults to 65536;
-                       used only if the the contents object has a 'read'
+                       used only if the contents object has a 'read'
                        method, eg. file-like objects, ignored otherwise
     :param content_type: value to send as content-type header; if None, no
                          content-type will be set (remote end will likely try
