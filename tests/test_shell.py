@@ -172,9 +172,8 @@ class TestShell(unittest.TestCase):
                  mock.call('           0')]
         mock_print.assert_has_calls(calls)
 
-    @mock.patch(BUILTIN_OPEN)
     @mock.patch('swiftclient.shell.Connection')
-    def test_download(self, connection, mock_open):
+    def test_download(self, connection):
         connection.return_value.get_object.return_value = [
             {'content-type': 'text/plain',
              'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
@@ -185,18 +184,23 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'object'}]],
             [None, []],
         ]
+        connection.return_value.auth_end_time = 0
         connection.return_value.attempts = 0
 
-        argv = ["", "download", "container"]
-        swiftclient.shell.main(argv)
-        connection.return_value.get_object.assert_called_with(
-            'container', 'object', headers={}, resp_chunk_size=65536)
+        with mock.patch(BUILTIN_OPEN) as mock_open:
+            argv = ["", "download", "container"]
+            swiftclient.shell.main(argv)
+            connection.return_value.get_object.assert_called_with(
+                'container', 'object', headers={}, resp_chunk_size=65536)
+            mock_open.assert_called_with('object', 'wb')
 
         # Test downloading single object
-        argv = ["", "download", "container", "object"]
-        swiftclient.shell.main(argv)
-        connection.return_value.get_object.assert_called_with(
-            'container', 'object', headers={}, resp_chunk_size=65536)
+        with mock.patch(BUILTIN_OPEN) as mock_open:
+            argv = ["", "download", "container", "object"]
+            swiftclient.shell.main(argv)
+            connection.return_value.get_object.assert_called_with(
+                'container', 'object', headers={}, resp_chunk_size=65536)
+            mock_open.assert_called_with('object', 'wb')
 
     @mock.patch('swiftclient.shell.listdir')
     @mock.patch('swiftclient.shell.Connection')
