@@ -274,7 +274,7 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
 
 def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
     """
-    Authenticate against a auth 2.0 server.
+    Authenticate against an auth 2.0 server.
 
     We are using the keystoneclient library for our 2.0 authentication.
     """
@@ -898,7 +898,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     :param etag: etag of contents; if None, no etag will be sent
     :param chunk_size: chunk size of data to write; it defaults to 65536;
                        used only if the contents object has a 'read'
-                       method, eg. file-like objects, ignored otherwise
+                       method, e.g. file-like objects, ignored otherwise
     :param content_type: value to send as content-type header; if None, no
                          content-type will be set (remote end will likely try
                          to auto-detect it)
@@ -1117,7 +1117,7 @@ class Connection(object):
         :param max_backoff: maximum delay between retries (seconds)
         :param auth_version: OpenStack auth version, default is 1.0
         :param tenant_name: The tenant/account name, required when connecting
-                            to a auth 2.0 system.
+                            to an auth 2.0 system.
         :param os_options: The OpenStack options which can have tenant_id,
                            auth_token, service_type, endpoint_type,
                            tenant_name, object_storage_url, region_name
