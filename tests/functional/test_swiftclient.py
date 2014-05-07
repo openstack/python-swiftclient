@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ConfigParser
 import os
-import StringIO
 import testtools
 import time
 import types
 import unittest
+from io import BytesIO
+
+from six.moves import configparser
 
 import swiftclient
 
@@ -31,7 +32,7 @@ class TestFunctional(testtools.TestCase):
         self.skip_tests = False
         self._get_config()
 
-        self.test_data = '42' * 10
+        self.test_data = b'42' * 10
         self.etag = '2704306ec982238d85d4b235c925d58e'
 
         self.containername = "functional-tests-container-%s" % int(time.time())
@@ -43,7 +44,7 @@ class TestFunctional(testtools.TestCase):
     def _get_config(self):
         config_file = os.environ.get('SWIFT_TEST_CONFIG_FILE',
                                      '/etc/swift/test.conf')
-        config = ConfigParser.SafeConfigParser({'auth_version': '1'})
+        config = configparser.SafeConfigParser({'auth_version': '1'})
         config.read(config_file)
         if config.has_section('func_test'):
             auth_host = config.get('func_test', 'auth_host')
@@ -220,7 +221,7 @@ class TestFunctional(testtools.TestCase):
         self.assertEqual('application/octet-stream', hdrs.get('content-type'))
 
         # Content from File-like object
-        fileobj = StringIO.StringIO(self.test_data)
+        fileobj = BytesIO(self.test_data)
         self.conn.put_object(
             self.containername, self.objectname, contents=fileobj)
         hdrs = self.conn.head_object(self.containername, self.objectname)
@@ -230,7 +231,7 @@ class TestFunctional(testtools.TestCase):
         self.assertEqual('application/octet-stream', hdrs.get('content-type'))
 
         # Content from File-like object, but read in chunks
-        fileobj = StringIO.StringIO(self.test_data)
+        fileobj = BytesIO(self.test_data)
         self.conn.put_object(
             self.containername, self.objectname,
             contents=fileobj, content_length=len(self.test_data),
