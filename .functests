@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-python setup.py testr --coverage --testr-args="--concurrency=1 tests.functional"
+export OS_TEST_PATH='tests.functional'
+python setup.py testr --coverage --testr-args="--concurrency=1"
+
 RET=$?
 coverage report -m
 rm -f .coverage
