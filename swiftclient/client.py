@@ -359,7 +359,7 @@ def get_auth(auth_url, user, key, **kwargs):
         if kwargs.get('tenant_name'):
             os_options['tenant_name'] = kwargs['tenant_name']
 
-        if (not 'tenant_name' in os_options):
+        if ('tenant_name' not in os_options):
             raise ClientException('No tenant specified')
 
         cacert = kwargs.get('cacert', None)
@@ -676,7 +676,7 @@ def put_container(url, token, container, headers=None, http_conn=None,
     if not headers:
         headers = {}
     headers['X-Auth-Token'] = token
-    if not 'content-length' in (k.lower() for k in headers):
+    if 'content-length' not in (k.lower() for k in headers):
         headers['Content-Length'] = '0'
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
@@ -716,7 +716,7 @@ def post_container(url, token, container, headers, http_conn=None,
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'POST'
     headers['X-Auth-Token'] = token
-    if not 'content-length' in (k.lower() for k in headers):
+    if 'content-length' not in (k.lower() for k in headers):
         headers['Content-Length'] = '0'
     conn.request(method, path, '', headers)
     resp = conn.getresponse()

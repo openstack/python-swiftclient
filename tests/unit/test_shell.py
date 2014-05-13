@@ -217,7 +217,7 @@ class TestShell(unittest.TestCase):
             content_length=0,
             headers={'x-object-meta-mtime': mock.ANY})
 
-       # Upload whole directory
+        # Upload whole directory
         argv = ["", "upload", "container", "/tmp"]
         listdir.return_value = [self.tmpfile]
         swiftclient.shell.main(argv)
@@ -239,7 +239,7 @@ class TestShell(unittest.TestCase):
             '',
             content_length=0,
             headers={'x-object-manifest': mock.ANY,
-            'x-object-meta-mtime': mock.ANY})
+                     'x-object-meta-mtime': mock.ANY})
 
     @mock.patch('swiftclient.shell.Connection')
     def test_delete_account(self, connection):
