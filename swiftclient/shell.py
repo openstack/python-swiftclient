@@ -82,7 +82,7 @@ st_delete_options = '''[-all] [--leave-segments]
 '''
 
 st_delete_help = '''
-Delete a container or objects within a container
+Delete a container or objects within a container.
 
 Positional arguments:
   <container>           Name of container to delete from.
@@ -255,7 +255,7 @@ st_download_options = '''[--all] [--marker] [--prefix <prefix>]
 '''
 
 st_download_help = '''
-Download objects from containers
+Download objects from containers.
 
 Positional arguments:
   <container>           Name of container to download from. To download a
@@ -522,7 +522,7 @@ st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
                   [--delimiter <delimiter>]
 '''
 st_list_help = '''
-Lists the containers for the account or the objects for a container
+Lists the containers for the account or the objects for a container.
 
 Positional arguments:
   [container]           Name of container to list object in.
@@ -643,7 +643,7 @@ st_stat_options = '''[--lh]
 '''
 
 st_stat_help = '''
-Displays information for the account, container, or object
+Displays information for the account, container, or object.
 
 Positional arguments:
   [container]           Name of container to stat from.
@@ -813,7 +813,7 @@ st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
 '''
 
 st_upload_help = '''
-Uploads specified files and directories to the given container
+Uploads specified files and directories to the given container.
 
 Positional arguments:
   <container>           Name of container to upload to.
@@ -1204,10 +1204,10 @@ def st_upload(parser, args, thread_manager):
 st_capabilities_options = "[<proxy_url>]"
 st_info_options = st_capabilities_options
 st_capabilities_help = '''
-Retrieve capability of the proxy
+Retrieve capability of the proxy.
 
 Optional positional arguments:
-  <proxy_url>           proxy URL of the cluster to retrieve capabilities
+  <proxy_url>           Proxy URL of the cluster to retrieve capabilities.
 '''
 st_info_help = st_capabilities_help
 
@@ -1349,7 +1349,7 @@ Positional arguments:
                          or object; creates containers if not present.
     stat                 Displays information for the account, container,
                          or object.
-    upload               Uploads files or directories to the given container
+    upload               Uploads files or directories to the given container.
     capabilities         List cluster capabilities.
 
 
