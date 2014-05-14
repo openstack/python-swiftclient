@@ -216,7 +216,7 @@ class TestHttpHelpers(MockHttpTest):
         # test the default
         conn.request('GET', '/')
         ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
-        self.assert_(ua.startswith('python-swiftclient-'))
+        self.assertTrue(ua.startswith('python-swiftclient-'))
 
     def test_set_user_agent_per_request_override(self):
         _junk, conn = c.http_connection('http://www.example.com')
