@@ -806,8 +806,8 @@ class TestHTTPConnection(MockHttpTest):
     def test_ok_proxy(self):
         conn = c.http_connection(u'http://www.test.com/',
                                  proxy='http://localhost:8080')
-        self.assertEquals(conn[1].requests_args['proxies']['http'],
-                          'http://localhost:8080')
+        self.assertEqual(conn[1].requests_args['proxies']['http'],
+                         'http://localhost:8080')
 
     def test_bad_proxy(self):
         try:
@@ -818,11 +818,11 @@ class TestHTTPConnection(MockHttpTest):
     def test_cacert(self):
         conn = c.http_connection(u'http://www.test.com/',
                                  cacert='/dev/urandom')
-        self.assertEquals(conn[1].requests_args['verify'], '/dev/urandom')
+        self.assertEqual(conn[1].requests_args['verify'], '/dev/urandom')
 
     def test_insecure(self):
         conn = c.http_connection(u'http://www.test.com/', insecure=True)
-        self.assertEquals(conn[1].requests_args['verify'], False)
+        self.assertEqual(conn[1].requests_args['verify'], False)
 
 
 class TestConnection(MockHttpTest):
