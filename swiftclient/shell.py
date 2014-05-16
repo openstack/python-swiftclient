@@ -831,7 +831,7 @@ Optional arguments:
   --segment-container <container>
                         Upload the segments into the specified container. If
                         not specified, the segments will be uploaded to a
-                        <container>_segments container so as to not pollute the
+                        <container>_segments container to not pollute the
                         main <container> listings.
   --leave-segments      Indicates that you want the older segments of manifest
                         objects left alone (in the case of overwrites).
@@ -872,7 +872,7 @@ def st_upload(parser, args, thread_manager):
         '-C', '--segment-container', dest='segment_container',
         help='Upload the segments into the specified container. '
         'If not specified, the segments will be uploaded to a '
-        '<container>_segments container so as to not pollute the main '
+        '<container>_segments container to not pollute the main '
         '<container> listings.')
     parser.add_option(
         '', '--leave-segments', action='store_true',
