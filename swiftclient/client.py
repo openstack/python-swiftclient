@@ -88,8 +88,8 @@ def http_log(args, kwargs, resp, body):
     else:
         log_method = logger.info
 
-    log_method("REQ: %s" % "".join(string_parts))
-    log_method("RESP STATUS: %s %s" % (resp.status, resp.reason))
+    log_method("REQ: %s", "".join(string_parts))
+    log_method("RESP STATUS: %s %s", resp.status, resp.reason)
     log_method("RESP HEADERS: %s", resp.getheaders())
     if body:
         log_method("RESP BODY: %s", body)
