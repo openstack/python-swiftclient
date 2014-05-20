@@ -186,10 +186,12 @@ class HTTPConnection:
         for header, value in items:
             value = encode_utf8(value)
             header = header.lower()
-            for target_type in 'container', 'account', 'object':
-                prefix = 'x-%s-meta-' % target_type
-                if header.startswith(prefix):
-                    header = encode_utf8(header)
+            if isinstance(header, six.string_types):
+                for target_type in 'container', 'account', 'object':
+                    prefix = 'x-%s-meta-' % target_type
+                    if header.startswith(prefix):
+                        header = encode_utf8(header)
+                        break
             ret[header] = value
         return ret
 
@@ -899,9 +901,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     :param chunk_size: chunk size of data to write; it defaults to 65536;
                        used only if the contents object has a 'read'
                        method, e.g. file-like objects, ignored otherwise
-    :param content_type: value to send as content-type header; if None, no
-                         content-type will be set (remote end will likely try
-                         to auto-detect it)
+    :param content_type: value to send as content-type header; if None, an
+                         empty string value will be sent
     :param headers: additional headers to include in the request, if any
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
@@ -940,6 +941,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                 content_length = int(v)
     if content_type is not None:
         headers['Content-Type'] = content_type
+    else:  # python-requests sets application/x-www-form-urlencoded otherwise
+        headers['Content-Type'] = ''
     if not contents:
         headers['Content-Length'] = '0'
     if hasattr(contents, 'read'):

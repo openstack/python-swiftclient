@@ -259,7 +259,7 @@ class TestFunctional(testtools.TestCase):
             self.containername, self.objectname,
             resp_chunk_size=10)
         self.assertTrue(isinstance(body, types.GeneratorType))
-        self.assertEqual(self.test_data, ''.join(body))
+        self.assertEqual(self.test_data, b''.join(body))
 
     def test_post_account(self):
         self.conn.post_account({'x-account-meta-data': 'Something'})

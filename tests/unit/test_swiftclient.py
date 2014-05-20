@@ -730,6 +730,16 @@ class TestPutObject(MockHttpTest):
         self.assertTrue(request_header['etag'], '1234-5678')
         self.assertTrue(request_header['content-type'], 'text/plain')
 
+    def test_no_content_type(self):
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+
+        c.put_object(url='http://www.test.com', http_conn=conn)
+        request_header = resp.requests_params['headers']
+        self.assertEqual(request_header['content-type'], b'')
+
 
 class TestPostObject(MockHttpTest):
 
@@ -746,7 +756,10 @@ class TestPostObject(MockHttpTest):
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
         headers = {'X-Header1': text,
-                   'X-2': '1', 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr'}
+                   b'X-Header2': 'value',
+                   'X-2': '1', 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr',
+                   'X-Object-Meta-Header-not-encoded': text,
+                   b'X-Object-Meta-Header-encoded': 'value'}
 
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
@@ -757,6 +770,11 @@ class TestPostObject(MockHttpTest):
         # Test unicode header
         self.assertIn(('x-header1', text.encode('utf8')),
                       resp.buffer)
+        self.assertIn((b'x-object-meta-header-not-encoded',
+                      text.encode('utf8')), resp.buffer)
+        self.assertIn((b'x-object-meta-header-encoded', b'value'),
+                      resp.buffer)
+        self.assertIn((b'x-header2', b'value'), resp.buffer)
 
     def test_server_error(self):
         body = 'c' * 60
