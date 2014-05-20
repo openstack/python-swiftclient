@@ -1148,7 +1148,3 @@ class TestCloseConnection(MockHttpTest):
         conn.close()
         self.assertEqual(http_conn_obj.isclosed(), True)
         self.assertEqual(conn.http_conn, None)
-
-
-if __name__ == '__main__':
-    testtools.main()
