@@ -361,7 +361,7 @@ def get_auth(auth_url, user, key, **kwargs):
         if kwargs.get('tenant_name'):
             os_options['tenant_name'] = kwargs['tenant_name']
 
-        if ('tenant_name' not in os_options):
+        if not (os_options.get('tenant_name') or os_options.get('tenant_id')):
             raise ClientException('No tenant specified')
 
         cacert = kwargs.get('cacert', None)

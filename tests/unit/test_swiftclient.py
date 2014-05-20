@@ -285,7 +285,7 @@ class TestGetAuth(MockHttpTest):
                           'asdf', 'asdf',
                           auth_version='1.0')
 
-    def test_auth_v2(self):
+    def test_auth_v2_with_tenant_name(self):
         os_options = {'tenant_name': 'asdf'}
         c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
@@ -294,11 +294,29 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)
 
-    def test_auth_v2_no_tenant_name(self):
+    def test_auth_v2_with_tenant_id(self):
+        os_options = {'tenant_id': 'asdf'}
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                os_options=os_options,
+                                auth_version="2.0")
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+    def test_auth_v2_no_tenant_name_or_tenant_id(self):
         c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0({})
         self.assertRaises(c.ClientException, c.get_auth,
                           'http://www.tests.com', 'asdf', 'asdf',
                           os_options={},
+                          auth_version='2.0')
+
+    def test_auth_v2_with_tenant_name_none_and_tenant_id_none(self):
+        os_options = {'tenant_name': None,
+                      'tenant_id': None}
+        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        self.assertRaises(c.ClientException, c.get_auth,
+                          'http://www.tests.com', 'asdf', 'asdf',
+                          os_options=os_options,
                           auth_version='2.0')
 
     def test_auth_v2_with_tenant_user_in_user(self):
