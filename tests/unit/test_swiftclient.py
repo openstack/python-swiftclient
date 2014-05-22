@@ -727,8 +727,8 @@ class TestPutObject(MockHttpTest):
         c.put_object(url='http://www.test.com', http_conn=conn,
                      etag='1234-5678', content_type='text/plain')
         request_header = resp.requests_params['headers']
-        self.assertTrue(request_header['etag'], '1234-5678')
-        self.assertTrue(request_header['content-type'], 'text/plain')
+        self.assertEqual(request_header['etag'], b'1234-5678')
+        self.assertEqual(request_header['content-type'], b'text/plain')
 
     def test_no_content_type(self):
         conn = c.http_connection(u'http://www.test.com/')
