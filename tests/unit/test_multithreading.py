@@ -341,7 +341,3 @@ class TestMultiThreadingManager(ThreadTestCase):
         ], list(err_stream.readlines()))
 
         self.assertEqual(3, thread_manager.error_count)
-
-
-if __name__ == '__main__':
-    testtools.main()

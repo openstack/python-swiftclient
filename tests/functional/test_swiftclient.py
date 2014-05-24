@@ -17,7 +17,6 @@ import os
 import testtools
 import time
 import types
-import unittest
 from io import BytesIO
 
 from six.moves import configparser
@@ -284,7 +283,3 @@ class TestFunctional(testtools.TestCase):
     def test_get_capabilities(self):
         resp = self.conn.get_capabilities()
         self.assertTrue(resp.get('swift'))
-
-
-if __name__ == '__main__':
-    unittest.main()
