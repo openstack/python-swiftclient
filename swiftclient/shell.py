@@ -38,7 +38,7 @@ except ImportError:
 
 from swiftclient import Connection, RequestException
 from swiftclient import command_helpers
-from swiftclient.utils import config_true_value, prt_bytes
+from swiftclient.utils import config_true_value, prt_bytes, generate_temp_url
 from swiftclient.multithreading import MultiThreadingManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
@@ -1240,6 +1240,45 @@ def st_capabilities(parser, args, thread_manager):
 st_info = st_capabilities
 
 
+st_tempurl_options = '<method> <seconds> <path> <key>'
+
+st_tempurl_help = '''
+Generates a temporary URL for a Swift object.
+
+Positions arguments:
+  [method]              An HTTP method to allow for this temporary URL.
+                        Usually 'GET' or 'PUT'.
+  [seconds]             The amount of time in seconds the temporary URL will
+                        be valid for.
+  [path]                The full path to the Swift object. Example:
+                        /v1/AUTH_account/c/o.
+  [key]                 The secret temporary URL key set on the Swift cluster.
+                        To set a key, run \'swift post -m
+                        "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"\'
+'''.strip('\n')
+
+
+def st_tempurl(parser, args, thread_manager):
+    (options, args) = parse_args(parser, args)
+    args = args[1:]
+    if len(args) < 4:
+        thread_manager.error('Usage: %s tempurl %s\n%s', BASENAME,
+                             st_tempurl_options, st_tempurl_help)
+        return
+    method, seconds, path, key = args[:4]
+    try:
+        seconds = int(seconds)
+    except ValueError:
+        thread_manager.error('Seconds must be an integer')
+        return
+    if method.upper() not in ['GET', 'PUT', 'HEAD', 'POST', 'DELETE']:
+        thread_manager.print_msg('WARNING: Non default HTTP method %s for '
+                                 'tempurl specified, possibly an error' %
+                                 method.upper())
+    url = generate_temp_url(path, seconds, key, method)
+    thread_manager.print_msg(url)
+
+
 def split_headers(options, prefix='', thread_manager=None):
     """
     Splits 'Key: Value' strings and returns them as a dictionary.
@@ -1268,6 +1307,10 @@ def parse_args(parser, args, enforce_requires=True):
     if not args:
         args = ['-h']
     (options, args) = parser.parse_args(args)
+
+    # Short circuit for tempurl, which doesn't need auth
+    if len(args) > 0 and args[0] == 'tempurl':
+        return options, args
 
     if (not (options.auth and options.user and options.key)):
         # Use 2.0 auth if none of the old args are present
@@ -1351,6 +1394,7 @@ Positional arguments:
                          or object.
     upload               Uploads files or directories to the given container.
     capabilities         List cluster capabilities.
+    tempurl              Create a temporary URL
 
 
 Examples:
@@ -1488,7 +1532,7 @@ Examples:
     parser.enable_interspersed_args()
 
     commands = ('delete', 'download', 'list', 'post',
-                'stat', 'upload', 'capabilities', 'info')
+                'stat', 'upload', 'capabilities', 'info', 'tempurl')
     if not args or args[0] not in commands:
         parser.print_usage()
         if args:

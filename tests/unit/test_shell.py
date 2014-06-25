@@ -22,6 +22,7 @@ import six
 
 import swiftclient
 import swiftclient.shell
+import swiftclient.utils
 
 
 if six.PY2:
@@ -327,6 +328,16 @@ class TestShell(unittest.TestCase):
             'container', 'object', headers={
                 'Content-Type': 'text/plain',
                 'X-Object-Meta-Color': 'Blue'})
+
+    @mock.patch('swiftclient.shell.generate_temp_url')
+    def test_temp_url(self, temp_url):
+        argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/o",
+                "secret_key"
+                ]
+        temp_url.return_value = ""
+        swiftclient.shell.main(argv)
+        temp_url.assert_called_with(
+            '/v1/AUTH_account/c/o', 60, 'secret_key', 'GET')
 
     @mock.patch('swiftclient.shell.Connection')
     def test_capabilities(self, connection):

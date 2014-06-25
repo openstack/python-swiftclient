@@ -15,6 +15,7 @@
 
 import testtools
 
+import mock
 import six
 import tempfile
 
@@ -120,6 +121,44 @@ class TestPrtBytes(testtools.TestCase):
     def test_overflow(self):
         bytes_ = 2 ** 90
         self.assertEqual('1024Y', u.prt_bytes(bytes_, True).lstrip())
+
+
+class TestTempURL(testtools.TestCase):
+
+    def setUp(self):
+        super(TestTempURL, self).setUp()
+        self.url = '/v1/AUTH_account/c/o'
+        self.seconds = 3600
+        self.key = 'correcthorsebatterystaple'
+        self.method = 'GET'
+
+    @mock.patch('hmac.HMAC.hexdigest')
+    @mock.patch('time.time')
+    def test_generate_temp_url(self, time_mock, hmac_mock):
+        time_mock.return_value = 1400000000
+        hmac_mock.return_value = 'temp_url_signature'
+        expected_url = (
+            '/v1/AUTH_account/c/o?'
+            'temp_url_sig=temp_url_signature&'
+            'temp_url_expires=1400003600')
+        url = u.generate_temp_url(self.url, self.seconds, self.key,
+                                  self.method)
+        self.assertEqual(url, expected_url)
+
+    def test_generate_temp_url_bad_seconds(self):
+        self.assertRaises(TypeError,
+                          u.generate_temp_url,
+                          self.url,
+                          'not_an_int',
+                          self.key,
+                          self.method)
+
+        self.assertRaises(ValueError,
+                          u.generate_temp_url,
+                          self.url,
+                          -1,
+                          self.key,
+                          self.method)
 
 
 class TestLengthWrapper(testtools.TestCase):
