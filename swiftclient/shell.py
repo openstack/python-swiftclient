@@ -1292,6 +1292,25 @@ def parse_args(parser, args, enforce_requires=True):
         'region_name': options.os_region_name,
     }
 
+    if len(args) > 1 and args[1] == '--help':
+        if args[0] == 'capabilities':
+            print(st_capabilities_help)
+        elif args[0] == 'delete':
+            print(st_delete_help)
+        elif args[0] == 'download':
+            print(st_download_help)
+        elif args[0] == 'list':
+            print(st_list_help)
+        elif args[0] == 'post':
+            print(st_post_help)
+        elif args[0] == 'stat':
+            print(st_stat_help)
+        elif args[0] == 'upload':
+            print(st_upload_help)
+        else:
+            print("no help for %s" % args[0])
+        exit()
+
     if len(args) > 1 and args[0] == "capabilities":
         return options, args
 
@@ -1335,7 +1354,7 @@ usage: %%prog [--version] [--help] [--snet] [--verbose]
              [--os-endpoint-type <endpoint-type>]
              [--os-cacert <ca-certificate>] [--insecure]
              [--no-ssl-compression]
-             <subcommand> ...
+             <subcommand> [--help]
 
 Command-line interface to the OpenStack Swift API.
 
@@ -1354,6 +1373,8 @@ Positional arguments:
 
 
 Examples:
+  %%prog download --help
+
   %%prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K api_key stat -v
 
   %%prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
