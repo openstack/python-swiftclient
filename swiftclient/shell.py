@@ -46,6 +46,8 @@ from swiftclient import __version__ as client_version
 
 BASENAME = 'swift'
 POLICY = 'X-Storage-Policy'
+commands = ('delete', 'download', 'list', 'post',
+            'stat', 'upload', 'capabilities', 'info', 'tempurl')
 
 
 def get_conn(options):
@@ -1244,7 +1246,7 @@ Retrieve capability of the proxy.
 
 Optional positional arguments:
   <proxy_url>           Proxy URL of the cluster to retrieve capabilities.
-'''
+'''.strip('\n')
 st_info_help = st_capabilities_help
 
 
@@ -1344,6 +1346,12 @@ def parse_args(parser, args, enforce_requires=True):
         args = ['-h']
     (options, args) = parser.parse_args(args)
 
+    if len(args) > 1 and args[1] == '--help':
+        _help = globals().get('st_%s_help' % args[0],
+                              "no help for %s" % args[0])
+        print(_help)
+        exit()
+
     # Short circuit for tempurl, which doesn't need auth
     if len(args) > 0 and args[0] == 'tempurl':
         return options, args
@@ -1370,25 +1378,6 @@ def parse_args(parser, args, enforce_requires=True):
         'object_storage_url': options.os_storage_url,
         'region_name': options.os_region_name,
     }
-
-    if len(args) > 1 and args[1] == '--help':
-        if args[0] == 'capabilities':
-            print(st_capabilities_help)
-        elif args[0] == 'delete':
-            print(st_delete_help)
-        elif args[0] == 'download':
-            print(st_download_help)
-        elif args[0] == 'list':
-            print(st_list_help)
-        elif args[0] == 'post':
-            print(st_post_help)
-        elif args[0] == 'stat':
-            print(st_stat_help)
-        elif args[0] == 'upload':
-            print(st_upload_help)
-        else:
-            print("no help for %s" % args[0])
-        exit()
 
     if len(args) > 1 and args[0] == "capabilities":
         return options, args
@@ -1588,8 +1577,6 @@ Examples:
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
 
-    commands = ('delete', 'download', 'list', 'post',
-                'stat', 'upload', 'capabilities', 'info', 'tempurl')
     if not args or args[0] not in commands:
         parser.print_usage()
         if args:

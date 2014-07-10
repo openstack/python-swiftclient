@@ -356,3 +356,25 @@ class TestShell(unittest.TestCase):
         connection.return_value.get_capabilities.return_value = {'swift': None}
         swiftclient.shell.main(argv)
         connection.return_value.get_capabilities.assert_called_with(None)
+
+
+class TestSubcommandHelp(unittest.TestCase):
+
+    def test_subcommand_help(self):
+        for command in swiftclient.shell.commands:
+            help_var = 'st_%s_help' % command
+            self.assertTrue(help_var in vars(swiftclient.shell))
+            out = six.StringIO()
+            with mock.patch('sys.stdout', out):
+                argv = ['', command, '--help']
+                self.assertRaises(SystemExit, swiftclient.shell.main, argv)
+            expected = vars(swiftclient.shell)[help_var]
+            self.assertEqual(out.getvalue().strip('\n'), expected)
+
+    def test_no_help(self):
+        out = six.StringIO()
+        with mock.patch('sys.stdout', out):
+            argv = ['', 'bad_command', '--help']
+            self.assertRaises(SystemExit, swiftclient.shell.main, argv)
+        expected = 'no help for bad_command'
+        self.assertEqual(out.getvalue().strip('\n'), expected)
