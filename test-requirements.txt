@@ -3,6 +3,7 @@ hacking>=0.8.0,<0.9
 coverage>=3.6
 discover
 mock>=1.0
+oslosphinx
 python-keystoneclient>=0.7.0
 sphinx>=1.1.2,<1.2
 testrepository>=0.0.18
