@@ -63,11 +63,11 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_account.return_value = return_headers
         connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
         swiftclient.shell.main(argv)
-        calls = [mock.call('       Account: AUTH_account\n' +
-                           '    Containers: 1\n' +
-                           '       Objects: 2\n' +
-                           '         Bytes: 3'),
-                 mock.call('')]
+        calls = [mock.call('   Account: AUTH_account\n' +
+                           'Containers: 1\n' +
+                           '   Objects: 2\n' +
+                           '     Bytes: 3'),
+                 ]
         mock_print.assert_has_calls(calls)
 
     @mock.patch('swiftclient.shell.MultiThreadingManager._print')

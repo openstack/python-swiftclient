@@ -193,6 +193,7 @@ class MultiThreadingManager(object):
     The swift command-line tool uses this to exit non-zero if any error strings
     were printed.
     """
+    DEFAULT_OFFSET = 14
 
     def __init__(self, print_stream=sys.stdout, error_stream=sys.stderr):
         """
@@ -231,7 +232,7 @@ class MultiThreadingManager(object):
             msg = msg % fmt_args
         self.printer.queue.put(msg)
 
-    def print_items(self, items, offset=14, skip_missing=False):
+    def print_items(self, items, offset=DEFAULT_OFFSET, skip_missing=False):
         lines = []
         template = '%%%ds: %%s' % offset
         for k, v in items:
@@ -241,7 +242,7 @@ class MultiThreadingManager(object):
         self.print_msg('\n'.join(lines))
 
     def print_headers(self, headers, meta_prefix='', exclude_headers=None,
-                      offset=14):
+                      offset=DEFAULT_OFFSET):
         exclude_headers = exclude_headers or []
         meta_headers = []
         other_headers = []
@@ -253,6 +254,18 @@ class MultiThreadingManager(object):
             elif key not in exclude_headers:
                 other_headers.append(template % (key.title(), value))
         self.print_msg('\n'.join(chain(meta_headers, other_headers)))
+
+    def headers_to_items(self, headers, meta_prefix='', exclude_headers=None):
+        exclude_headers = exclude_headers or []
+        meta_items = []
+        other_items = []
+        for key, value in headers.items():
+            if key.startswith(meta_prefix):
+                meta_key = 'Meta %s' % key[len(meta_prefix):].title()
+                meta_items.append((meta_key, value))
+            elif key not in exclude_headers:
+                other_items.append((key.title(), value))
+        return meta_items + other_items
 
     def error(self, msg, *fmt_args):
         if fmt_args:

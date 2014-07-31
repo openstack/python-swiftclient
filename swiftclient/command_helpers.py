@@ -15,9 +15,11 @@ from swiftclient.utils import prt_bytes
 
 
 def stat_account(conn, options, thread_manager):
+    items_to_print = []
+
     headers = conn.head_account()
     if options.verbose > 1:
-        thread_manager.print_items((
+        items_to_print.extend((
             ('StorageURL', conn.url),
             ('Auth Token', conn.token),
         ))
@@ -26,19 +28,40 @@ def stat_account(conn, options, thread_manager):
                              options.human).lstrip()
     bytes_used = prt_bytes(headers.get('x-account-bytes-used', 0),
                            options.human).lstrip()
-    thread_manager.print_items((
+    items_to_print.extend((
         ('Account', conn.url.rsplit('/', 1)[-1]),
         ('Containers', container_count),
         ('Objects', object_count),
         ('Bytes', bytes_used),
     ))
-    thread_manager.print_headers(headers,
-                                 meta_prefix='x-account-meta-',
-                                 exclude_headers=(
-                                     'content-length', 'date',
-                                     'x-account-container-count',
-                                     'x-account-object-count',
-                                     'x-account-bytes-used'))
+    policies = set()
+    exclude_policy_headers = []
+    ps_header_prefix = 'x-account-storage-policy-'
+    for header_key, header_value in headers.items():
+        if header_key.lower().startswith(ps_header_prefix):
+            policy_name = header_key.rsplit('-', 2)[0].split('-', 4)[-1]
+            policies.add(policy_name)
+            exclude_policy_headers.append(header_key)
+    for policy in policies:
+        items_to_print.extend((
+            ('Objects in policy "' + policy + '"',
+             prt_bytes(headers.get(ps_header_prefix + policy + '-object-count',
+                                   0), options.human).lstrip()),
+            ('Bytes in policy "' + policy + '"',
+             prt_bytes(headers.get(ps_header_prefix + policy + '-bytes-used',
+                                   0), options.human).lstrip()),
+        ))
+
+    items_to_print.extend(thread_manager.headers_to_items(
+        headers, meta_prefix='x-account-meta-',
+        exclude_headers=([
+            'content-length', 'date',
+            'x-account-container-count',
+            'x-account-object-count',
+            'x-account-bytes-used'] + exclude_policy_headers)))
+    # line up the items nicely
+    offset = max(len(item) for item, value in items_to_print)
+    thread_manager.print_items(items_to_print, offset=offset)
 
 
 def stat_container(conn, options, args, thread_manager):
