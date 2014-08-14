@@ -183,6 +183,7 @@ class TestShell(unittest.TestCase):
         # Test downloading whole container
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object'}]],
+            [None, [{'name': 'pseudo/'}]],
             [None, []],
         ]
         connection.return_value.auth_end_time = 0
@@ -191,9 +192,13 @@ class TestShell(unittest.TestCase):
         with mock.patch(BUILTIN_OPEN) as mock_open:
             argv = ["", "download", "container"]
             swiftclient.shell.main(argv)
-            connection.return_value.get_object.assert_called_with(
-                'container', 'object', headers={}, resp_chunk_size=65536)
-            mock_open.assert_called_with('object', 'wb')
+            calls = [mock.call('container', 'object',
+                               headers={}, resp_chunk_size=65536),
+                     mock.call('container', 'pseudo/',
+                               headers={}, resp_chunk_size=65536)]
+            connection.return_value.get_object.assert_has_calls(
+                calls, any_order=True)
+            mock_open.assert_called_once_with('object', 'wb')
 
         # Test downloading single object
         with mock.patch(BUILTIN_OPEN) as mock_open:

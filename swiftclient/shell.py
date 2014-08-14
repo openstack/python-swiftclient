@@ -24,7 +24,7 @@ from errno import EEXIST, ENOENT
 from hashlib import md5
 from optparse import OptionParser, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
-from os.path import dirname, getmtime, getsize, isdir, join, \
+from os.path import basename, dirname, getmtime, getsize, isdir, join, \
     sep as os_path_sep
 from random import shuffle
 from sys import argv as sys_argv, exit, stderr, stdout
@@ -381,7 +381,9 @@ def st_download(parser, args, thread_manager):
                 content_length = None
             etag = headers.get('etag')
             md5sum = None
-            make_dir = not options.no_download and out_file != "-"
+            pseudodir = False
+            no_file = options.no_download
+            make_dir = not no_file and out_file != "-"
             if content_type.split(';', 1)[0] == 'text/directory':
                 if make_dir and not isdir(path):
                     mkdirs(path)
@@ -397,24 +399,28 @@ def st_download(parser, args, thread_manager):
                 dirpath = dirname(path)
                 if make_dir and dirpath and not isdir(dirpath):
                     mkdirs(dirpath)
-                if not options.no_download:
+                if not no_file:
                     if out_file == "-":
                         fp = stdout
                     elif out_file:
                         fp = open(out_file, 'wb')
                     else:
-                        fp = open(path, 'wb')
+                        if basename(path):
+                            fp = open(path, 'wb')
+                        else:
+                            pseudodir = True
+                            no_file = True
                 read_length = 0
                 if 'x-object-manifest' not in headers and \
                         'x-static-large-object' not in headers:
                     md5sum = md5()
                 for chunk in body:
-                    if not options.no_download:
+                    if not no_file:
                         fp.write(chunk)
                     read_length += len(chunk)
                     if md5sum:
                         md5sum.update(chunk)
-                if not options.no_download:
+                if not no_file:
                     fp.close()
             if md5sum and md5sum.hexdigest() != etag:
                 thread_manager.error('%s: md5sum != etag, %s != %s',
@@ -424,8 +430,7 @@ def st_download(parser, args, thread_manager):
                     '%s: read_length != content_length, %d != %d',
                     path, read_length, content_length)
             if 'x-object-meta-mtime' in headers and not options.out_file \
-                    and not options.no_download:
-
+                    and not no_file:
                 mtime = float(headers['x-object-meta-mtime'])
                 utime(path, (mtime, mtime))
             if options.verbose:
@@ -434,10 +439,15 @@ def st_download(parser, args, thread_manager):
                 headers_receipt = headers_receipt - start_time
                 total_time = finish_time - start_time
                 download_time = total_time - auth_time
-                time_str = ('auth %.3fs, headers %.3fs, total %.3fs, '
-                            '%.3f MB/s' % (
-                                auth_time, headers_receipt, total_time,
-                                float(read_length) / download_time / 1000000))
+                if pseudodir:
+                    time_str = (
+                        'auth %.3fs, headers %.3fs, total %.3fs, pseudo' % (
+                            auth_time, headers_receipt, total_time))
+                else:
+                    time_str = (
+                        'auth %.3fs, headers %.3fs, total %.3fs, %.3f MB/s' % (
+                            auth_time, headers_receipt, total_time,
+                            float(read_length) / download_time / 1000000))
                 if conn.attempts > 1:
                     thread_manager.print_msg('%s [%s after %d attempts]', path,
                                              time_str, conn.attempts)
