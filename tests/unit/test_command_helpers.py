@@ -69,10 +69,10 @@ class TestStatHelpers(testtools.TestCase):
         with self.thread_manager as thread_manager:
             h.stat_account(self.conn, self.options, thread_manager)
         expected = """
-       Account: a
-    Containers: 42
-       Objects: 976K
-         Bytes: 1.0G
+   Account: a
+Containers: 42
+   Objects: 976K
+     Bytes: 1.0G
 """
         self.assertOut(expected)
 
@@ -89,12 +89,35 @@ class TestStatHelpers(testtools.TestCase):
         with self.thread_manager as thread_manager:
             h.stat_account(self.conn, self.options, thread_manager)
         expected = """
-    StorageURL: http://storage/v1/a
-    Auth Token: tk12345
-       Account: a
-    Containers: 42
-       Objects: 1000000
-         Bytes: 1073741824
+StorageURL: http://storage/v1/a
+Auth Token: tk12345
+   Account: a
+Containers: 42
+   Objects: 1000000
+     Bytes: 1073741824
+"""
+        self.assertOut(expected)
+
+    def test_stat_account_policy_stat(self):
+        # stub head_account
+        stub_headers = {
+            'x-account-container-count': 42,
+            'x-account-object-count': 1000000,
+            'x-account-bytes-used': 2 ** 30,
+            'x-account-storage-policy-nada-object-count': 1000000,
+            'x-account-storage-policy-nada-bytes-used': 2 ** 30,
+        }
+        self.conn.head_account.return_value = stub_headers
+
+        with self.thread_manager as thread_manager:
+            h.stat_account(self.conn, self.options, thread_manager)
+        expected = """
+                 Account: a
+              Containers: 42
+                 Objects: 1000000
+                   Bytes: 1073741824
+Objects in policy "nada": 1000000
+  Bytes in policy "nada": 1073741824
 """
         self.assertOut(expected)
 
