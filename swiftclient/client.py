@@ -35,6 +35,10 @@ from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
 from swiftclient.utils import LengthWrapper
 
+AUTH_VERSIONS_V1 = ('1.0', '1', 1)
+AUTH_VERSIONS_V2 = ('2.0', '2', 2)
+AUTH_VERSIONS_V3 = ('3.0', '3', 3)
+
 try:
     from logging import NullHandler
 except ImportError:
@@ -275,35 +279,57 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
 
 
 def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
-    """
-    Authenticate against an auth 2.0 server.
+    # this function is only here to preserve the historic 'public'
+    # interface of this module
+    kwargs.update({'auth_version': '2.0'})
+    return get_auth_keystone(auth_url, user, key, os_options, **kwargs)
 
-    We are using the keystoneclient library for our 2.0 authentication.
+
+def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
+    """
+    Authenticate against a keystone server.
+
+    We are using the keystoneclient library for authentication.
     """
 
     insecure = kwargs.get('insecure', False)
+    auth_version = kwargs.get('auth_version', '2.0')
     debug = logger.isEnabledFor(logging.DEBUG) and True or False
 
     try:
-        from keystoneclient.v2_0 import client as ksclient
+        if auth_version in AUTH_VERSIONS_V3:
+            from keystoneclient.v3 import client as ksclient
+        else:
+            from keystoneclient.v2_0 import client as ksclient
         from keystoneclient import exceptions
     except ImportError:
         sys.exit('''
-Auth version 2.0 requires python-keystoneclient, install it or use Auth
+Auth versions 2.0 and 3 require python-keystoneclient, install it or use Auth
 version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
 variables to be set or overridden with -A, -U, or -K.''')
 
     try:
-        _ksclient = ksclient.Client(username=user,
-                                    password=key,
-                                    tenant_name=os_options.get('tenant_name'),
-                                    tenant_id=os_options.get('tenant_id'),
-                                    debug=debug,
-                                    cacert=kwargs.get('cacert'),
-                                    auth_url=auth_url, insecure=insecure)
+        _ksclient = ksclient.Client(
+            username=user,
+            password=key,
+            tenant_name=os_options.get('tenant_name'),
+            tenant_id=os_options.get('tenant_id'),
+            user_id=os_options.get('user_id'),
+            user_domain_name=os_options.get('user_domain_name'),
+            user_domain_id=os_options.get('user_domain_id'),
+            project_name=os_options.get('project_name'),
+            project_id=os_options.get('project_id'),
+            project_domain_name=os_options.get('project_domain_name'),
+            project_domain_id=os_options.get('project_domain_id'),
+            debug=debug,
+            cacert=kwargs.get('cacert'),
+            auth_url=auth_url, insecure=insecure)
     except exceptions.Unauthorized:
-        raise ClientException('Unauthorised. Check username, password'
-                              ' and tenant name/id')
+        msg = 'Unauthorized. Check username, password and tenant name/id.'
+        if auth_version in AUTH_VERSIONS_V3:
+            msg = 'Unauthorized. Check username/id, password, ' \
+                  + 'tenant name/id and user/tenant domain name/id.'
+        raise ClientException(msg)
     except exceptions.AuthorizationFailure as err:
         raise ClientException('Authorization Failure. %s' % err)
     service_type = os_options.get('service_type') or 'object-store'
@@ -335,13 +361,13 @@ def get_auth(auth_url, user, key, **kwargs):
 
     storage_url, token = None, None
     insecure = kwargs.get('insecure', False)
-    if auth_version in ['1.0', '1', 1]:
+    if auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
                                           user,
                                           key,
                                           kwargs.get('snet'),
                                           insecure=insecure)
-    elif auth_version in ['2.0', '2', 2]:
+    elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:
         # We are allowing to specify a token/storage-url to re-use
         # without having to re-authenticate.
         if (os_options.get('object_storage_url') and
@@ -349,10 +375,9 @@ def get_auth(auth_url, user, key, **kwargs):
             return (os_options.get('object_storage_url'),
                     os_options.get('auth_token'))
 
-        # We are handling a special use case here when we were
-        # allowing specifying the account/tenant_name with the -U
-        # argument
-        if not kwargs.get('tenant_name') and ':' in user:
+        # We are handling a special use case here where the user argument
+        # specifies both the user name and tenant name in the form tenant:user
+        if user and not kwargs.get('tenant_name') and ':' in user:
             (os_options['tenant_name'],
              user) = user.split(':')
 
@@ -361,14 +386,17 @@ def get_auth(auth_url, user, key, **kwargs):
         if kwargs.get('tenant_name'):
             os_options['tenant_name'] = kwargs['tenant_name']
 
-        if not (os_options.get('tenant_name') or os_options.get('tenant_id')):
+        if not (os_options.get('tenant_name') or os_options.get('tenant_id')
+                or os_options.get('project_name')
+                or os_options.get('project_id')):
             raise ClientException('No tenant specified')
 
         cacert = kwargs.get('cacert', None)
-        storage_url, token = get_keystoneclient_2_0(auth_url, user,
-                                                    key, os_options,
-                                                    cacert=cacert,
-                                                    insecure=insecure)
+        storage_url, token = get_auth_keystone(auth_url, user,
+                                               key, os_options,
+                                               cacert=cacert,
+                                               insecure=insecure,
+                                               auth_version=auth_version)
     else:
         raise ClientException('Unknown auth_version %s specified.'
                               % auth_version)

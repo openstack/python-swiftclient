@@ -30,7 +30,7 @@ from six.moves.urllib.parse import urlparse
 from six.moves import reload_module
 
 # TODO: mock http connection class with more control over headers
-from .utils import fake_http_connect, fake_get_keystoneclient_2_0
+from .utils import fake_http_connect, fake_get_auth_keystone
 
 from swiftclient import client as c
 import swiftclient.utils
@@ -287,7 +287,9 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_with_tenant_name(self):
         os_options = {'tenant_name': 'asdf'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        req_args = {'auth_version': '2.0'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options,
+                                                     required_kwargs=req_args)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
                                 os_options=os_options,
                                 auth_version="2.0")
@@ -296,7 +298,31 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_with_tenant_id(self):
         os_options = {'tenant_id': 'asdf'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        req_args = {'auth_version': '2.0'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options,
+                                                     required_kwargs=req_args)
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                os_options=os_options,
+                                auth_version="2.0")
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+    def test_auth_v2_with_project_name(self):
+        os_options = {'project_name': 'asdf'}
+        req_args = {'auth_version': '2.0'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options,
+                                                     required_kwargs=req_args)
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                os_options=os_options,
+                                auth_version="2.0")
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+    def test_auth_v2_with_project_id(self):
+        os_options = {'project_id': 'asdf'}
+        req_args = {'auth_version': '2.0'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options,
+                                                     required_kwargs=req_args)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
                                 os_options=os_options,
                                 auth_version="2.0")
@@ -304,7 +330,7 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(token)
 
     def test_auth_v2_no_tenant_name_or_tenant_id(self):
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0({})
+        c.get_auth_keystone = fake_get_auth_keystone({})
         self.assertRaises(c.ClientException, c.get_auth,
                           'http://www.tests.com', 'asdf', 'asdf',
                           os_options={},
@@ -313,7 +339,7 @@ class TestGetAuth(MockHttpTest):
     def test_auth_v2_with_tenant_name_none_and_tenant_id_none(self):
         os_options = {'tenant_name': None,
                       'tenant_id': None}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        c.get_auth_keystone = fake_get_auth_keystone(os_options)
         self.assertRaises(c.ClientException, c.get_auth,
                           'http://www.tests.com', 'asdf', 'asdf',
                           os_options=os_options,
@@ -321,7 +347,7 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_with_tenant_user_in_user(self):
         tenant_option = {'tenant_name': 'foo'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(tenant_option)
+        c.get_auth_keystone = fake_get_auth_keystone(tenant_option)
         url, token = c.get_auth('http://www.test.com', 'foo:bar', 'asdf',
                                 os_options={},
                                 auth_version="2.0")
@@ -330,7 +356,7 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_tenant_name_no_os_options(self):
         tenant_option = {'tenant_name': 'asdf'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(tenant_option)
+        c.get_auth_keystone = fake_get_auth_keystone(tenant_option)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
                                 tenant_name='asdf',
                                 os_options={},
@@ -342,7 +368,7 @@ class TestGetAuth(MockHttpTest):
         os_options = {'service_type': 'object-store',
                       'endpoint_type': 'internalURL',
                       'tenant_name': 'asdf'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        c.get_auth_keystone = fake_get_auth_keystone(os_options)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
                                 os_options=os_options,
                                 auth_version="2.0")
@@ -351,7 +377,7 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_with_tenant_user_in_user_no_os_options(self):
         tenant_option = {'tenant_name': 'foo'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(tenant_option)
+        c.get_auth_keystone = fake_get_auth_keystone(tenant_option)
         url, token = c.get_auth('http://www.test.com', 'foo:bar', 'asdf',
                                 auth_version="2.0")
         self.assertTrue(url.startswith("http"))
@@ -360,7 +386,7 @@ class TestGetAuth(MockHttpTest):
     def test_auth_v2_with_os_region_name(self):
         os_options = {'region_name': 'good-region',
                       'tenant_name': 'asdf'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(os_options)
+        c.get_auth_keystone = fake_get_auth_keystone(os_options)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
                                 os_options=os_options,
                                 auth_version="2.0")
@@ -370,14 +396,14 @@ class TestGetAuth(MockHttpTest):
     def test_auth_v2_no_endpoint(self):
         os_options = {'region_name': 'unknown_region',
                       'tenant_name': 'asdf'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+        c.get_auth_keystone = fake_get_auth_keystone(
             os_options, c.ClientException)
         self.assertRaises(c.ClientException, c.get_auth,
                           'http://www.tests.com', 'asdf', 'asdf',
                           os_options=os_options, auth_version='2.0')
 
     def test_auth_v2_ks_exception(self):
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+        c.get_auth_keystone = fake_get_auth_keystone(
             {}, c.ClientException)
         self.assertRaises(c.ClientException, c.get_auth,
                           'http://www.tests.com', 'asdf', 'asdf',
@@ -386,7 +412,7 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_cacert(self):
         os_options = {'tenant_name': 'foo'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+        c.get_auth_keystone = fake_get_auth_keystone(
             os_options, None)
 
         auth_url_secure = 'https://www.tests.com'
@@ -414,7 +440,7 @@ class TestGetAuth(MockHttpTest):
 
     def test_auth_v2_insecure(self):
         os_options = {'tenant_name': 'foo'}
-        c.get_keystoneclient_2_0 = fake_get_keystoneclient_2_0(
+        c.get_auth_keystone = fake_get_auth_keystone(
             os_options, None)
 
         auth_url_secure = 'https://www.tests.com'
@@ -438,6 +464,29 @@ class TestGetAuth(MockHttpTest):
                           auth_url_insecure, 'asdf', 'asdf',
                           os_options=os_options, auth_version='2.0',
                           insecure=False)
+
+    def test_auth_v3_with_tenant_name(self):
+        # check the correct auth version is passed to get_auth_keystone
+        os_options = {'tenant_name': 'asdf'}
+        req_args = {'auth_version': '3'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options,
+                                                     required_kwargs=req_args)
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                os_options=os_options,
+                                auth_version="3")
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+    def test_get_keystone_client_2_0(self):
+        # check the correct auth version is passed to get_auth_keystone
+        os_options = {'tenant_name': 'asdf'}
+        req_args = {'auth_version': '2.0'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options,
+                                                     required_kwargs=req_args)
+        url, token = c.get_keystoneclient_2_0('http://www.test.com', 'asdf',
+                                              'asdf', os_options=os_options)
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
 
 
 class TestGetAccount(MockHttpTest):

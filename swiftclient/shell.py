@@ -22,7 +22,7 @@ import logging
 
 from errno import EEXIST, ENOENT
 from hashlib import md5
-from optparse import OptionParser, SUPPRESS_HELP
+from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from os import environ, listdir, makedirs, utime, _exit as os_exit
 from os.path import dirname, getmtime, getsize, isdir, join, \
     sep as os_path_sep
@@ -1356,9 +1356,14 @@ def parse_args(parser, args, enforce_requires=True):
     if len(args) > 0 and args[0] == 'tempurl':
         return options, args
 
-    if (not (options.auth and options.user and options.key)):
-        # Use 2.0 auth if none of the old args are present
-        options.auth_version = '2.0'
+    if options.auth_version == '3.0':
+        # tolerate sloppy auth_version
+        options.auth_version = '3'
+
+    if (not (options.auth and options.user and options.key)
+            and options.auth_version != '3'):
+            # Use keystone auth if any of the old-style args are missing
+            options.auth_version = '2.0'
 
     # Use new-style args if old ones not present
     if not options.auth and options.os_auth_url:
@@ -1370,8 +1375,15 @@ def parse_args(parser, args, enforce_requires=True):
 
     # Specific OpenStack options
     options.os_options = {
+        'user_id': options.os_user_id,
+        'user_domain_id': options.os_user_domain_id,
+        'user_domain_name': options.os_user_domain_name,
         'tenant_id': options.os_tenant_id,
         'tenant_name': options.os_tenant_name,
+        'project_id': options.os_project_id,
+        'project_name': options.os_project_name,
+        'project_domain_id': options.os_project_domain_id,
+        'project_domain_name': options.os_project_domain_name,
         'service_type': options.os_service_type,
         'endpoint_type': options.os_endpoint_type,
         'auth_token': options.os_auth_token,
@@ -1384,12 +1396,23 @@ def parse_args(parser, args, enforce_requires=True):
 
     if (options.os_options.get('object_storage_url') and
             options.os_options.get('auth_token') and
-            options.auth_version == '2.0'):
+            (options.auth_version == '2.0' or options.auth_version == '3')):
         return options, args
 
-    if enforce_requires and \
-            not (options.auth and options.user and options.key):
-        exit('''
+    if enforce_requires:
+        if options.auth_version == '3':
+            if not options.auth:
+                exit('Auth version 3 requires OS_AUTH_URL to be set or ' +
+                     'overridden with --os-auth-url')
+            if not (options.user or options.os_user_id):
+                exit('Auth version 3 requires either OS_USERNAME or ' +
+                     'OS_USER_ID to be set or overridden with ' +
+                     '--os-username or --os-user-id respectively.')
+            if not options.key:
+                exit('Auth version 3 requires OS_PASSWORD to be set or ' +
+                     'overridden with --os-password')
+        elif not (options.auth and options.user and options.key):
+            exit('''
 Auth version 1.0 requires ST_AUTH, ST_USER, and ST_KEY environment variables
 to be set or overridden with -A, -U, or -K.
 
@@ -1409,13 +1432,20 @@ def main(arguments=None):
     version = client_version
     parser = OptionParser(version='%%prog %s' % version,
                           usage='''
-usage: %%prog [--version] [--help] [--snet] [--verbose]
+usage: %%prog [--version] [--help] [--os-help] [--snet] [--verbose]
              [--debug] [--info] [--quiet] [--auth <auth_url>]
              [--auth-version <auth_version>] [--user <username>]
              [--key <api_key>] [--retries <num_retries>]
              [--os-username <auth-user-name>] [--os-password <auth-password>]
+             [--os-user-id <auth-user-id>]
+             [--os-user-domain-id <auth-user-domain-id>]
+             [--os-user-domain-name <auth-user-domain-name>]
              [--os-tenant-id <auth-tenant-id>]
              [--os-tenant-name <auth-tenant-name>]
+             [--os-project-id <auth-project-id>]
+             [--os-project-name <auth-project-name>]
+             [--os-project-domain-id <auth-project-domain-id>]
+             [--os-project-domain-name <auth-project-domain-name>]
              [--os-auth-url <auth-url>] [--os-auth-token <auth-token>]
              [--os-storage-url <storage-url>] [--os-region-name <region-name>]
              [--os-service-type <service-type>]
@@ -1449,12 +1479,25 @@ Examples:
   %%prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
       --os-username user --os-password password list
 
+  %%prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
+      --os-project-name project1 --os-project-domain-name domain1 \\
+      --os-username user --os-user-domain-name domain1 \\
+      --os-password password list
+
+  %%prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
+      --os-project-id 0123456789abcdef0123456789abcdef \\
+      --os-user-id abcdef0123456789abcdef0123456789 \\
+      --os-password password list
+
   %%prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
       --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
       list
 
   %%prog list --lh
 '''.strip('\n') % globals())
+    parser.add_option('--os-help', action='store_true', dest='os_help',
+                      help='Show OpenStack authentication options.')
+    parser.add_option('--os_help', action='store_true', help=SUPPRESS_HELP)
     parser.add_option('-s', '--snet', action='store_true', dest='snet',
                       default=False, help='Use SERVICENET internal network.')
     parser.add_option('-v', '--verbose', action='count', dest='verbose',
@@ -1472,7 +1515,9 @@ Examples:
                       help='URL for obtaining an auth token.')
     parser.add_option('-V', '--auth-version',
                       dest='auth_version',
-                      default=environ.get('ST_AUTH_VERSION', '1.0'),
+                      default=environ.get('ST_AUTH_VERSION',
+                                          (environ.get('OS_AUTH_VERSION',
+                                                       '1.0'))),
                       type=str,
                       help='Specify a version for authentication. '
                            'Defaults to 1.0.')
@@ -1484,81 +1529,6 @@ Examples:
                       help='Key for obtaining an auth token.')
     parser.add_option('-R', '--retries', type=int, default=5, dest='retries',
                       help='The number of times to retry a failed connection.')
-    parser.add_option('--os-username',
-                      metavar='<auth-user-name>',
-                      default=environ.get('OS_USERNAME'),
-                      help='OpenStack username. Defaults to env[OS_USERNAME].')
-    parser.add_option('--os_username',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-password',
-                      metavar='<auth-password>',
-                      default=environ.get('OS_PASSWORD'),
-                      help='OpenStack password. Defaults to env[OS_PASSWORD].')
-    parser.add_option('--os_password',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-tenant-id',
-                      metavar='<auth-tenant-id>',
-                      default=environ.get('OS_TENANT_ID'),
-                      help='OpenStack tenant ID. '
-                      'Defaults to env[OS_TENANT_ID].')
-    parser.add_option('--os_tenant_id',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-tenant-name',
-                      metavar='<auth-tenant-name>',
-                      default=environ.get('OS_TENANT_NAME'),
-                      help='OpenStack tenant name. '
-                           'Defaults to env[OS_TENANT_NAME].')
-    parser.add_option('--os_tenant_name',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-auth-url',
-                      metavar='<auth-url>',
-                      default=environ.get('OS_AUTH_URL'),
-                      help='OpenStack auth URL. Defaults to env[OS_AUTH_URL].')
-    parser.add_option('--os_auth_url',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-auth-token',
-                      metavar='<auth-token>',
-                      default=environ.get('OS_AUTH_TOKEN'),
-                      help='OpenStack token. Defaults to env[OS_AUTH_TOKEN]. '
-                           'Used with --os-storage-url to bypass the '
-                           'usual username/password authentication.')
-    parser.add_option('--os_auth_token',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-storage-url',
-                      metavar='<storage-url>',
-                      default=environ.get('OS_STORAGE_URL'),
-                      help='OpenStack storage URL. '
-                           'Defaults to env[OS_STORAGE_URL]. '
-                           'Overrides the storage url returned during auth. '
-                           'Will bypass authentication when used with '
-                           '--os-auth-token.')
-    parser.add_option('--os_storage_url',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-region-name',
-                      metavar='<region-name>',
-                      default=environ.get('OS_REGION_NAME'),
-                      help='OpenStack region name. '
-                           'Defaults to env[OS_REGION_NAME].')
-    parser.add_option('--os_region_name',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-service-type',
-                      metavar='<service-type>',
-                      default=environ.get('OS_SERVICE_TYPE'),
-                      help='OpenStack Service type. '
-                           'Defaults to env[OS_SERVICE_TYPE].')
-    parser.add_option('--os_service_type',
-                      help=SUPPRESS_HELP)
-    parser.add_option('--os-endpoint-type',
-                      metavar='<endpoint-type>',
-                      default=environ.get('OS_ENDPOINT_TYPE'),
-                      help='OpenStack Endpoint type. '
-                           'Defaults to env[OS_ENDPOINT_TYPE].')
-    parser.add_option('--os-cacert',
-                      metavar='<ca-certificate>',
-                      default=environ.get('OS_CACERT'),
-                      help='Specify a CA bundle file to use in verifying a '
-                      'TLS (https) server certificate. '
-                      'Defaults to env[OS_CACERT].')
     default_val = config_true_value(environ.get('SWIFTCLIENT_INSECURE'))
     parser.add_option('--insecure',
                       action="store_true", dest="insecure",
@@ -1573,7 +1543,143 @@ Examples:
                       help='This option is deprecated and not used anymore. '
                            'SSL compression should be disabled by default '
                            'by the system SSL library.')
+
+    os_grp = OptionGroup(parser, "OpenStack authentication options")
+    os_grp.add_option('--os-username',
+                      metavar='<auth-user-name>',
+                      default=environ.get('OS_USERNAME'),
+                      help='OpenStack username. Defaults to env[OS_USERNAME].')
+    os_grp.add_option('--os_username',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-user-id',
+                      metavar='<auth-user-id>',
+                      default=environ.get('OS_USER_ID'),
+                      help='OpenStack user ID. '
+                      'Defaults to env[OS_USER_ID].')
+    os_grp.add_option('--os_user_id',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-user-domain-id',
+                      metavar='<auth-user-domain-id>',
+                      default=environ.get('OS_USER_DOMAIN_ID'),
+                      help='OpenStack user domain ID. '
+                      'Defaults to env[OS_USER_DOMAIN_ID].')
+    os_grp.add_option('--os_user_domain_id',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-user-domain-name',
+                      metavar='<auth-user-domain-name>',
+                      default=environ.get('OS_USER_DOMAIN_NAME'),
+                      help='OpenStack user domain name. '
+                           'Defaults to env[OS_USER_DOMAIN_NAME].')
+    os_grp.add_option('--os_user_domain_name',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-password',
+                      metavar='<auth-password>',
+                      default=environ.get('OS_PASSWORD'),
+                      help='OpenStack password. Defaults to env[OS_PASSWORD].')
+    os_grp.add_option('--os_password',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-tenant-id',
+                      metavar='<auth-tenant-id>',
+                      default=environ.get('OS_TENANT_ID'),
+                      help='OpenStack tenant ID. '
+                      'Defaults to env[OS_TENANT_ID].')
+    os_grp.add_option('--os_tenant_id',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-tenant-name',
+                      metavar='<auth-tenant-name>',
+                      default=environ.get('OS_TENANT_NAME'),
+                      help='OpenStack tenant name. '
+                           'Defaults to env[OS_TENANT_NAME].')
+    os_grp.add_option('--os_tenant_name',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-project-id',
+                      metavar='<auth-project-id>',
+                      default=environ.get('OS_PROJECT_ID'),
+                      help='OpenStack project ID. '
+                      'Defaults to env[OS_PROJECT_ID].')
+    os_grp.add_option('--os_project_id',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-project-name',
+                      metavar='<auth-project-name>',
+                      default=environ.get('OS_PROJECT_NAME'),
+                      help='OpenStack project name. '
+                           'Defaults to env[OS_PROJECT_NAME].')
+    os_grp.add_option('--os_project_name',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-project-domain-id',
+                      metavar='<auth-project-domain-id>',
+                      default=environ.get('OS_PROJECT_DOMAIN_ID'),
+                      help='OpenStack project domain ID. '
+                      'Defaults to env[OS_PROJECT_DOMAIN_ID].')
+    os_grp.add_option('--os_project_domain_id',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-project-domain-name',
+                      metavar='<auth-project-domain-name>',
+                      default=environ.get('OS_PROJECT_DOMAIN_NAME'),
+                      help='OpenStack project domain name. '
+                           'Defaults to env[OS_PROJECT_DOMAIN_NAME].')
+    os_grp.add_option('--os_project_domain_name',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-auth-url',
+                      metavar='<auth-url>',
+                      default=environ.get('OS_AUTH_URL'),
+                      help='OpenStack auth URL. Defaults to env[OS_AUTH_URL].')
+    os_grp.add_option('--os_auth_url',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-auth-token',
+                      metavar='<auth-token>',
+                      default=environ.get('OS_AUTH_TOKEN'),
+                      help='OpenStack token. Defaults to env[OS_AUTH_TOKEN]. '
+                           'Used with --os-storage-url to bypass the '
+                           'usual username/password authentication.')
+    os_grp.add_option('--os_auth_token',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-storage-url',
+                      metavar='<storage-url>',
+                      default=environ.get('OS_STORAGE_URL'),
+                      help='OpenStack storage URL. '
+                           'Defaults to env[OS_STORAGE_URL]. '
+                           'Overrides the storage url returned during auth. '
+                           'Will bypass authentication when used with '
+                           '--os-auth-token.')
+    os_grp.add_option('--os_storage_url',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-region-name',
+                      metavar='<region-name>',
+                      default=environ.get('OS_REGION_NAME'),
+                      help='OpenStack region name. '
+                           'Defaults to env[OS_REGION_NAME].')
+    os_grp.add_option('--os_region_name',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-service-type',
+                      metavar='<service-type>',
+                      default=environ.get('OS_SERVICE_TYPE'),
+                      help='OpenStack Service type. '
+                           'Defaults to env[OS_SERVICE_TYPE].')
+    os_grp.add_option('--os_service_type',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-endpoint-type',
+                      metavar='<endpoint-type>',
+                      default=environ.get('OS_ENDPOINT_TYPE'),
+                      help='OpenStack Endpoint type. '
+                           'Defaults to env[OS_ENDPOINT_TYPE].')
+    os_grp.add_option('--os_endpoint_type',
+                      help=SUPPRESS_HELP)
+    os_grp.add_option('--os-cacert',
+                      metavar='<ca-certificate>',
+                      default=environ.get('OS_CACERT'),
+                      help='Specify a CA bundle file to use in verifying a '
+                      'TLS (https) server certificate. '
+                      'Defaults to env[OS_CACERT].')
     parser.disable_interspersed_args()
+    # call parse_args before adding os options group so that -h, --help will
+    # print a condensed help message without the os options
+    (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
+    parser.add_option_group(os_grp)
+    if options.os_help:
+        # if openstack option help has been explicitly requested then force
+        # help message, now that os_options group has been added to parser
+        argv = ['-h']
     (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
     parser.enable_interspersed_args()
 
