@@ -173,8 +173,9 @@ class TestShell(unittest.TestCase):
                  mock.call('           0')]
         mock_print.assert_has_calls(calls)
 
+    @mock.patch('swiftclient.shell.makedirs')
     @mock.patch('swiftclient.shell.Connection')
-    def test_download(self, connection):
+    def test_download(self, connection, makedirs):
         connection.return_value.get_object.return_value = [
             {'content-type': 'text/plain',
              'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
