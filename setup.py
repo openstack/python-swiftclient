@@ -19,4 +19,9 @@ import setuptools
 
 setuptools.setup(
     setup_requires=['pbr'],
-    pbr=True)
+    pbr=True,
+    entry_points={
+        "console_scripts": [
+            "swift=swiftclient.shell:main"
+        ]
+    })
