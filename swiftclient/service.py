@@ -1003,18 +1003,18 @@ class SwiftService(object):
                 fp = None
                 try:
                     no_file = options['no_download']
-                    make_dir = not no_file and out_file != "-"
                     content_type = headers.get('content-type')
                     if content_type.split(';', 1)[0] == 'text/directory':
+                        make_dir = not no_file and out_file != "-"
                         if make_dir and not isdir(path):
                             mkdirs(path)
 
-                        for _ in obj_body.buffer():
-                            continue
                     else:
-                        dirpath = dirname(path)
-                        if make_dir and dirpath and not isdir(dirpath):
-                            mkdirs(dirpath)
+                        make_dir = not (no_file or out_file)
+                        if make_dir:
+                            dirpath = dirname(path)
+                            if dirpath and not isdir(dirpath):
+                                mkdirs(dirpath)
 
                         if not no_file:
                             if out_file == "-":
@@ -1023,30 +1023,25 @@ class SwiftService(object):
                                     'contents': obj_body
                                 }
                                 return res
-                            elif out_file:
+                            if out_file:
                                 fp = open(out_file, 'wb')
                             else:
                                 if basename(path):
                                     fp = open(path, 'wb')
                                 else:
                                     pseudodir = True
-                                    no_file = True
 
-                            for chunk in obj_body.buffer():
-                                if not no_file:
-                                    fp.write(chunk)
-
-                        else:
-                            for _ in obj_body.buffer():
-                                continue
+                    for chunk in obj_body.buffer():
+                        if fp is not None:
+                            fp.write(chunk)
 
                     finish_time = time()
+
                 finally:
                     bytes_read = obj_body.bytes_read()
                     if fp is not None:
                         fp.close()
-                        if 'x-object-meta-mtime' in headers \
-                                and not options['no_download']:
+                        if 'x-object-meta-mtime' in headers and not no_file:
                             mtime = float(headers['x-object-meta-mtime'])
                             if options['out_file'] \
                                     and not options['out_file'] == "-":
