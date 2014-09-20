@@ -45,6 +45,14 @@ def stat_account(conn, options):
             policies.add(policy_name)
 
     for policy in policies:
+        container_count_header = (POLICY_HEADER_PREFIX + policy +
+                                  '-container-count')
+        if container_count_header in headers:
+            items.append(
+                ('Containers in policy "' + policy + '"',
+                 prt_bytes(headers[container_count_header],
+                           options['human']).lstrip())
+            )
         items.extend((
             ('Objects in policy "' + policy + '"',
              prt_bytes(

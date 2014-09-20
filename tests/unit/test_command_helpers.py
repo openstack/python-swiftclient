@@ -124,6 +124,32 @@ Objects in policy "nada": 1000000
 """
         self.assertOut(expected)
 
+    def test_stat_account_policy_stat_with_container_counts(self):
+        # stub head_account
+        stub_headers = {
+            'x-account-container-count': 42,
+            'x-account-object-count': 1000000,
+            'x-account-bytes-used': 2 ** 30,
+            'x-account-storage-policy-nada-container-count': 10,
+            'x-account-storage-policy-nada-object-count': 1000000,
+            'x-account-storage-policy-nada-bytes-used': 2 ** 30,
+        }
+        self.conn.head_account.return_value = stub_headers
+
+        with self.output_manager as output_manager:
+            items, headers = h.stat_account(self.conn, self.options)
+            h.print_account_stats(items, headers, output_manager)
+        expected = """
+                    Account: a
+                 Containers: 42
+                    Objects: 1000000
+                      Bytes: 1073741824
+Containers in policy "nada": 10
+   Objects in policy "nada": 1000000
+     Bytes in policy "nada": 1073741824
+"""
+        self.assertOut(expected)
+
     def test_stat_container_human(self):
         self.options['human'] = True
         # stub head container request
