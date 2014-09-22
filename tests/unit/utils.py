@@ -14,6 +14,9 @@
 # limitations under the License.
 from requests import RequestException
 from time import sleep
+import testtools
+from six.moves import reload_module
+from swiftclient import client as c
 
 
 def fake_get_auth_keystone(os_options, exc=None, **kwargs):
@@ -156,3 +159,54 @@ def fake_http_connect(*code_iter, **kwargs):
         return fake_conn
 
     return connect
+
+
+class MockHttpTest(testtools.TestCase):
+
+    def setUp(self):
+        super(MockHttpTest, self).setUp()
+
+        def fake_http_connection(*args, **kwargs):
+            _orig_http_connection = c.http_connection
+            return_read = kwargs.get('return_read')
+            query_string = kwargs.get('query_string')
+            storage_url = kwargs.get('storage_url')
+            auth_token = kwargs.get('auth_token')
+
+            def wrapper(url, proxy=None, cacert=None, insecure=False,
+                        ssl_compression=True):
+                if storage_url:
+                    self.assertEqual(storage_url, url)
+
+                parsed, _conn = _orig_http_connection(url, proxy=proxy)
+                conn = fake_http_connect(*args, **kwargs)()
+
+                def request(method, url, *args, **kwargs):
+                    if auth_token:
+                        headers = args[1]
+                        self.assertTrue('X-Auth-Token' in headers)
+                        actual_token = headers.get('X-Auth-Token')
+                        self.assertEqual(auth_token, actual_token)
+                    if query_string:
+                        self.assertTrue(url.endswith('?' + query_string))
+                    if url.endswith('invalid_cert') and not insecure:
+                        from swiftclient import client as c
+                        raise c.ClientException("invalid_certificate")
+                    return
+                conn.request = request
+
+                conn.has_been_read = False
+                _orig_read = conn.read
+
+                def read(*args, **kwargs):
+                    conn.has_been_read = True
+                    return _orig_read(*args, **kwargs)
+                conn.read = return_read or read
+
+                return parsed, conn
+            return wrapper
+        self.fake_http_connection = fake_http_connection
+
+    def tearDown(self):
+        super(MockHttpTest, self).tearDown()
+        reload_module(c)

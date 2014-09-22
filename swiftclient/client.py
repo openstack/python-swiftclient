@@ -285,6 +285,23 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
     return get_auth_keystone(auth_url, user, key, os_options, **kwargs)
 
 
+def _import_keystone_client(auth_version):
+    # the attempted imports are encapsulated in this function to allow
+    # mocking for tests
+    try:
+        if auth_version in AUTH_VERSIONS_V3:
+            from keystoneclient.v3 import client as ksclient
+        else:
+            from keystoneclient.v2_0 import client as ksclient
+        from keystoneclient import exceptions
+        return ksclient, exceptions
+    except ImportError:
+        sys.exit('''
+Auth versions 2.0 and 3 require python-keystoneclient, install it or use Auth
+version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
+variables to be set or overridden with -A, -U, or -K.''')
+
+
 def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     """
     Authenticate against a keystone server.
@@ -296,17 +313,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     auth_version = kwargs.get('auth_version', '2.0')
     debug = logger.isEnabledFor(logging.DEBUG) and True or False
 
-    try:
-        if auth_version in AUTH_VERSIONS_V3:
-            from keystoneclient.v3 import client as ksclient
-        else:
-            from keystoneclient.v2_0 import client as ksclient
-        from keystoneclient import exceptions
-    except ImportError:
-        sys.exit('''
-Auth versions 2.0 and 3 require python-keystoneclient, install it or use Auth
-version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
-variables to be set or overridden with -A, -U, or -K.''')
+    ksclient, exceptions = _import_keystone_client(auth_version)
 
     try:
         _ksclient = ksclient.Client(
