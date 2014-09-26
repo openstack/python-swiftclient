@@ -435,14 +435,15 @@ class TestParsing(unittest.TestCase):
 
     def setUp(self):
         super(TestParsing, self).setUp()
-        self._orig_environ = os.environ.copy()
+        self._environ_vars = {}
         keys = os.environ.keys()
         for k in keys:
-            if k in ('ST_KEY', 'ST_USER', 'ST_AUTH'):
-                del os.environ[k]
+            if (k in ('ST_KEY', 'ST_USER', 'ST_AUTH')
+                    or k.startswith('OS_')):
+                self._environ_vars[k] = os.environ.pop(k)
 
     def tearDown(self):
-        os.environ = self._orig_environ
+        os.environ.update(self._environ_vars)
 
     def _make_fake_command(self, result):
         def fake_command(parser, args, thread_manager):
