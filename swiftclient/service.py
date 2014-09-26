@@ -1914,7 +1914,6 @@ class SwiftService(object):
                         raise part["error"]
 
                     for seg in seg_list:
-                        print(seg)
                         del_seg = segment_pool.submit(
                             self._delete_segment, s_container,
                             seg, results_queue=results_queue
