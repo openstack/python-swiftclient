@@ -421,7 +421,7 @@ def st_list(parser, args, output_manager):
                                         float(meta.get('x-timestamp')))
                                     datestamp = strftime(
                                         '%Y-%m-%d %H:%M:%S', utc)
-                                except ClientException:
+                                except TypeError:
                                     datestamp = '????-??-?? ??:??:??'
                                 if not options.totals:
                                     output_manager.print_msg(
