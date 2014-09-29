@@ -817,16 +817,14 @@ def st_upload(parser, args, output_manager):
                                 )
                 else:
                     error = r['error']
-                    if isinstance(error, SwiftError):
-                        output_manager.error("%s" % error)
-                    elif isinstance(error, ClientException):
-                        if r['action'] == "create_container":
-                            if 'X-Storage-Policy' in r['headers']:
-                                output_manager.error(
-                                    'Error trying to create container %s with '
-                                    'Storage Policy %s', container,
-                                    r['headers']['X-Storage-Policy'].strip()
-                                )
+                    if 'action' in r and r['action'] == "create_container":
+                        # it is not an error to be unable to create the
+                        # container so print a warning and carry on
+                        if isinstance(error, ClientException):
+                            if (r['headers'] and
+                                    'X-Storage-Policy' in r['headers']):
+                                msg = ' with Storage Policy %s' % \
+                                      r['headers']['X-Storage-Policy'].strip()
                             else:
                                 msg = ' '.join(str(x) for x in (
                                     error.http_status, error.http_reason)
@@ -835,20 +833,15 @@ def st_upload(parser, args, output_manager):
                                     if msg:
                                         msg += ': '
                                     msg += error.http_response_content[:60]
-                                output_manager.error(
-                                    'Error trying to create container %r: %s',
-                                    container, msg
-                                )
+                                msg = ': %s' % msg
                         else:
-                            output_manager.error("%s" % error)
+                            msg = ': %s' % error
+                        output_manager.warning(
+                            'Warning: failed to create container '
+                            '%r%s', container, msg
+                        )
                     else:
-                        if r['action'] == "create_container":
-                            output_manager.error(
-                                'Error trying to create container %r: %s',
-                                container, error
-                            )
-                        else:
-                            output_manager.error("%s" % error)
+                        output_manager.error("%s" % error)
 
         except SwiftError as e:
             output_manager.error("%s" % e)

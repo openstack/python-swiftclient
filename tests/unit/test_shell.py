@@ -12,7 +12,9 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from genericpath import getmtime
 
+import hashlib
 import mock
 import os
 import tempfile
@@ -81,6 +83,21 @@ def _make_env(opts, os_opts):
         key = 'OS_' + k.upper().replace('-', '_')
         env[key] = v
     return env
+
+
+def _make_cmd(cmd, opts, os_opts, use_env=False, flags=None, cmd_args=None):
+    flags = flags or []
+    if use_env:
+        # set up fake environment variables and make a minimal command line
+        env = _make_env(opts, os_opts)
+        args = _make_args(cmd, {}, {}, separator='-', flags=flags,
+                          cmd_args=cmd_args)
+    else:
+        # set up empty environment and make full command line
+        env = {}
+        args = _make_args(cmd, opts, os_opts, separator='-', flags=flags,
+                          cmd_args=cmd_args)
+    return args, env
 
 
 @mock.patch.dict(os.environ, mocked_os_environ)
@@ -379,6 +396,28 @@ class TestShell(unittest.TestCase):
                                     {'X-Storage-Policy': mock.ANY},
                                     response_dict={})]
         connection.return_value.put_container.has_calls(expected_calls)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            '',
+            content_length=0,
+            headers={'x-object-manifest': mock.ANY,
+                     'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_segments_to_same_container(self, connection):
+        # Upload in segments to same container
+        connection.return_value.head_object.return_value = {
+            'content-length': '0'}
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", self.tmpfile, "-S", "10",
+                "-C", "container"]
+        with open(self.tmpfile, "wb") as fh:
+            fh.write(b'12345678901234567890')
+        swiftclient.shell.main(argv)
+        connection.return_value.put_container.assert_called_once_with(
+            'container', {}, response_dict={})
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
@@ -692,10 +731,11 @@ class TestSubcommandHelp(unittest.TestCase):
         self.assertEqual(out.strip('\n'), expected)
 
 
-class TestParsing(unittest.TestCase):
-
-    def setUp(self):
-        super(TestParsing, self).setUp()
+class TestBase(unittest.TestCase):
+    """
+    Provide some common methods to subclasses
+    """
+    def _remove_swift_env_vars(self):
         self._environ_vars = {}
         keys = list(os.environ.keys())
         for k in keys:
@@ -703,8 +743,19 @@ class TestParsing(unittest.TestCase):
                     or k.startswith('OS_')):
                 self._environ_vars[k] = os.environ.pop(k)
 
-    def tearDown(self):
+    def _replace_swift_env_vars(self):
         os.environ.update(self._environ_vars)
+
+
+class TestParsing(TestBase):
+
+    def setUp(self):
+        super(TestParsing, self).setUp()
+        self._remove_swift_env_vars()
+
+    def tearDown(self):
+        self._replace_swift_env_vars()
+        super(TestParsing, self).tearDown()
 
     def _make_fake_command(self, result):
         def fake_command(parser, args, thread_manager):
@@ -1339,3 +1390,294 @@ class TestAuth(MockHttpTest):
                 'x-auth-token': token + '_new',
             }),
         ])
+
+
+class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
+    """
+    Tests to verify use of --os-storage-url will actually
+    result in the object request being sent despite account
+    read/write access and container write access being denied.
+    """
+    def setUp(self):
+        super(TestCrossAccountObjectAccess, self).setUp()
+        self._remove_swift_env_vars()
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file.file.write(b'01234567890123456789')
+        temp_file.file.flush()
+        self.obj = temp_file.name
+        self.url = 'http://alternate.com:8080/v1'
+
+        # account tests will attempt to access
+        self.account = 'AUTH_alice'
+
+        # keystone returns endpoint for another account
+        fake_ks = FakeKeystone(endpoint='http://example.com:8080/v1/AUTH_bob',
+                               token='bob_token')
+        self.fake_ks_import = _make_fake_import_keystone_client(fake_ks)
+
+        self.cont = 'c1'
+        self.cont_path = '/v1/%s/%s' % (self.account, self.cont)
+        self.obj_path = '%s%s' % (self.cont_path, self.obj)
+
+        self.os_opts = {'username': 'bob',
+                        'password': 'password',
+                        'project-name': 'proj_bob',
+                        'auth-url': 'http://example.com:5000/v3',
+                        'storage-url': '%s/%s' % (self.url, self.account)}
+        self.opts = {'auth-version': '3'}
+
+    def tearDown(self):
+        try:
+            os.remove(self.obj)
+        except OSError:
+            pass
+        self._replace_swift_env_vars()
+        super(TestCrossAccountObjectAccess, self).tearDown()
+
+    def _make_cmd(self, cmd, cmd_args=None):
+        return _make_cmd(cmd, self.opts, self.os_opts, cmd_args=cmd_args)
+
+    def _fake_cross_account_auth(self, read_ok, write_ok):
+        def on_request(method, path, *args, **kwargs):
+            """
+            Modify response code to 200 if cross account permissions match.
+            """
+            status = 403
+            if (path.startswith('/v1/%s/%s' % (self.account, self.cont))
+                    and read_ok and method in ('GET', 'HEAD')):
+                status = 200
+            elif (path.startswith('/v1/%s/%s%s'
+                                  % (self.account, self.cont, self.obj))
+                    and write_ok and method in ('PUT', 'POST', 'DELETE')):
+                status = 200
+            return status
+        return on_request
+
+    def test_upload_with_read_write_access(self):
+        req_handler = self._fake_cross_account_auth(True, True)
+        fake_conn = self.fake_http_connection(403, 403,
+                                              on_request=req_handler)
+
+        args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
+                                                       '--leave-segments'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        self.assertRequests([('PUT', self.cont_path),
+                             ('PUT', self.obj_path)])
+        self.assertEqual(self.obj, out.strip())
+        expected_err = 'Warning: failed to create container %r: 403 Fake' \
+                       % self.cont
+        self.assertEqual(expected_err, out.err.strip())
+
+    def test_upload_with_write_only_access(self):
+        req_handler = self._fake_cross_account_auth(False, True)
+        fake_conn = self.fake_http_connection(403, 403,
+                                              on_request=req_handler)
+
+        args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
+                                                       '--leave-segments'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        self.assertRequests([('PUT', self.cont_path),
+                             ('PUT', self.obj_path)])
+        self.assertEqual(self.obj, out.strip())
+        expected_err = 'Warning: failed to create container %r: 403 Fake' \
+                       % self.cont
+        self.assertEqual(expected_err, out.err.strip())
+
+    def test_segment_upload_with_write_only_access(self):
+        req_handler = self._fake_cross_account_auth(False, True)
+        fake_conn = self.fake_http_connection(403, 403, 403, 403,
+                                              on_request=req_handler)
+
+        args, env = self._make_cmd('upload',
+                                   cmd_args=[self.cont, self.obj,
+                                             '--leave-segments',
+                                             '--segment-size=10',
+                                             '--segment-container=%s'
+                                             % self.cont])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        segment_time = getmtime(self.obj)
+        segment_path_0 = '%s/%f/20/10/00000000' % (self.obj_path, segment_time)
+        segment_path_1 = '%s/%f/20/10/00000001' % (self.obj_path, segment_time)
+        # Note that the order of segment PUTs cannot be asserted, so test for
+        # existence in request log individually
+        self.assert_request(('PUT', self.cont_path))
+        self.assert_request(('PUT', segment_path_0))
+        self.assert_request(('PUT', segment_path_1))
+        self.assert_request(('PUT', self.obj_path))
+        self.assertTrue(self.obj in out.out)
+        expected_err = 'Warning: failed to create container %r: 403 Fake' \
+                       % self.cont
+        self.assertEqual(expected_err, out.err.strip())
+
+    def test_upload_with_no_access(self):
+        fake_conn = self.fake_http_connection(403, 403)
+
+        args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
+                                                       '--leave-segments'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                            self.fail('Expected SystemExit')
+                        except SystemExit:
+                            pass
+
+        self.assertRequests([('PUT', self.cont_path),
+                             ('PUT', self.obj_path)])
+        expected_err = 'Object PUT failed: http://1.2.3.4%s 403 Fake' \
+                       % self.obj_path
+        self.assertTrue(expected_err in out.err)
+        self.assertEqual('', out)
+
+    def test_download_with_read_write_access(self):
+        req_handler = self._fake_cross_account_auth(True, True)
+        empty_str_etag = 'd41d8cd98f00b204e9800998ecf8427e'
+        fake_conn = self.fake_http_connection(403, on_request=req_handler,
+                                              etags=[empty_str_etag])
+
+        args, env = self._make_cmd('download', cmd_args=[self.cont,
+                                                         self.obj.lstrip('/'),
+                                                         '--no-download'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        self.assertRequests([('GET', self.obj_path)])
+        self.assertTrue(out.out.startswith(self.obj.lstrip('/')))
+        self.assertEqual('', out.err)
+
+    def test_download_with_read_only_access(self):
+        req_handler = self._fake_cross_account_auth(True, False)
+        empty_str_etag = 'd41d8cd98f00b204e9800998ecf8427e'
+        fake_conn = self.fake_http_connection(403, on_request=req_handler,
+                                              etags=[empty_str_etag])
+
+        args, env = self._make_cmd('download', cmd_args=[self.cont,
+                                                         self.obj.lstrip('/'),
+                                                         '--no-download'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        self.assertRequests([('GET', self.obj_path)])
+        self.assertTrue(out.out.startswith(self.obj.lstrip('/')))
+        self.assertEqual('', out.err)
+
+    def test_download_with_no_access(self):
+        fake_conn = self.fake_http_connection(403)
+        args, env = self._make_cmd('download', cmd_args=[self.cont,
+                                                         self.obj.lstrip('/'),
+                                                         '--no-download'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                            self.fail('Expected SystemExit')
+                        except SystemExit:
+                            pass
+
+        self.assertRequests([('GET', self.obj_path)])
+        path = '%s%s' % (self.cont, self.obj)
+        expected_err = 'Error downloading object %r' % path
+        self.assertTrue(out.err.startswith(expected_err))
+        self.assertEqual('', out)
+
+    def test_list_with_read_access(self):
+        req_handler = self._fake_cross_account_auth(True, False)
+        resp_body = '{}'
+        m = hashlib.md5()
+        m.update(resp_body.encode())
+        etag = m.hexdigest()
+        fake_conn = self.fake_http_connection(403, on_request=req_handler,
+                                              etags=[etag],
+                                              body=resp_body)
+
+        args, env = self._make_cmd('download', cmd_args=[self.cont])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        self.assertRequests([('GET', '%s?format=json' % self.cont_path)])
+        self.assertEqual('', out)
+        self.assertEqual('', out.err)
+
+    def test_list_with_no_access(self):
+        fake_conn = self.fake_http_connection(403)
+
+        args, env = self._make_cmd('download', cmd_args=[self.cont])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                            self.fail('Expected SystemExit')
+                        except SystemExit:
+                            pass
+
+        self.assertRequests([('GET', '%s?format=json' % self.cont_path)])
+        self.assertEqual('', out)
+        self.assertTrue(out.err.startswith('Container GET failed:'))
+
+
+class TestCrossAccountObjectAccessUsingEnv(TestCrossAccountObjectAccess):
+    """
+    Repeat super-class tests using environment variables rather than command
+    line to set options.
+    """
+
+    def _make_cmd(self, cmd, cmd_args=None):
+        return _make_cmd(cmd, self.opts, self.os_opts, cmd_args=cmd_args,
+                         use_env=True)
