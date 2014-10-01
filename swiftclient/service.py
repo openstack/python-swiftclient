@@ -1177,6 +1177,12 @@ class SwiftService(object):
         else:
             options = self._options
 
+        try:
+            segment_size = int(0 if options['segment_size'] is None else
+                               options['segment_size'])
+        except ValueError:
+            raise SwiftError('Segment size should be an integer value')
+
         # Does the account exist?
         account_stat = self.stat(options=options)
         if not account_stat["success"]:
@@ -1204,7 +1210,7 @@ class SwiftService(object):
             res = r.result()
             yield res
 
-        if options['segment_size'] is not None:
+        if segment_size:
             seg_container = container + '_segments'
             if options['segment_container']:
                 seg_container = options['segment_container']
