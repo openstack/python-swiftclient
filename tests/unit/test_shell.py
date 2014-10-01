@@ -174,6 +174,42 @@ class TestShell(unittest.TestCase):
 
     @mock.patch('swiftclient.shell.OutputManager._print')
     @mock.patch('swiftclient.service.Connection')
+    def test_list_account_long(self, connection, mock_print):
+        # Test account listing
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container', 'bytes': 0, 'count': 0}]],
+            [None, []],
+        ]
+
+        argv = ["", "list", "--lh"]
+        swiftclient.shell.main(argv)
+        calls = [mock.call(marker='', prefix=None),
+                 mock.call(marker='container', prefix=None)]
+        connection.return_value.get_account.assert_has_calls(calls)
+        calls = [mock.call('    0    0 1970-01-01 00:00:01 container'),
+                 mock.call('    0    0')]
+        mock_print.assert_has_calls(calls)
+
+        # Now test again, this time without returning metadata
+        connection.return_value.head_container.return_value = {}
+
+        # Test account listing
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container', 'bytes': 0, 'count': 0}]],
+            [None, []],
+        ]
+
+        argv = ["", "list", "--lh"]
+        swiftclient.shell.main(argv)
+        calls = [mock.call(marker='', prefix=None),
+                 mock.call(marker='container', prefix=None)]
+        connection.return_value.get_account.assert_has_calls(calls)
+        calls = [mock.call('    0    0 ????-??-?? ??:??:?? container'),
+                 mock.call('    0    0')]
+        mock_print.assert_has_calls(calls)
+
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
     def test_list_container(self, connection, mock_print):
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object_a'}]],
