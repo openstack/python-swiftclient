@@ -291,7 +291,7 @@ class TestShell(unittest.TestCase):
         argv = ["", "upload", "container", self.tmpfile,
                 "-H", "X-Storage-Policy:one"]
         swiftclient.shell.main(argv)
-        connection.return_value.put_container.assert_called_with(
+        connection.return_value.put_container.assert_called_once_with(
             'container',
             {'X-Storage-Policy': mock.ANY},
             response_dict={})
@@ -327,10 +327,13 @@ class TestShell(unittest.TestCase):
         with open(self.tmpfile, "wb") as fh:
             fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
-        connection.return_value.put_container.assert_called_with(
-            'container_segments',
-            {'X-Storage-Policy': mock.ANY},
-            response_dict={})
+        expected_calls = [mock.call('container',
+                                    {'X-Storage-Policy': mock.ANY},
+                                    response_dict={}),
+                          mock.call('container_segments',
+                                    {'X-Storage-Policy': mock.ANY},
+                                    response_dict={})]
+        connection.return_value.put_container.has_calls(expected_calls)
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),

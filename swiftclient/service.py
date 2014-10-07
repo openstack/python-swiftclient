@@ -1197,6 +1197,13 @@ class SwiftService(object):
             )
         ]
 
+        # wait for first container job to complete before possibly attempting
+        # segment container job because segment container job may attempt
+        # to HEAD the first container
+        for r in interruptable_as_completed(create_containers):
+            res = r.result()
+            yield res
+
         if options['segment_size'] is not None:
             seg_container = container + '_segments'
             if options['segment_container']:
@@ -1206,23 +1213,23 @@ class SwiftService(object):
                 # rather than just letting swift pick the default storage
                 # policy, we'll try to create the segments container with the
                 # same as the upload container
-                create_containers.append(
-                    self.thread_manager.object_uu_pool.submit(
+                create_containers = [
+                    self.thread_manager.container_pool.submit(
                         self._create_container_job, seg_container,
                         policy_source=container
                     )
-                )
+                ]
             else:
-                create_containers.append(
-                    self.thread_manager.object_uu_pool.submit(
+                create_containers = [
+                    self.thread_manager.container_pool.submit(
                         self._create_container_job, seg_container,
                         headers=policy_header
                     )
-                )
+                ]
 
-        for r in interruptable_as_completed(create_containers):
-            res = r.result()
-            yield res
+            for r in interruptable_as_completed(create_containers):
+                res = r.result()
+                yield res
 
         # We maintain a results queue here and a separate thread to monitor
         # the futures because we want to get results back from potential
