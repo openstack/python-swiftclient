@@ -70,8 +70,7 @@ class TestFunctional(testtools.TestCase):
     def setUp(self):
         super(TestFunctional, self).setUp()
         if self.skip_tests:
-            raise swiftclient.exceptions.SkipTest(
-                'SKIPPING FUNCTIONAL TESTS DUE TO NO CONFIG')
+            self.skipTest('SKIPPING FUNCTIONAL TESTS DUE TO NO CONFIG')
 
         self.conn = swiftclient.Connection(
             self.auth_url, self.account_username, self.password,
