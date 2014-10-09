@@ -1304,9 +1304,7 @@ Examples:
         except (ClientException, RequestException, socket.error) as err:
             output.error(str(err))
 
-        had_error = output.error_count > 0
-
-    if had_error:
+    if output.error_count > 0:
         exit(1)
 
 
