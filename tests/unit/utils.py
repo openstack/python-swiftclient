@@ -172,6 +172,7 @@ class MockHttpTest(testtools.TestCase):
             query_string = kwargs.get('query_string')
             storage_url = kwargs.get('storage_url')
             auth_token = kwargs.get('auth_token')
+            exc = kwargs.get('exc')
 
             def wrapper(url, proxy=None, cacert=None, insecure=False,
                         ssl_compression=True):
@@ -192,6 +193,8 @@ class MockHttpTest(testtools.TestCase):
                     if url.endswith('invalid_cert') and not insecure:
                         from swiftclient import client as c
                         raise c.ClientException("invalid_certificate")
+                    elif exc:
+                        raise exc
                     return
                 conn.request = request
 
