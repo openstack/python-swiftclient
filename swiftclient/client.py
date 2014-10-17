@@ -1208,8 +1208,8 @@ class Connection(object):
                         cacert=self.cacert,
                         insecure=self.insecure)
 
-    def http_connection(self):
-        return http_connection(self.url,
+    def http_connection(self, url=None):
+        return http_connection(url if url else self.url,
                                cacert=self.cacert,
                                insecure=self.insecure,
                                ssl_compression=self.ssl_compression)
@@ -1386,5 +1386,5 @@ class Connection(object):
         scheme = urlparse(url).scheme
         netloc = urlparse(url).netloc
         url = scheme + '://' + netloc + '/info'
-        http_conn = http_connection(url, ssl_compression=self.ssl_compression)
+        http_conn = self.http_connection(url)
         return get_capabilities(http_conn)
