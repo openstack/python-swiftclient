@@ -444,6 +444,56 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         connection.return_value.get_capabilities.assert_called_with(None)
 
+    def test_human_readable_upload_segment_size(self):
+        def _check_expected(x, expected):
+            actual = x.call_args_list[-1][1]["options"]["segment_size"]
+            self.assertEqual(int(actual), expected)
+
+        mock_out = mock.MagicMock(spec=swiftclient.shell.OutputManager)
+        mock_out.__enter__.return_value = mock_out
+        mock_out.return_value = mock_out
+        type(mock_out).error_count = mock.PropertyMock(return_value=0)
+
+        mock_swift = mock.MagicMock(spec=swiftclient.shell.SwiftService)
+
+        with mock.patch("swiftclient.shell.SwiftService", mock_swift):
+            with mock.patch('swiftclient.shell.OutputManager', mock_out):
+                # Test new behaviour with both upper and lower case
+                # trailing characters
+                argv = ["", "upload", "-S", "1B", "container", "object"]
+                swiftclient.shell.main(argv)
+                _check_expected(mock_swift, 1)
+
+                argv = ["", "upload", "-S", "1K", "container", "object"]
+                swiftclient.shell.main(argv)
+                _check_expected(mock_swift, 1024)
+
+                argv = ["", "upload", "-S", "1m", "container", "object"]
+                swiftclient.shell.main(argv)
+                _check_expected(mock_swift, 1048576)
+
+                argv = ["", "upload", "-S", "1G", "container", "object"]
+                swiftclient.shell.main(argv)
+                _check_expected(mock_swift, 1073741824)
+
+                # Test old behaviour is not affected
+                argv = ["", "upload", "-S", "12345", "container", "object"]
+                swiftclient.shell.main(argv)
+                _check_expected(mock_swift, 12345)
+
+                # Test invalid states
+                argv = ["", "upload", "-S", "1234X", "container", "object"]
+                swiftclient.shell.main(argv)
+                mock_out.error.assert_called_with("Invalid segment size")
+
+                argv = ["", "upload", "-S", "K1234", "container", "object"]
+                swiftclient.shell.main(argv)
+                mock_out.error.assert_called_with("Invalid segment size")
+
+                argv = ["", "upload", "-S", "K", "container", "object"]
+                swiftclient.shell.main(argv)
+                mock_out.error.assert_called_with("Invalid segment size")
+
 
 class TestSubcommandHelp(unittest.TestCase):
 

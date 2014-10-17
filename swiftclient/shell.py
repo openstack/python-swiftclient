@@ -689,7 +689,9 @@ def st_upload(parser, args, output_manager):
         '-S', '--segment-size', dest='segment_size', help='Upload files '
         'in segments no larger than <size> (in Bytes) and then create a '
         '"manifest" file that will download all the segments as if it were '
-        'the original file.')
+        'the original file. Sizes may also be expressed as bytes with the '
+        'B suffix, kilobytes with the K suffix, megabytes with the M suffix '
+        'or gigabytes with the G suffix.')
     parser.add_option(
         '-C', '--segment-container', dest='segment_container',
         help='Upload the segments into the specified container. '
@@ -740,6 +742,20 @@ def st_upload(parser, args, output_manager):
             return
         else:
             orig_path = files[0]
+
+    if options.segment_size:
+        try:
+            # If segment size only has digits assume it is bytes
+            int(options.segment_size)
+        except ValueError:
+            try:
+                size_mod = "BKMG".index(options.segment_size[-1].upper())
+                multiplier = int(options.segment_size[:-1])
+            except ValueError:
+                output_manager.error("Invalid segment size")
+                return
+
+            options.segment_size = str((1024 ** size_mod) * multiplier)
 
     _opts = vars(options)
     _opts['object_uu_threads'] = options.object_threads
