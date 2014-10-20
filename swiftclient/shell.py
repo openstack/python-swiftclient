@@ -488,13 +488,15 @@ def st_stat(parser, args, output_manager):
     _opts = vars(options)
 
     with SwiftService(options=_opts) as swift:
-        if not args:
-            stat_result = swift.stat()
-            items = stat_result['items']
-            headers = stat_result['headers']
-            print_account_stats(items, headers, output_manager)
-        else:
-            try:
+        try:
+            if not args:
+                stat_result = swift.stat()
+                if not stat_result['success']:
+                    raise stat_result['error']
+                items = stat_result['items']
+                headers = stat_result['headers']
+                print_account_stats(items, headers, output_manager)
+            else:
                 container = args[0]
                 if '/' in container:
                     output_manager.error(
@@ -505,6 +507,8 @@ def st_stat(parser, args, output_manager):
                 args = args[1:]
                 if not args:
                     stat_result = swift.stat(container=container)
+                    if not stat_result['success']:
+                        raise stat_result['error']
                     items = stat_result['items']
                     headers = stat_result['headers']
                     print_container_stats(items, headers, output_manager)
@@ -527,8 +531,8 @@ def st_stat(parser, args, output_manager):
                             'Usage: %s stat %s\n%s', BASENAME,
                             st_stat_options, st_stat_help)
 
-            except SwiftError as e:
-                output_manager.error(e.value)
+        except SwiftError as e:
+            output_manager.error(e.value)
 
 
 st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to]
@@ -961,8 +965,8 @@ def parse_args(parser, args, enforce_requires=True):
 
     if (not (options.auth and options.user and options.key)
             and options.auth_version != '3'):
-            # Use keystone auth if any of the old-style args are missing
-            options.auth_version = '2.0'
+        # Use keystone auth if any of the old-style args are missing
+        options.auth_version = '2.0'
 
     # Use new-style args if old ones not present
     if not options.auth and options.os_auth_url:

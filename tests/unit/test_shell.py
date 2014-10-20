@@ -24,6 +24,7 @@ import swiftclient
 from swiftclient.service import SwiftError
 import swiftclient.shell
 import swiftclient.utils
+from swiftclient.multithreading import OutputManager
 
 from os.path import basename, dirname
 from tests.unit.test_swiftclient import MockHttpTest
@@ -551,13 +552,13 @@ class TestParsing(unittest.TestCase):
         # check the expected opts are set
         for key, v in opts.items():
             actual = getattr(actual_opts, key)
-            self.assertEqual(v, actual, 'Expected %s for key %s, found %s'
-                                        % (v, key, actual))
+            self.assertEqual(v, actual, 'Expected %s for key %s, found %s' %
+                             (v, key, actual))
 
         for key, v in os_opts.items():
             actual = getattr(actual_opts, "os_" + key)
-            self.assertEqual(v, actual, 'Expected %s for key %s, found %s'
-                                        % (v, key, actual))
+            self.assertEqual(v, actual, 'Expected %s for key %s, found %s' %
+                             (v, key, actual))
 
         # check the os_options dict values are set
         self.assertTrue(hasattr(actual_opts, 'os_options'))
@@ -724,6 +725,55 @@ class TestParsing(unittest.TestCase):
                    "password": "secret"}
         args = _make_args("stat", opts, os_opts)
         self.assertRaises(SystemExit, swiftclient.shell.main, args)
+
+    def test_no_tenant_name_or_id_v2(self):
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3",
+                   "tenant_name": "",
+                   "tenant_id": ""}
+
+        out = six.StringIO()
+        err = six.StringIO()
+        mock_output = _make_output_manager(out, err)
+        with mock.patch('swiftclient.shell.OutputManager', mock_output):
+            args = _make_args("stat", {}, os_opts)
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        self.assertEqual(err.getvalue().strip(), 'No tenant specified')
+
+        out = six.StringIO()
+        err = six.StringIO()
+        mock_output = _make_output_manager(out, err)
+        with mock.patch('swiftclient.shell.OutputManager', mock_output):
+            args = _make_args("stat", {}, os_opts, cmd_args=["testcontainer"])
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        self.assertEqual(err.getvalue().strip(), 'No tenant specified')
+
+    def test_no_tenant_name_or_id_v3(self):
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3",
+                   "tenant_name": "",
+                   "tenant_id": ""}
+
+        out = six.StringIO()
+        err = six.StringIO()
+        mock_output = _make_output_manager(out, err)
+        with mock.patch('swiftclient.shell.OutputManager', mock_output):
+            args = _make_args("stat", {"auth_version": "3"}, os_opts)
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        self.assertEqual(err.getvalue().strip(),
+                         'No project name or project id specified.')
+
+        out = six.StringIO()
+        err = six.StringIO()
+        mock_output = _make_output_manager(out, err)
+        with mock.patch('swiftclient.shell.OutputManager', mock_output):
+            args = _make_args("stat", {"auth_version": "3"},
+                              os_opts, cmd_args=["testcontainer"])
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        self.assertEqual(err.getvalue().strip(),
+                         'No project name or project id specified.')
 
     def test_insufficient_env_vars_v3(self):
         args = _make_args("stat", {}, {})
@@ -1043,3 +1093,18 @@ class TestKeystoneOptions(MockHttpTest):
 
         opts = {'auth-version': '2.0'}
         self._test_options(opts, os_opts)
+
+
+def _make_output_manager(stdout, stderr):
+    class MockOutputManager(OutputManager):
+        # This class is used to mock OutputManager so that we can
+        # override stdout and stderr. Mocking sys.stdout & sys.stdout
+        # doesn't work because they are argument defaults in the
+        # OutputManager constructor and those defaults are pinned to
+        # the value of sys.stdout/stderr before we get chance to mock them.
+        def __init__(self, print_stream=None, error_stream=None):
+            super(MockOutputManager, self).__init__()
+            self.print_stream = stdout
+            self.error_stream = stderr
+
+    return MockOutputManager

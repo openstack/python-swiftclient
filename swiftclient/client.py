@@ -396,7 +396,9 @@ def get_auth(auth_url, user, key, **kwargs):
         if not (os_options.get('tenant_name') or os_options.get('tenant_id')
                 or os_options.get('project_name')
                 or os_options.get('project_id')):
-            raise ClientException('No tenant specified')
+            if auth_version in AUTH_VERSIONS_V2:
+                raise ClientException('No tenant specified')
+            raise ClientException('No project name or project id specified.')
 
         cacert = kwargs.get('cacert', None)
         storage_url, token = get_auth_keystone(auth_url, user,

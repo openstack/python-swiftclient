@@ -434,7 +434,7 @@ class SwiftService(object):
                     })
                     return res
                 except ClientException as err:
-                    if err.http_status == 404:
+                    if err.http_status != 404:
                         res.update({
                             'success': False,
                             'error': err
