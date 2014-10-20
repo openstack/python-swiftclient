@@ -594,44 +594,31 @@ class SwiftService(object):
                         'error': err,
                         'response_dict': response_dict
                     })
-                    return res
-        else:
-            if not objects:
-                res["action"] = "post_container"
-                response_dict = {}
-                headers = split_headers(
-                    options['meta'], 'X-Container-Meta-')
-                headers.update(
-                    split_headers(options['header'], ''))
-                if options['read_acl'] is not None:
-                    headers['X-Container-Read'] = options['read_acl']
-                if options['write_acl'] is not None:
-                    headers['X-Container-Write'] = options['write_acl']
-                if options['sync_to'] is not None:
-                    headers['X-Container-Sync-To'] = options['sync_to']
-                if options['sync_key'] is not None:
-                    headers['X-Container-Sync-Key'] = options['sync_key']
-                res['headers'] = headers
-                try:
-                    post = self.thread_manager.container_pool.submit(
-                        self._post_container_job, container,
-                        headers, response_dict
-                    )
-                    get_future_result(post)
-                except ClientException as err:
-                    if err.http_status != 404:
-                        res.update({
-                            'action': 'post_container',
-                            'success': False,
-                            'error': err,
-                            'response_dict': response_dict
-                        })
-                        return res
-                    raise SwiftError(
-                        "Container '%s' not found" % container,
-                        container=container
-                    )
-                except Exception as err:
+            return res
+        if not objects:
+            res["action"] = "post_container"
+            response_dict = {}
+            headers = split_headers(
+                options['meta'], 'X-Container-Meta-')
+            headers.update(
+                split_headers(options['header'], ''))
+            if options['read_acl'] is not None:
+                headers['X-Container-Read'] = options['read_acl']
+            if options['write_acl'] is not None:
+                headers['X-Container-Write'] = options['write_acl']
+            if options['sync_to'] is not None:
+                headers['X-Container-Sync-To'] = options['sync_to']
+            if options['sync_key'] is not None:
+                headers['X-Container-Sync-Key'] = options['sync_key']
+            res['headers'] = headers
+            try:
+                post = self.thread_manager.container_pool.submit(
+                    self._post_container_job, container,
+                    headers, response_dict
+                )
+                get_future_result(post)
+            except ClientException as err:
+                if err.http_status != 404:
                     res.update({
                         'action': 'post_container',
                         'success': False,
@@ -639,37 +626,49 @@ class SwiftService(object):
                         'response_dict': response_dict
                     })
                     return res
-            else:
-                post_futures = []
-                post_objects = self._make_post_objects(objects)
-                for post_object in post_objects:
-                    obj = post_object.object_name
-                    obj_options = post_object.options
-                    response_dict = {}
-                    headers = split_headers(
-                        options['meta'], 'X-Object-Meta-')
-                    # add header options to the headers object for the request.
-                    headers.update(
-                        split_headers(options['header'], ''))
-                    if obj_options is not None:
-                        if 'meta' in obj_options:
-                            headers.update(
-                                split_headers(
-                                    obj_options['meta'], 'X-Object-Meta'
-                                )
+                raise SwiftError(
+                    "Container '%s' not found" % container,
+                    container=container
+                )
+            except Exception as err:
+                res.update({
+                    'action': 'post_container',
+                    'success': False,
+                    'error': err,
+                    'response_dict': response_dict
+                })
+            return res
+        else:
+            post_futures = []
+            post_objects = self._make_post_objects(objects)
+            for post_object in post_objects:
+                obj = post_object.object_name
+                obj_options = post_object.options
+                response_dict = {}
+                headers = split_headers(
+                    options['meta'], 'X-Object-Meta-')
+                # add header options to the headers object for the request.
+                headers.update(
+                    split_headers(options['header'], ''))
+                if obj_options is not None:
+                    if 'meta' in obj_options:
+                        headers.update(
+                            split_headers(
+                                obj_options['meta'], 'X-Object-Meta'
                             )
-                        if 'headers' in obj_options:
-                            headers.update(
-                                split_headers(obj_options['header'], '')
-                            )
+                        )
+                    if 'headers' in obj_options:
+                        headers.update(
+                            split_headers(obj_options['header'], '')
+                        )
 
-                    post = self.thread_manager.object_uu_pool.submit(
-                        self._post_object_job, container, obj,
-                        headers, response_dict
-                    )
-                    post_futures.append(post)
+                post = self.thread_manager.object_uu_pool.submit(
+                    self._post_object_job, container, obj,
+                    headers, response_dict
+                )
+                post_futures.append(post)
 
-                return ResultsIterator(post_futures)
+            return ResultsIterator(post_futures)
 
     @staticmethod
     def _make_post_objects(objects):

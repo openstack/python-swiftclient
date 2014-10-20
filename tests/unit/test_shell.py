@@ -386,26 +386,68 @@ class TestShell(unittest.TestCase):
     @mock.patch('swiftclient.service.Connection')
     def test_post_account(self, connection):
         argv = ["", "post"]
-        connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.post_account.assert_called_with(
             headers={}, response_dict={})
 
+    @mock.patch('swiftclient.shell.OutputManager.error')
+    @mock.patch('swiftclient.service.Connection')
+    def test_post_account_bad_auth(self, connection, error):
+        argv = ["", "post"]
+        connection.return_value.post_account.side_effect = \
+            swiftclient.ClientException('bad auth')
+        swiftclient.shell.main(argv)
+        error.assert_called_with('bad auth')
+
+    @mock.patch('swiftclient.shell.OutputManager.error')
+    @mock.patch('swiftclient.service.Connection')
+    def test_post_account_not_found(self, connection, error):
+        argv = ["", "post"]
+        connection.return_value.post_account.side_effect = \
+            swiftclient.ClientException('test', http_status=404)
+        swiftclient.shell.main(argv)
+        error.assert_called_with('Account not found')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_post_container(self, connection):
         argv = ["", "post", "container"]
-        connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.post_container.assert_called_with(
             'container', headers={}, response_dict={})
 
+    @mock.patch('swiftclient.shell.OutputManager.error')
     @mock.patch('swiftclient.service.Connection')
-    def test_post_container(self, connection):
+    def test_post_container_bad_auth(self, connection, error):
+        argv = ["", "post", "container"]
+        connection.return_value.post_container.side_effect = \
+            swiftclient.ClientException('bad auth')
+        swiftclient.shell.main(argv)
+        error.assert_called_with('bad auth')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_post_container_not_found_causes_put(self, connection):
+        argv = ["", "post", "container"]
+        connection.return_value.post_container.side_effect = \
+            swiftclient.ClientException('test', http_status=404)
+        swiftclient.shell.main(argv)
+        self.assertEqual('container',
+                         connection.return_value.put_container.call_args[0][0])
+
+    @mock.patch('swiftclient.shell.OutputManager.error')
+    def test_post_container_with_bad_name(self, error):
+        argv = ["", "post", "conta/iner"]
+        swiftclient.shell.main(argv)
+        self.assertTrue(error.called)
+        self.assertTrue(error.call_args[0][0].startswith('WARNING: / in'))
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_post_container_with_options(self, connection):
         argv = ["", "post", "container",
                 "--read-acl", "test2:tester2",
                 "--write-acl", "test3:tester3 test4",
                 "--sync-to", "othersite",
                 "--sync-key", "secret",
                 ]
-        connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.post_container.assert_called_with(
             'container', headers={
@@ -420,12 +462,27 @@ class TestShell(unittest.TestCase):
                 "--meta", "Color:Blue",
                 "--header", "content-type:text/plain"
                 ]
-        connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.post_object.assert_called_with(
             'container', 'object', headers={
                 'Content-Type': 'text/plain',
                 'X-Object-Meta-Color': 'Blue'}, response_dict={})
+
+    @mock.patch('swiftclient.shell.OutputManager.error')
+    @mock.patch('swiftclient.service.Connection')
+    def test_post_object_bad_auth(self, connection, error):
+        argv = ["", "post", "container", "object"]
+        connection.return_value.post_object.side_effect = \
+            swiftclient.ClientException("bad auth")
+        swiftclient.shell.main(argv)
+        error.assert_called_with('bad auth')
+
+    @mock.patch('swiftclient.shell.OutputManager.error')
+    def test_post_object_too_many_args(self, error):
+        argv = ["", "post", "container", "object", "bad_arg"]
+        swiftclient.shell.main(argv)
+        self.assertTrue(error.called)
+        self.assertTrue(error.call_args[0][0].startswith('Usage'))
 
     @mock.patch('swiftclient.shell.generate_temp_url')
     def test_temp_url(self, temp_url):

@@ -543,8 +543,7 @@ If the container is not found, it will be created automatically.
 
 Positional arguments:
   [container]           Name of container to post to.
-  [object]              Name of object to post. Specify multiple times
-                        for multiple objects.
+  [object]              Name of object to post.
 
 Optional arguments:
   --read-acl <acl>      Read ACL for containers. Quick summary of ACL syntax:
@@ -596,7 +595,7 @@ def st_post(parser, args, output_manager):
     with SwiftService(options=_opts) as swift:
         try:
             if not args:
-                swift.post()
+                result = swift.post()
             else:
                 container = args[0]
                 if '/' in container:
@@ -612,15 +611,16 @@ def st_post(parser, args, output_manager):
                         results_iterator = swift.post(
                             container=container, objects=objects
                         )
-                        for result in results_iterator:  # only 1 result
-                            if not result["success"]:
-                                raise(result["error"])
+                        result = next(results_iterator)
                     else:
                         output_manager.error(
                             'Usage: %s post %s\n%s', BASENAME,
                             st_post_options, st_post_help)
+                        return
                 else:
-                    swift.post(container=container)
+                    result = swift.post(container=container)
+            if not result["success"]:
+                raise(result["error"])
 
         except SwiftError as e:
             output_manager.error(e.value)
