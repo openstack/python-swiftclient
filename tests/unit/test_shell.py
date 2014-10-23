@@ -225,6 +225,33 @@ class TestShell(unittest.TestCase):
                               '    0    0 ????-??-?? ??:??:?? container\n'
                               '    0    0\n')
 
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
+    def test_list_account_totals_error(self, connection, error):
+        # No --lh provided: expect info message about incorrect --totals use
+        argv = ["", "list", "--totals"]
+
+        self.assertRaises(SystemExit, swiftclient.shell.main, argv)
+        self.assertEqual(error.call_args[0][0],
+                         "Listing totals only works with -l or --lh.")
+
+    @mock.patch('swiftclient.shell.OutputManager._print')
+    @mock.patch('swiftclient.service.Connection')
+    def test_list_account_totals(self, connection, mock_print):
+
+        # Test account listing, only total count and size
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container1', 'bytes': 1, 'count': 2},
+                    {'name': 'container2', 'bytes': 2, 'count': 4}]],
+            [None, []],
+        ]
+
+        argv = ["", "list", "--lh", "--totals"]
+        swiftclient.shell.main(argv)
+        calls = [mock.call(marker='', prefix=None)]
+        connection.return_value.get_account.assert_has_calls(calls)
+        mock_print.assert_called_once_with('    6    3')
+
     @mock.patch('swiftclient.service.Connection')
     def test_list_container(self, connection):
         connection.return_value.get_container.side_effect = [

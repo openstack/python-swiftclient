@@ -378,6 +378,11 @@ def st_list(parser, args, output_manager):
         _opts.pop('human')
         _opts['long'] = True
 
+    if options.totals and not options.long and not options.human:
+        output_manager.error(
+            "Listing totals only works with -l or --lh.")
+        return
+
     with SwiftService(options=_opts) as swift:
         try:
             if not args:
