@@ -27,7 +27,8 @@ import swiftclient.utils
 
 from os.path import basename, dirname
 from tests.unit.test_swiftclient import MockHttpTest
-from tests.unit.utils import CaptureOutput
+from tests.unit.utils import CaptureOutput, fake_get_auth_keystone
+
 
 if six.PY2:
     BUILTIN_OPEN = '__builtin__.open'
@@ -39,6 +40,12 @@ mocked_os_environ = {
     'ST_USER': 'test:tester',
     'ST_KEY': 'testing'
 }
+
+clean_os_environ = {}
+environ_prefixes = ('ST_', 'OS_')
+for key in os.environ:
+    if any(key.startswith(m) for m in environ_prefixes):
+        clean_os_environ[key] = ''
 
 
 def _make_args(cmd, opts, os_opts, separator='-', flags=None, cmd_args=None):
@@ -1185,3 +1192,96 @@ class TestKeystoneOptions(MockHttpTest):
 
         opts = {'auth-version': '2.0'}
         self._test_options(opts, os_opts)
+
+
+@mock.patch.dict(os.environ, clean_os_environ)
+class TestAuth(MockHttpTest):
+
+    def test_pre_authed_request(self):
+        url = 'https://swift.storage.example.com/v1/AUTH_test'
+        token = 'AUTH_tk5b6b12'
+
+        pre_auth_env = {
+            'OS_STORAGE_URL': url,
+            'OS_AUTH_TOKEN': token,
+        }
+        fake_conn = self.fake_http_connection(200)
+        with mock.patch('swiftclient.client.http_connection', new=fake_conn):
+            with mock.patch.dict(os.environ, pre_auth_env):
+                argv = ['', 'stat']
+                swiftclient.shell.main(argv)
+        self.assertRequests([
+            ('HEAD', url, '', {'x-auth-token': token}),
+        ])
+
+        # and again with re-auth
+        pre_auth_env.update(mocked_os_environ)
+        pre_auth_env['OS_AUTH_TOKEN'] = 'expired'
+        fake_conn = self.fake_http_connection(401, 200, 200, headers={
+            'x-auth-token': token + '_new',
+            'x-storage-url': url + '_not_used',
+        })
+        with mock.patch.multiple('swiftclient.client',
+                                 http_connection=fake_conn,
+                                 sleep=mock.DEFAULT):
+            with mock.patch.dict(os.environ, pre_auth_env):
+                argv = ['', 'stat']
+                swiftclient.shell.main(argv)
+        self.assertRequests([
+            ('HEAD', url, '', {
+                'x-auth-token': 'expired',
+            }),
+            ('GET', mocked_os_environ['ST_AUTH'], '', {
+                'x-auth-user': mocked_os_environ['ST_USER'],
+                'x-auth-key': mocked_os_environ['ST_KEY'],
+            }),
+            ('HEAD', url, '', {
+                'x-auth-token': token + '_new',
+            }),
+        ])
+
+    def test_os_pre_authed_request(self):
+        url = 'https://swift.storage.example.com/v1/AUTH_test'
+        token = 'AUTH_tk5b6b12'
+
+        pre_auth_env = {
+            'OS_STORAGE_URL': url,
+            'OS_AUTH_TOKEN': token,
+        }
+        fake_conn = self.fake_http_connection(200)
+        with mock.patch('swiftclient.client.http_connection', new=fake_conn):
+            with mock.patch.dict(os.environ, pre_auth_env):
+                argv = ['', 'stat']
+                swiftclient.shell.main(argv)
+        self.assertRequests([
+            ('HEAD', url, '', {'x-auth-token': token}),
+        ])
+
+        # and again with re-auth
+        os_environ = {
+            'OS_AUTH_URL': 'https://keystone.example.com/v2.0/',
+            'OS_TENANT_NAME': 'demo',
+            'OS_USERNAME': 'demo',
+            'OS_PASSWORD': 'admin',
+        }
+        os_environ.update(pre_auth_env)
+        os_environ['OS_AUTH_TOKEN'] = 'expired'
+
+        fake_conn = self.fake_http_connection(401, 200)
+        fake_keystone = fake_get_auth_keystone(storage_url=url + '_not_used',
+                                               token=token + '_new')
+        with mock.patch.multiple('swiftclient.client',
+                                 http_connection=fake_conn,
+                                 get_auth_keystone=fake_keystone,
+                                 sleep=mock.DEFAULT):
+            with mock.patch.dict(os.environ, os_environ):
+                argv = ['', 'stat']
+                swiftclient.shell.main(argv)
+        self.assertRequests([
+            ('HEAD', url, '', {
+                'x-auth-token': 'expired',
+            }),
+            ('HEAD', url, '', {
+                'x-auth-token': token + '_new',
+            }),
+        ])
