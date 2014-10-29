@@ -44,7 +44,7 @@ def prt_bytes(bytes, human_flag):
         mods = list('KMGTPEZY')
         temp = float(bytes)
         if temp > 0:
-            while (temp > 1023):
+            while temp > 1023:
                 try:
                     suffix = mods.pop(0)
                 except IndexError:
@@ -60,7 +60,7 @@ def prt_bytes(bytes, human_flag):
     else:
         bytes = '%12s' % bytes
 
-    return(bytes)
+    return bytes
 
 
 def generate_temp_url(path, seconds, key, method):
@@ -104,23 +104,105 @@ def generate_temp_url(path, seconds, key, method):
             '{sig}&temp_url_expires={exp}'.format(
                 path=path,
                 sig=sig,
-                exp=expiration)
-            )
+                exp=expiration))
+
+
+class NoopMD5(object):
+    def __init__(self, *a, **kw):
+        pass
+
+    def update(self, *a, **kw):
+        pass
+
+    def hexdigest(self, *a, **kw):
+        return ''
+
+
+class ReadableToIterable(object):
+    """
+    Wrap a filelike object and act as an iterator.
+
+    It is recommended to use this class only on files opened in binary mode.
+    Due to the Unicode changes in python 3 files are now opened using an
+    encoding not suitable for use with the md5 class and because of this
+    hit the exception on every call to next. This could cause problems,
+    especially with large files and small chunk sizes.
+    """
+
+    def __init__(self, content, chunk_size=65536, md5=False):
+        """
+        :param content: The filelike object that is yielded from.
+        :param chunk_size: The max size of each yielded item.
+        :param md5: Flag to enable calculating the MD5 of the content
+                    as it is yielded.
+        """
+        self.md5sum = hashlib.md5() if md5 else NoopMD5()
+        self.content = content
+        self.chunk_size = chunk_size
+
+    def get_md5sum(self):
+        return self.md5sum.hexdigest()
+
+    def __next__(self):
+        """
+        Both ``__next__`` and ``next`` are provided to allow compatibility
+        with python 2 and python 3 and their use of ``iterable.next()``
+        and ``next(iterable)`` respectively.
+        """
+        chunk = self.content.read(self.chunk_size)
+        if not chunk:
+            raise StopIteration
+
+        try:
+            self.md5sum.update(chunk)
+        except TypeError:
+            self.md5sum.update(chunk.encode())
+
+        return chunk
+
+    def next(self):
+        return self.__next__()
+
+    def __iter__(self):
+        return self
 
 
 class LengthWrapper(object):
+    """
+    Wrap a filelike object with a maximum length.
 
-    def __init__(self, readable, length):
+    Fix for https://github.com/kennethreitz/requests/issues/1648
+    It is recommended to use this class only on files opened in binary mode.
+    """
+    def __init__(self, readable, length, md5=False):
+        """
+        :param readable: The filelike object to read from.
+        :param length: The maximum amount of content to that can be read from
+                       the filelike object before it is simulated to be
+                       empty.
+        :param md5: Flag to enable calculating the MD5 of the content
+                    as it is read.
+        """
+        self.md5sum = hashlib.md5() if md5 else NoopMD5()
         self._length = self._remaining = length
         self._readable = readable
 
     def __len__(self):
         return self._length
 
+    def get_md5sum(self):
+        return self.md5sum.hexdigest()
+
     def read(self, *args, **kwargs):
         if self._remaining <= 0:
             return ''
-        chunk = self._readable.read(
-            *args, **kwargs)[:self._remaining]
+
+        chunk = self._readable.read(*args, **kwargs)[:self._remaining]
         self._remaining -= len(chunk)
+
+        try:
+            self.md5sum.update(chunk)
+        except TypeError:
+            self.md5sum.update(chunk.encode())
+
         return chunk

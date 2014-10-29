@@ -36,7 +36,7 @@ import six
 
 from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
-from swiftclient.utils import LengthWrapper
+from swiftclient.utils import LengthWrapper, ReadableToIterable
 
 AUTH_VERSIONS_V1 = ('1.0', '1', 1)
 AUTH_VERSIONS_V2 = ('2.0', '2', 2)
@@ -333,8 +333,8 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     except exceptions.Unauthorized:
         msg = 'Unauthorized. Check username, password and tenant name/id.'
         if auth_version in AUTH_VERSIONS_V3:
-            msg = 'Unauthorized. Check username/id, password, ' \
-                  + 'tenant name/id and user/tenant domain name/id.'
+            msg = ('Unauthorized. Check username/id, password, '
+                   'tenant name/id and user/tenant domain name/id.')
         raise ClientException(msg)
     except exceptions.AuthorizationFailure as err:
         raise ClientException('Authorization Failure. %s' % err)
@@ -388,8 +388,7 @@ def get_auth(auth_url, user, key, **kwargs):
         # We are handling a special use case here where the user argument
         # specifies both the user name and tenant name in the form tenant:user
         if user and not kwargs.get('tenant_name') and ':' in user:
-            (os_options['tenant_name'],
-             user) = user.split(':')
+            os_options['tenant_name'], user = user.split(':')
 
         # We are allowing to have an tenant_name argument in get_auth
         # directly without having os_options
@@ -929,7 +928,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                       container name is expected to be part of the url
     :param name: object name to put; if None, the object name is expected to be
                  part of the url
-    :param contents: a string or a file like object to read object data from;
+    :param contents: a string, a file like object or an iterable
+                     to read object data from;
                      if None, a zero-byte put will be done
     :param content_length: value to send as content-length header; also limits
                            the amount read from contents; if None, it will be
@@ -983,27 +983,26 @@ def put_object(url, token=None, container=None, name=None, contents=None,
         headers['Content-Type'] = ''
     if not contents:
         headers['Content-Length'] = '0'
-    if hasattr(contents, 'read'):
+
+    if isinstance(contents, (ReadableToIterable, LengthWrapper)):
+        conn.putrequest(path, headers=headers, data=contents)
+    elif hasattr(contents, 'read'):
         if chunk_size is None:
             chunk_size = 65536
+
         if content_length is None:
-            def chunk_reader():
-                while True:
-                    data = contents.read(chunk_size)
-                    if not data:
-                        break
-                    yield data
-            conn.putrequest(path, headers=headers, data=chunk_reader())
+            data = ReadableToIterable(contents, chunk_size, md5=False)
         else:
-            # Fixes https://github.com/kennethreitz/requests/issues/1648
-            data = LengthWrapper(contents, content_length)
-            conn.putrequest(path, headers=headers, data=data)
+            data = LengthWrapper(contents, content_length, md5=False)
+
+        conn.putrequest(path, headers=headers, data=data)
     else:
         if chunk_size is not None:
-            warn_msg = '%s object has no \"read\" method, ignoring chunk_size'\
-                % type(contents).__name__
+            warn_msg = ('%s object has no "read" method, ignoring chunk_size'
+                        % type(contents).__name__)
             warnings.warn(warn_msg, stacklevel=2)
         conn.request('PUT', path, contents, headers)
+
     resp = conn.getresponse()
     body = resp.read()
     headers = {'X-Auth-Token': token}
@@ -1018,7 +1017,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
 
-    return resp.getheader('etag', '').strip('"')
+    etag = resp.getheader('etag', '').strip('"')
+    return etag
 
 
 def post_object(url, token, container, name, headers, http_conn=None,

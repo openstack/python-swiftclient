@@ -39,7 +39,9 @@ from swiftclient import Connection
 from swiftclient.command_helpers import (
     stat_account, stat_container, stat_object
 )
-from swiftclient.utils import config_true_value
+from swiftclient.utils import (
+    config_true_value, ReadableToIterable, LengthWrapper
+)
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
 
@@ -1465,10 +1467,17 @@ class SwiftService(object):
             fp = open(path, 'rb')
             fp.seek(segment_start)
 
+            contents = LengthWrapper(fp, segment_size, md5=True)
             etag = conn.put_object(segment_container,
-                                   segment_name, fp,
+                                   segment_name, contents,
                                    content_length=segment_size,
                                    response_dict=results_dict)
+
+            if etag and etag != contents.get_md5sum():
+                raise SwiftError('Segment upload failed: remote and local '
+                                 'object md5 did not match, {0} != {1}\n'
+                                 'remote segment has not been removed.'
+                                 .format(etag, contents.get_md5sum()))
 
             res.update({
                 'success': True,
@@ -1695,21 +1704,28 @@ class SwiftService(object):
                     res['manifest_response_dict'] = mr
             else:
                 res['large_object'] = False
+                obr = {}
                 if path is not None:
-                    obr = {}
-                    conn.put_object(
-                        container, obj, open(path, 'rb'),
-                        content_length=getsize(path), headers=put_headers,
-                        response_dict=obr
-                    )
-                    res['response_dict'] = obr
+                    content_length = getsize(path)
+                    contents = LengthWrapper(open(path, 'rb'), content_length,
+                                             md5=True)
                 else:
-                    obr = {}
-                    conn.put_object(
-                        container, obj, stream, headers=put_headers,
-                        response_dict=obr
-                    )
-                    res['response_dict'] = obr
+                    content_length = None
+                    contents = ReadableToIterable(stream, md5=True)
+
+                etag = conn.put_object(
+                    container, obj, contents,
+                    content_length=content_length, headers=put_headers,
+                    response_dict=obr
+                )
+                res['response_dict'] = obr
+
+                if etag and etag != contents.get_md5sum():
+                    raise SwiftError('Object upload failed: remote and local '
+                                     'object md5 did not match, {0} != {1}\n'
+                                     'remote object has not been removed.'
+                                     .format(etag, contents.get_md5sum()))
+
             if old_manifest or old_slo_manifest_paths:
                 drs = []
                 if old_manifest:

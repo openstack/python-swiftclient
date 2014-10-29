@@ -127,7 +127,7 @@ def fake_http_connect(*code_iter, **kwargs):
                        'last-modified': self.timestamp,
                        'x-object-meta-test': 'testing',
                        'etag':
-                       self.etag or '"68b329da9893e34099c7d8ad5cb9c940"',
+                       self.etag or '"d41d8cd98f00b204e9800998ecf8427e"',
                        'x-works': 'yes',
                        'x-account-container-count': 12345}
             if not self.timestamp:
