@@ -23,6 +23,10 @@ import sys
 import logging
 import warnings
 import functools
+try:
+    from simplejson import loads as json_loads
+except ImportError:
+    from json import loads as json_loads
 
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
@@ -38,6 +42,8 @@ from swiftclient.utils import LengthWrapper
 AUTH_VERSIONS_V1 = ('1.0', '1', 1)
 AUTH_VERSIONS_V2 = ('2.0', '2', 2)
 AUTH_VERSIONS_V3 = ('3.0', '3', 3)
+USER_METADATA_TYPE = tuple('x-%s-meta-' % type_ for type_ in
+                           ('container', 'account', 'object'))
 
 try:
     from logging import NullHandler
@@ -119,16 +125,22 @@ def encode_utf8(value):
     return value
 
 
-# look for a real json parser first
-try:
-    # simplejson is popular and pretty good
-    from simplejson import loads as json_loads
-except ImportError:
-    # 2.6 will have a json module in the stdlib
-    from json import loads as json_loads
+def encode_meta_headers(headers):
+    """Only encode metadata headers keys"""
+    ret = {}
+    for header, value in headers.items():
+        value = encode_utf8(value)
+        header = header.lower()
+
+        if (isinstance(header, six.string_types)
+                and header.startswith(USER_METADATA_TYPE)):
+            header = encode_utf8(header)
+
+        ret[header] = value
+    return ret
 
 
-class HTTPConnection:
+class HTTPConnection(object):
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
                  ssl_compression=False, default_user_agent=None):
         """
@@ -184,27 +196,12 @@ class HTTPConnection:
         """ Final wrapper before requests call, to be patched in tests """
         return self.request_session.request(*arg, **kwarg)
 
-    def _encode_meta_headers(self, items):
-        """Only encode metadata headers keys"""
-        ret = {}
-        for header, value in items:
-            value = encode_utf8(value)
-            header = header.lower()
-            if isinstance(header, six.string_types):
-                for target_type in 'container', 'account', 'object':
-                    prefix = 'x-%s-meta-' % target_type
-                    if header.startswith(prefix):
-                        header = encode_utf8(header)
-                        break
-            ret[header] = value
-        return ret
-
     def request(self, method, full_path, data=None, headers=None, files=None):
         """ Encode url and header, then call requests.request """
         if headers is None:
             headers = {}
         else:
-            headers = self._encode_meta_headers(headers.items())
+            headers = encode_meta_headers(headers)
 
         # set a default User-Agent header if it wasn't passed in
         if 'user-agent' not in headers:
@@ -350,7 +347,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     except exceptions.EndpointNotFound:
         raise ClientException('Endpoint for %s not found - '
                               'have you specified a region?' % service_type)
-    return (endpoint, _ksclient.auth_token)
+    return endpoint, _ksclient.auth_token
 
 
 def get_auth(auth_url, user, key, **kwargs):
@@ -463,9 +460,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
         listing = rv[1]
         while listing:
             marker = listing[-1]['name']
-            listing = \
-                get_account(url, token, marker, limit, prefix,
-                            end_marker, http_conn)[1]
+            listing = get_account(url, token, marker, limit, prefix,
+                                  end_marker, http_conn)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
@@ -1195,8 +1191,8 @@ class Connection(object):
         self.retry_on_ratelimit = retry_on_ratelimit
 
     def close(self):
-        if self.http_conn and type(self.http_conn) is tuple\
-                and len(self.http_conn) > 1:
+        if (self.http_conn and isinstance(self.http_conn, tuple)
+                and len(self.http_conn) > 1):
             conn = self.http_conn[1]
             if hasattr(conn, 'close') and callable(conn.close):
                 conn.close()

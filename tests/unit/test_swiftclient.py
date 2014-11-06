@@ -34,6 +34,7 @@ from .utils import MockHttpTest, fake_get_auth_keystone
 
 from swiftclient import client as c
 import swiftclient.utils
+import swiftclient
 
 
 class TestClientException(testtools.TestCase):
@@ -159,6 +160,25 @@ class TestHttpHelpers(MockHttpTest):
         self.assertTrue(isinstance(conn, c.HTTPConnection))
         url = 'ftp://www.test.com'
         self.assertRaises(c.ClientException, c.http_connection, url)
+
+    def test_encode_meta_headers(self):
+        headers = {'abc': '123',
+                   u'x-container-meta-\u0394': '123',
+                   u'x-account-meta-\u0394': '123',
+                   u'x-object-meta-\u0394': '123'}
+
+        encoded_str_type = type(''.encode())
+        r = swiftclient.encode_meta_headers(headers)
+
+        self.assertEqual(len(headers), len(r))
+        # ensure non meta headers are not encoded
+        self.assertTrue('abc' in r)
+        self.assertTrue(isinstance(r['abc'], encoded_str_type))
+        del r['abc']
+
+        for k, v in r.items():
+            self.assertTrue(isinstance(k, encoded_str_type))
+            self.assertTrue(isinstance(v, encoded_str_type))
 
     def test_set_user_agent_default(self):
         _junk, conn = c.http_connection('http://www.example.com')
