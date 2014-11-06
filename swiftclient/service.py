@@ -1020,7 +1020,8 @@ class SwiftService(object):
                 try:
                     no_file = options['no_download']
                     content_type = headers.get('content-type')
-                    if content_type.split(';', 1)[0] == 'text/directory':
+                    if (content_type and
+                       content_type.split(';', 1)[0] == 'text/directory'):
                         make_dir = not no_file and out_file != "-"
                         if make_dir and not isdir(path):
                             mkdirs(path)

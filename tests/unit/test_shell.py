@@ -300,6 +300,34 @@ class TestShell(unittest.TestCase):
                 response_dict={})
             mock_open.assert_called_with('object', 'wb')
 
+    @mock.patch('swiftclient.service.Connection')
+    def test_download_no_content_type(self, connection):
+        connection.return_value.get_object.return_value = [
+            {'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
+            '']
+
+        # Test downloading whole container
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}]],
+            [None, [{'name': 'pseudo/'}]],
+            [None, []],
+        ]
+        connection.return_value.auth_end_time = 0
+        connection.return_value.attempts = 0
+
+        with mock.patch(BUILTIN_OPEN) as mock_open:
+            argv = ["", "download", "container"]
+            swiftclient.shell.main(argv)
+            calls = [mock.call('container', 'object',
+                               headers={}, resp_chunk_size=65536,
+                               response_dict={}),
+                     mock.call('container', 'pseudo/',
+                               headers={}, resp_chunk_size=65536,
+                               response_dict={})]
+            connection.return_value.get_object.assert_has_calls(
+                calls, any_order=True)
+            mock_open.assert_called_once_with('object', 'wb')
+
     @mock.patch('swiftclient.shell.walk')
     @mock.patch('swiftclient.service.Connection')
     def test_upload(self, connection, walk):
