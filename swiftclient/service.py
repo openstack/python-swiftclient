@@ -313,36 +313,37 @@ class _SwiftReader(object):
         self._actual_md5 = None
         self._expected_etag = headers.get('etag')
 
-        if 'x-object-manifest' not in headers and \
-                'x-static-large-object' not in headers:
-            self.actual_md5 = md5()
+        if ('x-object-manifest' not in headers
+                and 'x-static-large-object' not in headers):
+            self._actual_md5 = md5()
 
         if 'content-length' in headers:
-            self._content_length = int(headers.get('content-length'))
+            try:
+                self._content_length = int(headers.get('content-length'))
+            except ValueError:
+                raise SwiftError('content-length header must be an integer')
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._actual_md5 is not None:
+        if self._actual_md5 and self._expected_etag:
             etag = self._actual_md5.hexdigest()
             if etag != self._expected_etag:
-                raise SwiftError(
-                    'Error downloading %s: md5sum != etag, %s != %s' %
-                    (self._path, etag, self._expected_etag)
-                )
+                raise SwiftError('Error downloading {0}: md5sum != etag, '
+                                 '{1} != {2}'.format(
+                                     self._path, etag, self._expected_etag))
 
-        if self._content_length is not None and \
-                self._actual_read != self._content_length:
-            raise SwiftError(
-                'Error downloading %s: read_length != content_length, '
-                '%d != %d' % (self._path, self._actual_read,
-                              self._content_length)
-            )
+        if (self._content_length is not None
+                and self._actual_read != self._content_length):
+            raise SwiftError('Error downloading {0}: read_length != '
+                             'content_length, {1:d} != {2:d}'.format(
+                                 self._path, self._actual_read,
+                                 self._content_length))
 
     def buffer(self):
         for chunk in self._body:
-            if self._actual_md5 is not None:
+            if self._actual_md5:
                 self._actual_md5.update(chunk)
             self._actual_read += len(chunk)
             yield chunk
