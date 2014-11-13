@@ -294,6 +294,8 @@ def _import_keystone_client(auth_version):
         else:
             from keystoneclient.v2_0 import client as ksclient
         from keystoneclient import exceptions
+        # prevent keystoneclient warning us that it has no log handlers
+        logging.getLogger('keystoneclient').addHandler(NullHandler())
         return ksclient, exceptions
     except ImportError:
         sys.exit('''
