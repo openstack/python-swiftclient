@@ -1217,7 +1217,7 @@ class Connection(object):
                                ssl_compression=self.ssl_compression)
 
     def _add_response_dict(self, target_dict, kwargs):
-        if target_dict is not None:
+        if target_dict is not None and 'response_dict' in kwargs:
             response_dict = kwargs['response_dict']
             if 'response_dicts' in target_dict:
                 target_dict['response_dicts'].append(response_dict)

@@ -1118,6 +1118,104 @@ class TestConnection(MockHttpTest):
             c.http_connection = orig_conn
 
 
+class TestResponseDict(MockHttpTest):
+    """
+    Verify handling of optional response_dict argument.
+    """
+    calls = [('post_container', 'c', {}),
+             ('put_container', 'c'),
+             ('delete_container', 'c'),
+             ('post_object', 'c', 'o', {}),
+             ('put_object', 'c', 'o', 'body'),
+             ('delete_object', 'c', 'o')]
+
+    def fake_get_auth(*args, **kwargs):
+        return 'http://url', 'token'
+
+    def test_response_dict_with_auth_error(self):
+        def bad_get_auth(*args, **kwargs):
+            raise c.ClientException('test')
+
+        for call in self.calls:
+            resp_dict = {'test': 'should be untouched'}
+            with mock.patch('swiftclient.client.get_auth',
+                            bad_get_auth):
+                conn = c.Connection('http://127.0.0.1:8080', 'user', 'key')
+                self.assertRaises(c.ClientException, getattr(conn, call[0]),
+                                  *call[1:], response_dict=resp_dict)
+
+            self.assertEqual({'test': 'should be untouched'}, resp_dict)
+
+    def test_response_dict_with_request_error(self):
+        for call in self.calls:
+            resp_dict = {'test': 'should be untouched'}
+            with mock.patch('swiftclient.client.get_auth',
+                            self.fake_get_auth):
+                exc = c.ClientException('test')
+                with mock.patch('swiftclient.client.http_connection',
+                                self.fake_http_connection(200, exc=exc)):
+                    conn = c.Connection('http://127.0.0.1:8080', 'user', 'key')
+                    self.assertRaises(c.ClientException,
+                                      getattr(conn, call[0]),
+                                      *call[1:],
+                                      response_dict=resp_dict)
+
+            self.assertTrue('test' in resp_dict)
+            self.assertEqual('should be untouched', resp_dict['test'])
+            self.assertTrue('response_dicts' in resp_dict)
+            self.assertEqual([{}], resp_dict['response_dicts'])
+
+    def test_response_dict(self):
+        # test response_dict is populated and
+        # new list of response_dicts is created
+        for call in self.calls:
+            resp_dict = {'test': 'should be untouched'}
+            with mock.patch('swiftclient.client.get_auth',
+                            self.fake_get_auth):
+                with mock.patch('swiftclient.client.http_connection',
+                                self.fake_http_connection(200)):
+                    conn = c.Connection('http://127.0.0.1:8080', 'user', 'key')
+                    getattr(conn, call[0])(*call[1:], response_dict=resp_dict)
+
+            for key in ('test', 'status', 'headers', 'reason',
+                        'response_dicts'):
+                self.assertTrue(key in resp_dict)
+            self.assertEqual('should be untouched', resp_dict.pop('test'))
+            self.assertEqual('Fake', resp_dict['reason'])
+            self.assertEqual(200, resp_dict['status'])
+            self.assertTrue('x-works' in resp_dict['headers'])
+            self.assertEqual('yes', resp_dict['headers']['x-works'])
+            children = resp_dict.pop('response_dicts')
+            self.assertEqual(1, len(children))
+            self.assertEqual(resp_dict, children[0])
+
+    def test_response_dict_with_existing(self):
+        # check response_dict is populated and new dict is appended
+        # to existing response_dicts list
+        for call in self.calls:
+            resp_dict = {'test': 'should be untouched',
+                         'response_dicts': [{'existing': 'response dict'}]}
+            with mock.patch('swiftclient.client.get_auth',
+                            self.fake_get_auth):
+                with mock.patch('swiftclient.client.http_connection',
+                                self.fake_http_connection(200)):
+                    conn = c.Connection('http://127.0.0.1:8080', 'user', 'key')
+                    getattr(conn, call[0])(*call[1:], response_dict=resp_dict)
+
+            for key in ('test', 'status', 'headers', 'reason',
+                        'response_dicts'):
+                self.assertTrue(key in resp_dict)
+            self.assertEqual('should be untouched', resp_dict.pop('test'))
+            self.assertEqual('Fake', resp_dict['reason'])
+            self.assertEqual(200, resp_dict['status'])
+            self.assertTrue('x-works' in resp_dict['headers'])
+            self.assertEqual('yes', resp_dict['headers']['x-works'])
+            children = resp_dict.pop('response_dicts')
+            self.assertEqual(2, len(children))
+            self.assertEqual({'existing': 'response dict'}, children[0])
+            self.assertEqual(resp_dict, children[1])
+
+
 class TestLogging(MockHttpTest):
     """
     Make sure all the lines in http_log are covered.
