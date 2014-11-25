@@ -19,7 +19,6 @@ OpenStack Swift client library used internally
 
 import socket
 import requests
-import sys
 import logging
 import warnings
 import functools
@@ -296,7 +295,7 @@ def _import_keystone_client(auth_version):
         from keystoneclient import exceptions
         return ksclient, exceptions
     except ImportError:
-        sys.exit('''
+        raise ClientException('''
 Auth versions 2.0 and 3 require python-keystoneclient, install it or use Auth
 version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
 variables to be set or overridden with -A, -U, or -K.''')
