@@ -17,6 +17,7 @@ import mock
 import os
 import tempfile
 import unittest
+from testtools import ExpectedException
 
 import six
 
@@ -88,9 +89,8 @@ class TestShell(unittest.TestCase):
         except OSError:
             pass
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
     @mock.patch('swiftclient.service.Connection')
-    def test_stat_account(self, connection, mock_print):
+    def test_stat_account(self, connection):
         argv = ["", "stat"]
         return_headers = {
             'x-account-container-count': '1',
@@ -100,16 +100,17 @@ class TestShell(unittest.TestCase):
             'date': ''}
         connection.return_value.head_account.return_value = return_headers
         connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
-        swiftclient.shell.main(argv)
-        calls = [mock.call('   Account: AUTH_account\n' +
-                           'Containers: 1\n' +
-                           '   Objects: 2\n' +
-                           '     Bytes: 3')]
-        mock_print.assert_has_calls(calls)
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
+            self.assertEquals(output.out,
+                              '   Account: AUTH_account\n'
+                              'Containers: 1\n'
+                              '   Objects: 2\n'
+                              '     Bytes: 3\n')
+
     @mock.patch('swiftclient.service.Connection')
-    def test_stat_container(self, connection, mock_print):
+    def test_stat_container(self, connection):
         return_headers = {
             'x-container-object-count': '1',
             'x-container-bytes-used': '2',
@@ -121,20 +122,21 @@ class TestShell(unittest.TestCase):
         argv = ["", "stat", "container"]
         connection.return_value.head_container.return_value = return_headers
         connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
-        swiftclient.shell.main(argv)
-        calls = [mock.call('  Account: AUTH_account\n' +
-                           'Container: container\n' +
-                           '  Objects: 1\n' +
-                           '    Bytes: 2\n' +
-                           ' Read ACL: test2:tester2\n' +
-                           'Write ACL: test3:tester3\n' +
-                           '  Sync To: other\n' +
-                           ' Sync Key: secret')]
-        mock_print.assert_has_calls(calls)
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
+            self.assertEquals(output.out,
+                              '  Account: AUTH_account\n'
+                              'Container: container\n'
+                              '  Objects: 1\n'
+                              '    Bytes: 2\n'
+                              ' Read ACL: test2:tester2\n'
+                              'Write ACL: test3:tester3\n'
+                              '  Sync To: other\n'
+                              ' Sync Key: secret\n')
+
     @mock.patch('swiftclient.service.Connection')
-    def test_stat_object(self, connection, mock_print):
+    def test_stat_object(self, connection):
         return_headers = {
             'x-object-manifest': 'manifest',
             'etag': 'md5',
@@ -145,20 +147,22 @@ class TestShell(unittest.TestCase):
         argv = ["", "stat", "container", "object"]
         connection.return_value.head_object.return_value = return_headers
         connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
-        swiftclient.shell.main(argv)
-        calls = [mock.call('       Account: AUTH_account\n' +
-                           '     Container: container\n' +
-                           '        Object: object\n' +
-                           '  Content Type: text/plain\n' +
-                           'Content Length: 42\n' +
-                           ' Last Modified: yesterday\n' +
-                           '          ETag: md5\n' +
-                           '      Manifest: manifest')]
-        mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+
+            self.assertEquals(output.out,
+                              '       Account: AUTH_account\n'
+                              '     Container: container\n'
+                              '        Object: object\n'
+                              '  Content Type: text/plain\n'
+                              'Content Length: 42\n'
+                              ' Last Modified: yesterday\n'
+                              '          ETag: md5\n'
+                              '      Manifest: manifest\n')
+
     @mock.patch('swiftclient.service.Connection')
-    def test_list_account(self, connection, mock_print):
+    def test_list_account(self, connection):
         # Test account listing
         connection.return_value.get_account.side_effect = [
             [None, [{'name': 'container'}]],
@@ -166,16 +170,17 @@ class TestShell(unittest.TestCase):
         ]
 
         argv = ["", "list"]
-        swiftclient.shell.main(argv)
-        calls = [mock.call(marker='', prefix=None),
-                 mock.call(marker='container', prefix=None)]
-        connection.return_value.get_account.assert_has_calls(calls)
-        calls = [mock.call('container')]
-        mock_print.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [mock.call(marker='', prefix=None),
+                     mock.call(marker='container', prefix=None)]
+            connection.return_value.get_account.assert_has_calls(calls)
+
+            self.assertEquals(output.out, 'container\n')
+
     @mock.patch('swiftclient.service.Connection')
-    def test_list_account_long(self, connection, mock_print):
+    def test_list_account_long(self, connection):
         # Test account listing
         connection.return_value.get_account.side_effect = [
             [None, [{'name': 'container', 'bytes': 0, 'count': 0}]],
@@ -183,13 +188,15 @@ class TestShell(unittest.TestCase):
         ]
 
         argv = ["", "list", "--lh"]
-        swiftclient.shell.main(argv)
-        calls = [mock.call(marker='', prefix=None),
-                 mock.call(marker='container', prefix=None)]
-        connection.return_value.get_account.assert_has_calls(calls)
-        calls = [mock.call('    0    0 1970-01-01 00:00:01 container'),
-                 mock.call('    0    0')]
-        mock_print.assert_has_calls(calls)
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [mock.call(marker='', prefix=None),
+                     mock.call(marker='container', prefix=None)]
+            connection.return_value.get_account.assert_has_calls(calls)
+
+            self.assertEquals(output.out,
+                              '    0    0 1970-01-01 00:00:01 container\n'
+                              '    0    0\n')
 
         # Now test again, this time without returning metadata
         connection.return_value.head_container.return_value = {}
@@ -201,30 +208,32 @@ class TestShell(unittest.TestCase):
         ]
 
         argv = ["", "list", "--lh"]
-        swiftclient.shell.main(argv)
-        calls = [mock.call(marker='', prefix=None),
-                 mock.call(marker='container', prefix=None)]
-        connection.return_value.get_account.assert_has_calls(calls)
-        calls = [mock.call('    0    0 ????-??-?? ??:??:?? container'),
-                 mock.call('    0    0')]
-        mock_print.assert_has_calls(calls)
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [mock.call(marker='', prefix=None),
+                     mock.call(marker='container', prefix=None)]
+            connection.return_value.get_account.assert_has_calls(calls)
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
+            self.assertEquals(output.out,
+                              '    0    0 ????-??-?? ??:??:?? container\n'
+                              '    0    0\n')
+
     @mock.patch('swiftclient.service.Connection')
-    def test_list_container(self, connection, mock_print):
+    def test_list_container(self, connection):
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object_a'}]],
             [None, []],
         ]
         argv = ["", "list", "container"]
-        swiftclient.shell.main(argv)
-        calls = [
-            mock.call('container', marker='', delimiter=None, prefix=None),
-            mock.call('container', marker='object_a',
-                      delimiter=None, prefix=None)]
-        connection.return_value.get_container.assert_has_calls(calls)
-        calls = [mock.call('object_a')]
-        mock_print.assert_has_calls(calls)
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [
+                mock.call('container', marker='', delimiter=None, prefix=None),
+                mock.call('container', marker='object_a',
+                          delimiter=None, prefix=None)]
+            connection.return_value.get_container.assert_has_calls(calls)
+
+            self.assertEquals(output.out, 'object_a\n')
 
         # Test container listing with --long
         connection.return_value.get_container.side_effect = [
@@ -233,16 +242,17 @@ class TestShell(unittest.TestCase):
             [None, []],
         ]
         argv = ["", "list", "container", "--long"]
-        swiftclient.shell.main(argv)
-        calls = [
-            mock.call('container', marker='', delimiter=None, prefix=None),
-            mock.call('container', marker='object_a',
-                      delimiter=None, prefix=None)]
-        connection.return_value.get_container.assert_has_calls(calls)
-        calls = [mock.call('object_a'),
-                 mock.call('           0        123      456 object_a'),
-                 mock.call('           0')]
-        mock_print.assert_has_calls(calls)
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [
+                mock.call('container', marker='', delimiter=None, prefix=None),
+                mock.call('container', marker='object_a',
+                          delimiter=None, prefix=None)]
+            connection.return_value.get_container.assert_has_calls(calls)
+
+            self.assertEquals(output.out,
+                              '           0        123      456 object_a\n'
+                              '           0\n')
 
     @mock.patch('swiftclient.service.makedirs')
     @mock.patch('swiftclient.service.Connection')
@@ -394,23 +404,29 @@ class TestShell(unittest.TestCase):
         connection.return_value.post_account.assert_called_with(
             headers={}, response_dict={})
 
-    @mock.patch('swiftclient.shell.OutputManager.error')
     @mock.patch('swiftclient.service.Connection')
-    def test_post_account_bad_auth(self, connection, error):
+    def test_post_account_bad_auth(self, connection):
         argv = ["", "post"]
         connection.return_value.post_account.side_effect = \
             swiftclient.ClientException('bad auth')
-        swiftclient.shell.main(argv)
-        error.assert_called_with('bad auth')
 
-    @mock.patch('swiftclient.shell.OutputManager.error')
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEquals(output.err, 'bad auth\n')
+
     @mock.patch('swiftclient.service.Connection')
-    def test_post_account_not_found(self, connection, error):
+    def test_post_account_not_found(self, connection):
         argv = ["", "post"]
         connection.return_value.post_account.side_effect = \
             swiftclient.ClientException('test', http_status=404)
-        swiftclient.shell.main(argv)
-        error.assert_called_with('Account not found')
+
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEquals(output.err, 'Account not found\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_container(self, connection):
@@ -419,14 +435,17 @@ class TestShell(unittest.TestCase):
         connection.return_value.post_container.assert_called_with(
             'container', headers={}, response_dict={})
 
-    @mock.patch('swiftclient.shell.OutputManager.error')
     @mock.patch('swiftclient.service.Connection')
-    def test_post_container_bad_auth(self, connection, error):
+    def test_post_container_bad_auth(self, connection):
         argv = ["", "post", "container"]
         connection.return_value.post_container.side_effect = \
             swiftclient.ClientException('bad auth')
-        swiftclient.shell.main(argv)
-        error.assert_called_with('bad auth')
+
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEquals(output.err, 'bad auth\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_container_not_found_causes_put(self, connection):
@@ -437,12 +456,14 @@ class TestShell(unittest.TestCase):
         self.assertEqual('container',
                          connection.return_value.put_container.call_args[0][0])
 
-    @mock.patch('swiftclient.shell.OutputManager.error')
-    def test_post_container_with_bad_name(self, error):
+    def test_post_container_with_bad_name(self):
         argv = ["", "post", "conta/iner"]
-        swiftclient.shell.main(argv)
-        self.assertTrue(error.called)
-        self.assertTrue(error.call_args[0][0].startswith('WARNING: / in'))
+
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                swiftclient.shell.main(argv)
+            self.assertTrue(output.err != '')
+            self.assertTrue(output.err.startswith('WARNING: / in'))
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_container_with_options(self, connection):
@@ -472,21 +493,27 @@ class TestShell(unittest.TestCase):
                 'Content-Type': 'text/plain',
                 'X-Object-Meta-Color': 'Blue'}, response_dict={})
 
-    @mock.patch('swiftclient.shell.OutputManager.error')
     @mock.patch('swiftclient.service.Connection')
-    def test_post_object_bad_auth(self, connection, error):
+    def test_post_object_bad_auth(self, connection):
         argv = ["", "post", "container", "object"]
         connection.return_value.post_object.side_effect = \
             swiftclient.ClientException("bad auth")
-        swiftclient.shell.main(argv)
-        error.assert_called_with('bad auth')
 
-    @mock.patch('swiftclient.shell.OutputManager.error')
-    def test_post_object_too_many_args(self, error):
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEquals(output.err, 'bad auth\n')
+
+    def test_post_object_too_many_args(self):
         argv = ["", "post", "container", "object", "bad_arg"]
-        swiftclient.shell.main(argv)
-        self.assertTrue(error.called)
-        self.assertTrue(error.call_args[0][0].startswith('Usage'))
+
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertTrue(output.err != '')
+            self.assertTrue(output.err.startswith('Usage'))
 
     @mock.patch('swiftclient.shell.generate_temp_url')
     def test_temp_url(self, temp_url):
@@ -510,15 +537,9 @@ class TestShell(unittest.TestCase):
             actual = x.call_args_list[-1][1]["options"]["segment_size"]
             self.assertEqual(int(actual), expected)
 
-        mock_out = mock.MagicMock(spec=swiftclient.shell.OutputManager)
-        mock_out.__enter__.return_value = mock_out
-        mock_out.return_value = mock_out
-        type(mock_out).error_count = mock.PropertyMock(return_value=0)
-
         mock_swift = mock.MagicMock(spec=swiftclient.shell.SwiftService)
-
         with mock.patch("swiftclient.shell.SwiftService", mock_swift):
-            with mock.patch('swiftclient.shell.OutputManager', mock_out):
+            with CaptureOutput(suppress_systemexit=True) as output:
                 # Test new behaviour with both upper and lower case
                 # trailing characters
                 argv = ["", "upload", "-S", "1B", "container", "object"]
@@ -542,18 +563,24 @@ class TestShell(unittest.TestCase):
                 swiftclient.shell.main(argv)
                 _check_expected(mock_swift, 12345)
 
-                # Test invalid states
-                argv = ["", "upload", "-S", "1234X", "container", "object"]
-                swiftclient.shell.main(argv)
-                mock_out.error.assert_called_with("Invalid segment size")
+            with CaptureOutput() as output:
+                with ExpectedException(SystemExit):
+                    #  Test invalid states
+                    argv = ["", "upload", "-S", "1234X", "container", "object"]
+                    swiftclient.shell.main(argv)
+                self.assertEquals(output.err, "Invalid segment size\n")
+                output.clear()
 
-                argv = ["", "upload", "-S", "K1234", "container", "object"]
-                swiftclient.shell.main(argv)
-                mock_out.error.assert_called_with("Invalid segment size")
+                with ExpectedException(SystemExit):
+                    argv = ["", "upload", "-S", "K1234", "container", "object"]
+                    swiftclient.shell.main(argv)
+                self.assertEquals(output.err, "Invalid segment size\n")
+                output.clear()
 
-                argv = ["", "upload", "-S", "K", "container", "object"]
-                swiftclient.shell.main(argv)
-                mock_out.error.assert_called_with("Invalid segment size")
+                with ExpectedException(SystemExit):
+                    argv = ["", "upload", "-S", "K", "container", "object"]
+                    swiftclient.shell.main(argv)
+                self.assertEquals(output.err, "Invalid segment size\n")
 
 
 class TestSubcommandHelp(unittest.TestCase):
