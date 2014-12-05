@@ -11,7 +11,7 @@ __ http://docs.openstack.org/developer/python-swiftclient/
 Development takes place via the usual OpenStack processes as outlined
 in the `OpenStack wiki`__.  The master repository is on GitHub__.
 
-__ http://wiki.openstack.org/HowToContribute
+__ http://docs.openstack.org/infra/manual/developers.html
 __ http://github.com/openstack/python-swiftclient
 
 This code is based on original the client previously included with
