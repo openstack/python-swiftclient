@@ -387,6 +387,61 @@ class TestShell(unittest.TestCase):
         connection.return_value.delete_object.assert_called_with(
             'container', 'object', query_string=None, response_dict={})
 
+    def test_delete_verbose_output(self):
+        del_obj_res = {'success': True, 'response_dict': {}, 'attempts': 2,
+                       'container': 'test_c', 'action': 'delete_object',
+                       'object': 'test_o'}
+
+        del_seg_res = del_obj_res.copy()
+        del_seg_res.update({'action': 'delete_segment'})
+
+        del_con_res = del_obj_res.copy()
+        del_con_res.update({'action': 'delete_container', 'object': None})
+
+        test_exc = Exception('test_exc')
+        error_res = del_obj_res.copy()
+        error_res.update({'success': False, 'error': test_exc, 'object': None})
+
+        mock_delete = mock.Mock()
+        base_argv = ['', '--verbose', 'delete']
+
+        with mock.patch('swiftclient.shell.SwiftService.delete', mock_delete):
+            with CaptureOutput() as out:
+                mock_delete.return_value = [del_obj_res]
+                swiftclient.shell.main(base_argv + ['test_c', 'test_o'])
+
+                mock_delete.assert_called_once_with(container='test_c',
+                                                    objects=['test_o'])
+                self.assertTrue(out.out.find(
+                    'test_o [after 2 attempts]') >= 0)
+
+            with CaptureOutput() as out:
+                mock_delete.return_value = [del_seg_res]
+                swiftclient.shell.main(base_argv + ['test_c', 'test_o'])
+
+                mock_delete.assert_called_with(container='test_c',
+                                               objects=['test_o'])
+                self.assertTrue(out.out.find(
+                    'test_c/test_o [after 2 attempts]') >= 0)
+
+            with CaptureOutput() as out:
+                mock_delete.return_value = [del_con_res]
+                swiftclient.shell.main(base_argv + ['test_c'])
+
+                mock_delete.assert_called_with(container='test_c')
+                self.assertTrue(out.out.find(
+                    'test_c [after 2 attempts]') >= 0)
+
+            with CaptureOutput() as out:
+                mock_delete.return_value = [error_res]
+                self.assertRaises(SystemExit,
+                                  swiftclient.shell.main,
+                                  base_argv + ['test_c'])
+
+                mock_delete.assert_called_with(container='test_c')
+                self.assertTrue(out.err.find(
+                    'Error Deleting: test_c: test_exc') >= 0)
+
     @mock.patch('swiftclient.service.Connection')
     def test_post_account(self, connection):
         argv = ["", "post"]

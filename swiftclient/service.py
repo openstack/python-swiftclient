@@ -1530,8 +1530,8 @@ class SwiftService(object):
             old_manifest = None
             old_slo_manifest_paths = []
             new_slo_manifest_paths = set()
-            if options['changed'] or options['skip_identical'] \
-                    or not options['leave_segments']:
+            if (options['changed'] or options['skip_identical']
+                    or not options['leave_segments']):
                 checksum = None
                 if options['skip_identical']:
                     try:
@@ -1556,11 +1556,12 @@ class SwiftService(object):
                                 'status': 'skipped-identical'
                             })
                             return res
+
                     cl = int(headers.get('content-length'))
                     mt = headers.get('x-object-meta-mtime')
-                    if path is not None and options['changed']\
-                            and cl == getsize(path) and \
-                            mt == put_headers['x-object-meta-mtime']:
+                    if (path is not None and options['changed']
+                            and cl == getsize(path)
+                            and mt == put_headers['x-object-meta-mtime']):
                         res.update({
                             'success': True,
                             'status': 'skipped-changed'
@@ -1594,8 +1595,8 @@ class SwiftService(object):
             # a segment job if we're reading from a stream - we may fail if we
             # go over the single object limit, but this gives us a nice way
             # to create objects from memory
-            if path is not None and options['segment_size'] and \
-                    getsize(path) > int(options['segment_size']):
+            if (path is not None and options['segment_size']
+                    and getsize(path) > int(options['segment_size'])):
                 res['large_object'] = True
                 seg_container = container + '_segments'
                 if options['segment_container']:
@@ -1851,9 +1852,8 @@ class SwiftService(object):
 
                             # Cancel the remaining container deletes, but yield
                             # any pending results
-                            if not cancelled and \
-                                    options['fail_fast'] and \
-                                    not res['success']:
+                            if (not cancelled and options['fail_fast']
+                                    and not res['success']):
                                 cancelled = True
 
     @staticmethod
@@ -1861,24 +1861,17 @@ class SwiftService(object):
         results_dict = {}
         try:
             conn.delete_object(container, obj, response_dict=results_dict)
-            res = {
-                'action': 'delete_segment',
-                'container': container,
-                'object': obj,
-                'success': True,
-                'attempts': conn.attempts,
-                'response_dict': results_dict
-            }
+            res = {'success': True}
         except Exception as e:
-            res = {
-                'action': 'delete_segment',
-                'container': container,
-                'object': obj,
-                'success': False,
-                'attempts': conn.attempts,
-                'response_dict': results_dict,
-                'exception': e
-            }
+            res = {'success': False, 'error': e}
+
+        res.update({
+            'action': 'delete_segment',
+            'container': container,
+            'object': obj,
+            'attempts': conn.attempts,
+            'response_dict': results_dict
+        })
 
         if results_queue is not None:
             results_queue.put(res)
@@ -1899,8 +1892,7 @@ class SwiftService(object):
                 try:
                     headers = conn.head_object(container, obj)
                     old_manifest = headers.get('x-object-manifest')
-                    if config_true_value(
-                            headers.get('x-static-large-object')):
+                    if config_true_value(headers.get('x-static-large-object')):
                         query_string = 'multipart-manifest=delete'
                 except ClientException as err:
                     if err.http_status != 404:
@@ -1958,23 +1950,17 @@ class SwiftService(object):
         results_dict = {}
         try:
             conn.delete_container(container, response_dict=results_dict)
-            res = {
-                'action': 'delete_container',
-                'container': container,
-                'object': None,
-                'success': True,
-                'attempts': conn.attempts,
-                'response_dict': results_dict
-            }
+            res = {'success': True}
         except Exception as e:
-            res = {
-                'action': 'delete_container',
-                'container': container,
-                'object': None,
-                'success': False,
-                'response_dict': results_dict,
-                'error': e
-            }
+            res = {'success': False, 'error': e}
+
+        res.update({
+            'action': 'delete_container',
+            'container': container,
+            'object': None,
+            'attempts': conn.attempts,
+            'response_dict': results_dict
+        })
         return res
 
     def _delete_container(self, container, options):
@@ -1982,9 +1968,7 @@ class SwiftService(object):
             objs = []
             for part in self.list(container=container):
                 if part["success"]:
-                    objs.extend([
-                        o['name'] for o in part['listing']
-                    ])
+                    objs.extend([o['name'] for o in part['listing']])
                 else:
                     raise part["error"]
 

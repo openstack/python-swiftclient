@@ -118,34 +118,29 @@ def st_delete(parser, args, output_manager):
                     del_iter = swift.delete(container=container)
 
             for r in del_iter:
+                c = r.get('container', '')
+                o = r.get('object', '')
+                a = r.get('attempts')
+
                 if r['success']:
                     if options.verbose:
+                        a = ' [after {0} attempts]'.format(a) if a > 1 else ''
+
                         if r['action'] == 'delete_object':
-                            c = r['container']
-                            o = r['object']
-                            p = '%s/%s' % (c, o) if options.yes_all else o
-                            a = r['attempts']
-                            if a > 1:
-                                output_manager.print_msg(
-                                    '%s [after %d attempts]', p, a)
+                            if options.yes_all:
+                                p = '{0}/{1}'.format(c, o)
                             else:
-                                output_manager.print_msg(p)
-
+                                p = o
                         elif r['action'] == 'delete_segment':
-                            c = r['container']
-                            o = r['object']
-                            p = '%s/%s' % (c, o)
-                            a = r['attempts']
-                            if a > 1:
-                                output_manager.print_msg(
-                                    '%s [after %d attempts]', p, a)
-                            else:
-                                output_manager.print_msg(p)
+                            p = '{0}/{1}'.format(c, o)
+                        elif r['action'] == 'delete_container':
+                            p = c
 
+                        output_manager.print_msg('{0}{1}'.format(p, a))
                 else:
-                    # Special case error prints
-                    output_manager.error("An unexpected error occurred whilst "
-                                         "deleting: %s" % r['error'])
+                    p = '{0}/{1}'.format(c, o) if o else c
+                    output_manager.error('Error Deleting: {0}: {1}'
+                                         .format(p, r['error']))
         except SwiftError as err:
             output_manager.error(err.value)
 
