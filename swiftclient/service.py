@@ -262,7 +262,7 @@ class SwiftUploadObject(object):
             self.object_name = object_name or source
             self.options = options
         else:
-            if source.hasattr('read') or source is None:
+            if source is None or source.hasattr('read'):
                 if object_name is None or \
                         not isinstance(object_name, string_types):
                     raise SwiftError(
