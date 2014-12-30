@@ -238,17 +238,29 @@ class CaptureStream(object):
     def getvalue(self):
         return self._capture.getvalue()
 
+    def clear(self):
+        self._capture.truncate(0)
+        self._capture.seek(0)
+
 
 class CaptureOutput(object):
 
-    def __init__(self):
+    def __init__(self, suppress_systemexit=False):
         self._out = CaptureStream(sys.stdout)
         self._err = CaptureStream(sys.stderr)
+        self.patchers = []
 
         WrappedOutputManager = functools.partial(s.OutputManager,
                                                  print_stream=self._out,
                                                  error_stream=self._err)
-        self.patchers = [
+
+        if suppress_systemexit:
+            self.patchers += [
+                mock.patch('swiftclient.shell.OutputManager.get_error_count',
+                           return_value=0)
+            ]
+
+        self.patchers += [
             mock.patch('swiftclient.shell.OutputManager',
                        WrappedOutputManager),
             mock.patch('sys.stdout', self._out),
@@ -271,6 +283,10 @@ class CaptureOutput(object):
     @property
     def err(self):
         return self._err.getvalue()
+
+    def clear(self):
+        self._out.clear()
+        self._err.clear()
 
     # act like the string captured by stdout
 

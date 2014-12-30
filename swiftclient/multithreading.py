@@ -86,6 +86,9 @@ class OutputManager(object):
             msg = msg % fmt_args
         self.error_print_pool.submit(self._print_error, msg)
 
+    def get_error_count(self):
+        return self.error_count
+
     def _print(self, item, stream=None):
         if stream is None:
             stream = self.print_stream
