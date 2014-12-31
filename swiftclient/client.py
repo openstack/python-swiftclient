@@ -353,6 +353,15 @@ def get_auth(auth_url, user, key, **kwargs):
     """
     Get authentication/authorization credentials.
 
+    :kwarg auth_version: the api version of the supplied auth params
+    :kwarg os_options: a dict, the openstack idenity service options
+
+    :returns: a tuple, (storage_url, token)
+
+    N.B. if the optional os_options paramater includes an non-empty
+    'object_storage_url' key it will override the the default storage url
+    returned by the auth service.
+
     The snet parameter is used for Rackspace's ServiceNet internal network
     implementation. In this function, it simply adds *snet-* to the beginning
     of the host name for the returned storage URL. With Rackspace Cloud Files,
@@ -371,13 +380,6 @@ def get_auth(auth_url, user, key, **kwargs):
                                           kwargs.get('snet'),
                                           insecure=insecure)
     elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:
-        # We are allowing to specify a token/storage-url to re-use
-        # without having to re-authenticate.
-        if (os_options.get('object_storage_url') and
-                os_options.get('auth_token')):
-            return (os_options.get('object_storage_url'),
-                    os_options.get('auth_token'))
-
         # We are handling a special use case here where the user argument
         # specifies both the user name and tenant name in the form tenant:user
         if user and not kwargs.get('tenant_name') and ':' in user:
@@ -1173,8 +1175,6 @@ class Connection(object):
         self.key = key
         self.retries = retries
         self.http_conn = None
-        self.url = preauthurl
-        self.token = preauthtoken
         self.attempts = 0
         self.snet = snet
         self.starting_backoff = starting_backoff
@@ -1183,6 +1183,10 @@ class Connection(object):
         self.os_options = os_options or {}
         if tenant_name:
             self.os_options['tenant_name'] = tenant_name
+        if preauthurl:
+            self.os_options['object_storage_url'] = preauthurl
+        self.url = preauthurl or self.os_options.get('object_storage_url')
+        self.token = preauthtoken or self.os_options.get('auth_token')
         self.cacert = cacert
         self.insecure = insecure
         self.ssl_compression = ssl_compression
@@ -1194,6 +1198,8 @@ class Connection(object):
                 and len(self.http_conn) > 1):
             conn = self.http_conn[1]
             if hasattr(conn, 'close') and callable(conn.close):
+                # XXX: Our HTTPConnection object has no close, should be
+                # trying to close the requests.Session here?
                 conn.close()
                 self.http_conn = None
 
@@ -1378,6 +1384,7 @@ class Connection(object):
                            response_dict=response_dict)
 
     def get_capabilities(self, url=None):
+        url = url or self.url
         if not url:
             url, _ = self.get_auth()
         scheme = urlparse(url).scheme
