@@ -315,10 +315,15 @@ class _SwiftReader(object):
             except ValueError:
                 raise SwiftError('content-length header must be an integer')
 
-    def __enter__(self):
-        return self
+    def __iter__(self):
+        for chunk in self._body:
+            if self._actual_md5:
+                self._actual_md5.update(chunk)
+            self._actual_read += len(chunk)
+            yield chunk
+        self._check_contents()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def _check_contents(self):
         if self._actual_md5 and self._expected_etag:
             etag = self._actual_md5.hexdigest()
             if etag != self._expected_etag:
@@ -332,13 +337,6 @@ class _SwiftReader(object):
                              'content_length, {1:d} != {2:d}'.format(
                                  self._path, self._actual_read,
                                  self._content_length))
-
-    def buffer(self):
-        for chunk in self._body:
-            if self._actual_md5:
-                self._actual_md5.update(chunk)
-            self._actual_read += len(chunk)
-            yield chunk
 
     def bytes_read(self):
         return self._actual_read
@@ -999,64 +997,67 @@ class SwiftService(object):
 
         try:
             start_time = time()
-
             headers, body = \
                 conn.get_object(container, obj, resp_chunk_size=65536,
                                 headers=req_headers,
                                 response_dict=results_dict)
             headers_receipt = time()
 
-            reader = _SwiftReader(path, body, headers)
-            with reader as obj_body:
-                fp = None
-                try:
-                    no_file = options['no_download']
-                    content_type = headers.get('content-type')
-                    if (content_type and
-                       content_type.split(';', 1)[0] == 'text/directory'):
-                        make_dir = not no_file and out_file != "-"
-                        if make_dir and not isdir(path):
-                            mkdirs(path)
+            obj_body = _SwiftReader(path, body, headers)
 
-                    else:
-                        make_dir = not (no_file or out_file)
-                        if make_dir:
-                            dirpath = dirname(path)
-                            if dirpath and not isdir(dirpath):
-                                mkdirs(dirpath)
+            no_file = options['no_download']
+            if out_file == "-" and not no_file:
+                res = {
+                    'action': 'download_object',
+                    'container': container,
+                    'object': obj,
+                    'path': path,
+                    'pseudodir': pseudodir,
+                    'contents': obj_body
+                }
+                return res
 
-                        if not no_file:
-                            if out_file == "-":
-                                res = {
-                                    'path': path,
-                                    'contents': obj_body
-                                }
-                                return res
-                            if out_file:
-                                fp = open(out_file, 'wb')
+            fp = None
+            try:
+                content_type = headers.get('content-type')
+                if (content_type and
+                   content_type.split(';', 1)[0] == 'text/directory'):
+                    make_dir = not no_file and out_file != "-"
+                    if make_dir and not isdir(path):
+                        mkdirs(path)
+
+                else:
+                    make_dir = not (no_file or out_file)
+                    if make_dir:
+                        dirpath = dirname(path)
+                        if dirpath and not isdir(dirpath):
+                            mkdirs(dirpath)
+
+                    if not no_file:
+                        if out_file:
+                            fp = open(out_file, 'wb')
+                        else:
+                            if basename(path):
+                                fp = open(path, 'wb')
                             else:
-                                if basename(path):
-                                    fp = open(path, 'wb')
-                                else:
-                                    pseudodir = True
+                                pseudodir = True
 
-                    for chunk in obj_body.buffer():
-                        if fp is not None:
-                            fp.write(chunk)
-
-                    finish_time = time()
-
-                finally:
-                    bytes_read = obj_body.bytes_read()
+                for chunk in obj_body:
                     if fp is not None:
-                        fp.close()
-                        if 'x-object-meta-mtime' in headers and not no_file:
-                            mtime = float(headers['x-object-meta-mtime'])
-                            if options['out_file'] \
-                                    and not options['out_file'] == "-":
-                                utime(options['out_file'], (mtime, mtime))
-                            else:
-                                utime(path, (mtime, mtime))
+                        fp.write(chunk)
+
+                finish_time = time()
+
+            finally:
+                bytes_read = obj_body.bytes_read()
+                if fp is not None:
+                    fp.close()
+                    if 'x-object-meta-mtime' in headers and not no_file:
+                        mtime = float(headers['x-object-meta-mtime'])
+                        if options['out_file']:
+                            utime(options['out_file'], (mtime, mtime))
+                        else:
+                            utime(path, (mtime, mtime))
 
             res = {
                 'action': 'download_object',

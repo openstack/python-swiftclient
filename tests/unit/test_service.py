@@ -19,6 +19,7 @@ import testtools
 from hashlib import md5
 from mock import Mock, PropertyMock
 from six.moves.queue import Queue, Empty as QueueEmptyError
+from six import BytesIO
 
 import swiftclient
 from swiftclient.service import SwiftService, SwiftError
@@ -101,41 +102,35 @@ class TestSwiftReader(testtools.TestCase):
         self.assertRaises(SwiftError, self.sr, 'path', 'body',
                           {'content-length': 'notanint'})
 
-    def test_context_usage(self):
-        def _context(sr):
-            with sr:
+    def test_iterator_usage(self):
+        def _consume(sr):
+            for _ in sr:
                 pass
 
-        sr = self.sr('path', 'body', {})
-        _context(sr)
+        sr = self.sr('path', BytesIO(b'body'), {})
+        _consume(sr)
 
         # Check error is raised if expected etag doesnt match calculated md5.
         # md5 for a SwiftReader that has done nothing is
         # d41d8cd98f00b204e9800998ecf8427e  i.e md5 of nothing
-        sr = self.sr('path', 'body', {'etag': 'doesntmatch'})
-        self.assertRaises(SwiftError, _context, sr)
+        sr = self.sr('path', BytesIO(b'body'), {'etag': 'doesntmatch'})
+        self.assertRaises(SwiftError, _consume, sr)
 
-        sr = self.sr('path', 'body',
-                     {'etag': 'd41d8cd98f00b204e9800998ecf8427e'})
-        _context(sr)
+        sr = self.sr('path', BytesIO(b'body'),
+                     {'etag': '841a2d689ad86bd1611447453c22c6fc'})
+        _consume(sr)
 
         # Check error is raised if SwiftReader doesnt read the same length
         # as the content length it is created with
-        sr = self.sr('path', 'body', {'content-length': 5})
-        self.assertRaises(SwiftError, _context, sr)
+        sr = self.sr('path', BytesIO(b'body'), {'content-length': 5})
+        self.assertRaises(SwiftError, _consume, sr)
 
-        sr = self.sr('path', 'body', {'content-length': 5})
-        sr._actual_read = 5
-        _context(sr)
+        sr = self.sr('path', BytesIO(b'body'), {'content-length': 4})
+        _consume(sr)
 
-    def test_buffer(self):
-        # md5 = 97ac82a5b825239e782d0339e2d7b910
-        mock_buffer_content = ['abc'.encode()] * 3
-
-        sr = self.sr('path', mock_buffer_content, {})
-        for x in sr.buffer():
-            pass
-
+        # Check that the iterator generates expected length and etag values
+        sr = self.sr('path', ['abc'.encode()] * 3, {})
+        _consume(sr)
         self.assertEqual(sr._actual_read, 9)
         self.assertEqual(sr._actual_md5.hexdigest(),
                          '97ac82a5b825239e782d0339e2d7b910')

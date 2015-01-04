@@ -16,9 +16,9 @@
 
 from __future__ import print_function
 
+import logging
 import signal
 import socket
-import logging
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from os import environ, walk, _exit as os_exit
@@ -261,8 +261,9 @@ def st_download(parser, args, output_manager):
 
             for down in down_iter:
                 if options.out_file == '-' and 'contents' in down:
-                    for chunk in down['contents']:
-                        output_manager.print_msg(chunk)
+                    contents = down['contents']
+                    for chunk in contents:
+                        output_manager.print_raw(chunk)
                 else:
                     if down['success']:
                         if options.verbose:
