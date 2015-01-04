@@ -258,30 +258,22 @@ class SwiftUploadObject(object):
     """
     def __init__(self, source, object_name=None, options=None):
         if isinstance(source, string_types):
-            self.source = source
             self.object_name = object_name or source
-            self.options = options
+        elif source is None or hasattr(source, 'read'):
+            if not object_name or not isinstance(object_name, string_types):
+                raise SwiftError('Object names must be specified as '
+                                 'strings for uploads from None or file '
+                                 'like objects.')
+            self.object_name = object_name
         else:
-            if source.hasattr('read') or source is None:
-                if object_name is None or \
-                        not isinstance(object_name, string_types):
-                    raise SwiftError(
-                        "Object names must be specified as strings for uploads"
-                        " from None or file like objects."
-                    )
-                else:
-                    self.source = source
-                    self.object_name = object_name
-                    self.options = options
-            else:
-                raise SwiftError(
-                    "Unexpected source type for SwiftUploadObject: "
-                    "%s" % type(source)
-                )
+            raise SwiftError('Unexpected source type for '
+                             'SwiftUploadObject: {0}'.format(type(source)))
+
         if not self.object_name:
-            raise SwiftError(
-                "Object names must be specified as non-empty strings"
-            )
+            raise SwiftError('Object names must not be empty strings')
+
+        self.options = options
+        self.source = source
 
 
 class SwiftPostObject(object):

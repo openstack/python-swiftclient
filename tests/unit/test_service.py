@@ -13,21 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+import os
+import tempfile
 import testtools
+from hashlib import md5
 from mock import Mock, PropertyMock
 from six.moves.queue import Queue, Empty as QueueEmptyError
-from hashlib import md5
 
 import swiftclient
 from swiftclient.service import SwiftService, SwiftError
 from swiftclient.client import Connection
 
 
+clean_os_environ = {}
+environ_prefixes = ('ST_', 'OS_')
+for key in os.environ:
+    if any(key.startswith(m) for m in environ_prefixes):
+        clean_os_environ[key] = ''
+
+
 class TestSwiftPostObject(testtools.TestCase):
 
     def setUp(self):
-        self.spo = swiftclient.service.SwiftPostObject
         super(TestSwiftPostObject, self).setUp()
+        self.spo = swiftclient.service.SwiftPostObject
 
     def test_create(self):
         spo = self.spo('obj_name')
@@ -46,8 +55,8 @@ class TestSwiftPostObject(testtools.TestCase):
 class TestSwiftReader(testtools.TestCase):
 
     def setUp(self):
-        self.sr = swiftclient.service._SwiftReader
         super(TestSwiftReader, self).setUp()
+        self.sr = swiftclient.service._SwiftReader
         self.md5_type = type(md5())
 
     def test_create(self):
@@ -349,6 +358,185 @@ class TestServiceDelete(testtools.TestCase):
             'test_c', response_dict={}
         )
         self._assertDictEqual(expected_r, r)
+
+
+class TestSwiftError(testtools.TestCase):
+
+    def test_is_exception(self):
+        se = SwiftError(5)
+        self.assertTrue(isinstance(se, Exception))
+
+    def test_empty_swifterror_creation(self):
+        se = SwiftError(5)
+
+        self.assertEqual(se.value, 5)
+        self.assertEqual(se.container, None)
+        self.assertEqual(se.obj, None)
+        self.assertEqual(se.segment, None)
+        self.assertEqual(se.exception, None)
+
+        self.assertEqual(str(se), '5')
+
+    def test_swifterror_creation(self):
+        test_exc = Exception('test exc')
+        se = SwiftError(5, 'con', 'obj', 'seg', test_exc)
+
+        self.assertEqual(se.value, 5)
+        self.assertEqual(se.container, 'con')
+        self.assertEqual(se.obj, 'obj')
+        self.assertEqual(se.segment, 'seg')
+        self.assertEqual(se.exception, test_exc)
+
+        self.assertEqual(str(se), '5 container:con object:obj segment:seg')
+
+
+@mock.patch.dict(os.environ, clean_os_environ)
+class TestServiceUtils(testtools.TestCase):
+
+    def setUp(self):
+        super(TestServiceUtils, self).setUp()
+        self.opts = swiftclient.service._default_global_options.copy()
+
+    def test_process_options_defaults(self):
+        # The only actions that should be taken on default options set is
+        # to change the auth version to v2.0 and create the os_options dict
+        opt_c = self.opts.copy()
+
+        swiftclient.service.process_options(opt_c)
+
+        self.assertTrue('os_options' in opt_c)
+        del opt_c['os_options']
+        self.assertEqual(opt_c['auth_version'], '2.0')
+        opt_c['auth_version'] = '1.0'
+
+        self.assertEqual(opt_c, self.opts)
+
+    def test_process_options_auth_version(self):
+        # auth_version should be set to 2.0
+        # if it isnt already set to 3.0
+        # and the v1 command line arguments arent present
+        opt_c = self.opts.copy()
+
+        # Check v3 isnt changed
+        opt_c['auth_version'] = '3'
+        swiftclient.service.process_options(opt_c)
+        self.assertEqual(opt_c['auth_version'], '3')
+
+        # Check v1 isnt changed if user, key and auth are set
+        opt_c = self.opts.copy()
+        opt_c['auth_version'] = '1'
+        opt_c['auth'] = True
+        opt_c['user'] = True
+        opt_c['key'] = True
+        swiftclient.service.process_options(opt_c)
+        self.assertEqual(opt_c['auth_version'], '1')
+
+    def test_process_options_new_style_args(self):
+        # checks new style args are copied to old style
+        # when old style dont exist
+        opt_c = self.opts.copy()
+
+        opt_c['auth'] = ''
+        opt_c['user'] = ''
+        opt_c['key'] = ''
+        opt_c['os_auth_url'] = 'os_auth'
+        opt_c['os_username'] = 'os_user'
+        opt_c['os_password'] = 'os_pass'
+        swiftclient.service.process_options(opt_c)
+        self.assertEqual(opt_c['auth_version'], '2.0')
+        self.assertEqual(opt_c['auth'], 'os_auth')
+        self.assertEqual(opt_c['user'], 'os_user')
+        self.assertEqual(opt_c['key'], 'os_pass')
+
+        # Check old style args are left alone if they exist
+        opt_c = self.opts.copy()
+        opt_c['auth'] = 'auth'
+        opt_c['user'] = 'user'
+        opt_c['key'] = 'key'
+        opt_c['os_auth_url'] = 'os_auth'
+        opt_c['os_username'] = 'os_user'
+        opt_c['os_password'] = 'os_pass'
+        swiftclient.service.process_options(opt_c)
+        self.assertEqual(opt_c['auth_version'], '1.0')
+        self.assertEqual(opt_c['auth'], 'auth')
+        self.assertEqual(opt_c['user'], 'user')
+        self.assertEqual(opt_c['key'], 'key')
+
+    def test_split_headers(self):
+        mock_headers = ['color:blue', 'size:large']
+        expected = {'Color': 'blue', 'Size': 'large'}
+
+        actual = swiftclient.service.split_headers(mock_headers)
+        self.assertEqual(expected, actual)
+
+    def test_split_headers_prefix(self):
+        mock_headers = ['color:blue', 'size:large']
+        expected = {'Prefix-Color': 'blue', 'Prefix-Size': 'large'}
+
+        actual = swiftclient.service.split_headers(mock_headers, 'prefix-')
+        self.assertEqual(expected, actual)
+
+    def test_split_headers_error(self):
+        mock_headers = ['notvalid']
+
+        self.assertRaises(SwiftError, swiftclient.service.split_headers,
+                          mock_headers)
+
+
+class TestSwiftUploadObject(testtools.TestCase):
+
+    def setUp(self):
+        self.suo = swiftclient.service.SwiftUploadObject
+        super(TestSwiftUploadObject, self).setUp()
+
+    def test_create_with_string(self):
+        suo = self.suo('source')
+        self.assertEqual(suo.source, 'source')
+        self.assertEqual(suo.object_name, 'source')
+        self.assertEqual(suo.options, None)
+
+        suo = self.suo('source', 'obj_name')
+        self.assertEqual(suo.source, 'source')
+        self.assertEqual(suo.object_name, 'obj_name')
+        self.assertEqual(suo.options, None)
+
+        suo = self.suo('source', 'obj_name', {'opt': '123'})
+        self.assertEqual(suo.source, 'source')
+        self.assertEqual(suo.object_name, 'obj_name')
+        self.assertEqual(suo.options, {'opt': '123'})
+
+    def test_create_with_file(self):
+        with tempfile.TemporaryFile() as mock_file:
+            # Check error is raised if no object name is provided with a
+            # filelike object
+            self.assertRaises(SwiftError, self.suo, mock_file)
+
+            # Check that empty strings are invalid object names
+            self.assertRaises(SwiftError, self.suo, mock_file, '')
+
+            suo = self.suo(mock_file, 'obj_name')
+            self.assertEqual(suo.source, mock_file)
+            self.assertEqual(suo.object_name, 'obj_name')
+            self.assertEqual(suo.options, None)
+
+            suo = self.suo(mock_file, 'obj_name', {'opt': '123'})
+            self.assertEqual(suo.source, mock_file)
+            self.assertEqual(suo.object_name, 'obj_name')
+            self.assertEqual(suo.options, {'opt': '123'})
+
+    def test_create_with_no_source(self):
+        suo = self.suo(None, 'obj_name')
+        self.assertEqual(suo.source, None)
+        self.assertEqual(suo.object_name, 'obj_name')
+        self.assertEqual(suo.options, None)
+
+        # Check error is raised if source is None without an object name
+        self.assertRaises(SwiftError, self.suo, None)
+
+    def test_create_with_invalid_source(self):
+        # Source can only be None, string or filelike object,
+        # check an error is raised with an invalid type.
+        self.assertRaises(SwiftError, self.suo, [])
 
 
 class TestService(testtools.TestCase):
