@@ -225,19 +225,17 @@ class TestShell(unittest.TestCase):
                               '    0    0 ????-??-?? ??:??:?? container\n'
                               '    0    0\n')
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
-    @mock.patch('swiftclient.service.Connection')
-    def test_list_account_totals_error(self, connection, error):
+    def test_list_account_totals_error(self):
         # No --lh provided: expect info message about incorrect --totals use
         argv = ["", "list", "--totals"]
 
-        self.assertRaises(SystemExit, swiftclient.shell.main, argv)
-        self.assertEqual(error.call_args[0][0],
-                         "Listing totals only works with -l or --lh.")
+        with CaptureOutput() as output:
+            self.assertRaises(SystemExit, swiftclient.shell.main, argv)
+            self.assertEqual(output.err,
+                             "Listing totals only works with -l or --lh.\n")
 
-    @mock.patch('swiftclient.shell.OutputManager._print')
     @mock.patch('swiftclient.service.Connection')
-    def test_list_account_totals(self, connection, mock_print):
+    def test_list_account_totals(self, connection):
 
         # Test account listing, only total count and size
         connection.return_value.get_account.side_effect = [
@@ -247,10 +245,11 @@ class TestShell(unittest.TestCase):
         ]
 
         argv = ["", "list", "--lh", "--totals"]
-        swiftclient.shell.main(argv)
-        calls = [mock.call(marker='', prefix=None)]
-        connection.return_value.get_account.assert_has_calls(calls)
-        mock_print.assert_called_once_with('    6    3')
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [mock.call(marker='', prefix=None)]
+            connection.return_value.get_account.assert_has_calls(calls)
+            self.assertEqual(output.out, '    6    3\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_list_container(self, connection):
