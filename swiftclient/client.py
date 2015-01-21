@@ -21,7 +21,6 @@ import socket
 import requests
 import logging
 import warnings
-import functools
 try:
     from simplejson import loads as json_loads
 except ImportError:
@@ -233,10 +232,22 @@ class HTTPConnection(object):
         def getheader(k, v=None):
             return old_getheader(k.lower(), v)
 
+        def releasing_read(*args, **kwargs):
+            kwargs['decode_content'] = True
+            chunk = self.resp.raw.read(*args, **kwargs)
+            if not chunk:
+                # NOTE(sigmavirus24): Release the connection back to the
+                # urllib3's connection pool. This will reduce the number of
+                # log messages seen in bug #1341777. This does not actually
+                # close a socket. It will also prevent people from being
+                # mislead as to the cause of a bug as in bug #1424732.
+                self.resp.close()
+            return chunk
+
         self.resp.getheaders = getheaders
         self.resp.getheader = getheader
-        self.resp.read = functools.partial(self.resp.raw.read,
-                                           decode_content=True)
+        self.resp.read = releasing_read
+
         return self.resp
 
 
