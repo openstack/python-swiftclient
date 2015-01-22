@@ -390,11 +390,13 @@ class TestSwiftError(testtools.TestCase):
         self.assertEqual(str(se), '5 container:con object:obj segment:seg')
 
 
-@mock.patch.dict(os.environ, clean_os_environ)
 class TestServiceUtils(testtools.TestCase):
 
     def setUp(self):
         super(TestServiceUtils, self).setUp()
+        with mock.patch.dict(swiftclient.service.environ, clean_os_environ):
+            swiftclient.service._default_global_options = \
+                swiftclient.service._build_default_global_options()
         self.opts = swiftclient.service._default_global_options.copy()
 
     def test_process_options_defaults(self):
