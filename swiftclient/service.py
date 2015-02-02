@@ -1180,11 +1180,6 @@ class SwiftService(object):
         except ValueError:
             raise SwiftError('Segment size should be an integer value')
 
-        # Does the account exist?
-        account_stat = self.stat(options=options)
-        if not account_stat["success"]:
-            raise account_stat["error"]
-
         # Try to create the container, just in case it doesn't exist. If this
         # fails, it might just be because the user doesn't have container PUT
         # permissions, so we'll ignore any error. If there's really a problem,
@@ -1211,28 +1206,29 @@ class SwiftService(object):
             seg_container = container + '_segments'
             if options['segment_container']:
                 seg_container = options['segment_container']
-            if not policy_header:
-                # Since no storage policy was specified on the command line,
-                # rather than just letting swift pick the default storage
-                # policy, we'll try to create the segments container with the
-                # same as the upload container
-                create_containers = [
-                    self.thread_manager.container_pool.submit(
-                        self._create_container_job, seg_container,
-                        policy_source=container
-                    )
-                ]
-            else:
-                create_containers = [
-                    self.thread_manager.container_pool.submit(
-                        self._create_container_job, seg_container,
-                        headers=policy_header
-                    )
-                ]
+            if seg_container != container:
+                if not policy_header:
+                    # Since no storage policy was specified on the command
+                    # line, rather than just letting swift pick the default
+                    # storage policy, we'll try to create the segments
+                    # container with the same policy as the upload container
+                    create_containers = [
+                        self.thread_manager.container_pool.submit(
+                            self._create_container_job, seg_container,
+                            policy_source=container
+                        )
+                    ]
+                else:
+                    create_containers = [
+                        self.thread_manager.container_pool.submit(
+                            self._create_container_job, seg_container,
+                            headers=policy_header
+                        )
+                    ]
 
-            for r in interruptable_as_completed(create_containers):
-                res = r.result()
-                yield res
+                for r in interruptable_as_completed(create_containers):
+                    res = r.result()
+                    yield res
 
         # We maintain a results queue here and a separate thread to monitor
         # the futures because we want to get results back from potential

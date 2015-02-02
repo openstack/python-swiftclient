@@ -96,9 +96,15 @@ class OutputManager(object):
             item = item.encode('utf8')
         print(item, file=stream)
 
-    def _print_error(self, item):
-        self.error_count += 1
+    def _print_error(self, item, count=1):
+        self.error_count += count
         return self._print(item, stream=self.error_stream)
+
+    def warning(self, msg, *fmt_args):
+        # print to error stream but do not increment error count
+        if fmt_args:
+            msg = msg % fmt_args
+        self.error_print_pool.submit(self._print_error, msg, count=0)
 
 
 class MultiThreadingManager(object):
