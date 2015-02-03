@@ -23,6 +23,7 @@ from six.moves.queue import Queue, Empty
 from time import sleep
 
 from swiftclient import multithreading as mt
+from .utils import CaptureStream
 
 
 class ThreadTestCase(testtools.TestCase):
@@ -175,8 +176,8 @@ class TestOutputManager(testtools.TestCase):
         self.assertEqual(sys.stderr, output_manager.error_stream)
 
     def test_printers(self):
-        out_stream = six.StringIO()
-        err_stream = six.StringIO()
+        out_stream = CaptureStream(sys.stdout)
+        err_stream = CaptureStream(sys.stderr)
         starting_thread_count = threading.active_count()
 
         with mt.OutputManager(
@@ -201,6 +202,8 @@ class TestOutputManager(testtools.TestCase):
             thread_manager.error('one-error-argument')
             thread_manager.error('Sometimes\n%.1f%% just\ndoes not\nwork!',
                                  3.14159)
+            thread_manager.print_raw(
+                u'some raw bytes: \u062A\u062A'.encode('utf-8'))
 
             # Now we have a thread for error printing and a thread for
             # normal print messages
@@ -210,25 +213,30 @@ class TestOutputManager(testtools.TestCase):
         # The threads should have been cleaned up
         self.assertEqual(starting_thread_count, threading.active_count())
 
-        out_stream.seek(0)
         if six.PY3:
             over_the = "over the '\u062a\u062a'\n"
+            # The CaptureStreamBuffer just encodes all bytes written to it by
+            # mapping chr over the byte string to produce a str.
+            raw_bytes = ''.join(
+                map(chr, u'some raw bytes: \u062A\u062A'.encode('utf-8'))
+            )
         else:
             over_the = "over the u'\\u062a\\u062a'\n"
-        self.assertEqual([
+            # We write to the CaptureStream so no decoding is performed
+            raw_bytes = 'some raw bytes: \xd8\xaa\xd8\xaa'
+        self.assertEqual(''.join([
             'one-argument\n',
             'one fish, 88 fish\n',
-            'some\n', 'where\n', over_the,
-        ], list(out_stream.readlines()))
+            'some\n', 'where\n', over_the, raw_bytes
+        ]), out_stream.getvalue())
 
-        err_stream.seek(0)
         first_item = u'I have 99 problems, but a \u062A\u062A is not one\n'
         if six.PY2:
             first_item = first_item.encode('utf8')
-        self.assertEqual([
+        self.assertEqual(''.join([
             first_item,
             'one-error-argument\n',
-            'Sometimes\n', '3.1% just\n', 'does not\n', 'work!\n',
-        ], list(err_stream.readlines()))
+            'Sometimes\n', '3.1% just\n', 'does not\n', 'work!\n'
+        ]), err_stream.getvalue())
 
         self.assertEqual(3, thread_manager.error_count)

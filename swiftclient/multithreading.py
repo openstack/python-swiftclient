@@ -67,6 +67,17 @@ class OutputManager(object):
         self.error_print_pool.__exit__(exc_type, exc_value, traceback)
         self.print_pool.__exit__(exc_type, exc_value, traceback)
 
+    def print_raw(self, data):
+        self.print_pool.submit(self._write, data, self.print_stream)
+
+    def _write(self, data, stream):
+        if six.PY3:
+            stream.buffer.write(data)
+            stream.flush()
+        if six.PY2:
+            stream.write(data)
+            stream.flush()
+
     def print_msg(self, msg, *fmt_args):
         if fmt_args:
             msg = msg % fmt_args

@@ -307,10 +307,15 @@ class TestShell(unittest.TestCase):
     @mock.patch('swiftclient.service.makedirs')
     @mock.patch('swiftclient.service.Connection')
     def test_download(self, connection, makedirs):
-        connection.return_value.get_object.return_value = [
-            {'content-type': 'text/plain',
-             'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
-            '']
+        objcontent = six.BytesIO(b'objcontent')
+        connection.return_value.get_object.side_effect = [
+            ({'content-type': 'text/plain',
+              'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
+             objcontent),
+            ({'content-type': 'text/plain',
+              'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
+             '')
+        ]
 
         # Test downloading whole container
         connection.return_value.get_container.side_effect = [
@@ -335,6 +340,12 @@ class TestShell(unittest.TestCase):
             mock_open.assert_called_once_with('object', 'wb')
 
         # Test downloading single object
+        objcontent = six.BytesIO(b'objcontent')
+        connection.return_value.get_object.side_effect = [
+            ({'content-type': 'text/plain',
+              'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
+             objcontent)
+        ]
         with mock.patch(BUILTIN_OPEN) as mock_open:
             argv = ["", "download", "container", "object"]
             swiftclient.shell.main(argv)
@@ -342,6 +353,18 @@ class TestShell(unittest.TestCase):
                 'container', 'object', headers={}, resp_chunk_size=65536,
                 response_dict={})
             mock_open.assert_called_with('object', 'wb')
+
+        # Test downloading single object to stdout
+        objcontent = six.BytesIO(b'objcontent')
+        connection.return_value.get_object.side_effect = [
+            ({'content-type': 'text/plain',
+              'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
+             objcontent)
+        ]
+        with CaptureOutput() as output:
+            argv = ["", "download", "--output", "-", "container", "object"]
+            swiftclient.shell.main(argv)
+            self.assertEqual('objcontent', output.out)
 
     @mock.patch('swiftclient.service.Connection')
     def test_download_no_content_type(self, connection):

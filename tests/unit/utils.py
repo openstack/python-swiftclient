@@ -370,12 +370,40 @@ class MockHttpTest(testtools.TestCase):
         reload_module(c)
 
 
+class CaptureStreamBuffer(object):
+    """
+    CaptureStreamBuffer is used for testing raw byte writing for PY3. Anything
+    written here is decoded as utf-8 and written to the parent CaptureStream
+    """
+    def __init__(self, captured_stream):
+        self._captured_stream = captured_stream
+
+    def write(self, bytes_data):
+        # No encoding, just convert the raw bytes into a str for testing
+        # The below call also validates that we have a byte string.
+        self._captured_stream.write(
+            ''.join(map(chr, bytes_data))
+        )
+
+
 class CaptureStream(object):
 
     def __init__(self, stream):
         self.stream = stream
         self._capture = six.StringIO()
+        self._buffer = CaptureStreamBuffer(self)
         self.streams = [self.stream, self._capture]
+
+    @property
+    def buffer(self):
+        if six.PY3:
+            return self._buffer
+        else:
+            raise AttributeError(
+                'Output stream has no attribute "buffer" in Python2')
+
+    def flush(self):
+        pass
 
     def write(self, *args, **kwargs):
         for stream in self.streams:
