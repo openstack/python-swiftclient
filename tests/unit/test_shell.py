@@ -15,6 +15,7 @@
 from genericpath import getmtime
 
 import hashlib
+import json
 import mock
 import os
 import tempfile
@@ -454,6 +455,48 @@ class TestShell(unittest.TestCase):
             headers={'x-object-manifest': mock.ANY,
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
+
+    @mock.patch('swiftclient.shell.walk')
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_delete(self, connection, walk):
+        # Upload delete existing segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", self.tmpfile]
+        connection.return_value.head_object.side_effect = [
+            {'x-static-large-object': 'true',  # For the upload call
+             'content-length': '2'},
+            {'x-static-large-object': 'false',  # For the 1st delete call
+             'content-length': '2'},
+            {'x-static-large-object': 'false',  # For the 2nd delete call
+             'content-length': '2'}
+        ]
+        connection.return_value.get_object.return_value = ({}, json.dumps(
+            [{'name': 'container1/old_seg1'}, {'name': 'container2/old_seg2'}]
+        ))
+        swiftclient.shell.main(argv)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+        expected_delete_calls = [
+            mock.call(
+                b'container1', b'old_seg1',
+                query_string=None, response_dict={}
+            ),
+            mock.call(
+                b'container2', b'old_seg2',
+                query_string=None, response_dict={}
+            )
+        ]
+        self.assertEqual(
+            sorted(expected_delete_calls),
+            sorted(connection.return_value.delete_object.mock_calls)
+        )
 
     @mock.patch('swiftclient.service.Connection')
     def test_upload_segments_to_same_container(self, connection):

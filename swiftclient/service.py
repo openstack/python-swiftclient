@@ -1590,7 +1590,7 @@ class SwiftService(object):
             # go over the single object limit, but this gives us a nice way
             # to create objects from memory
             if (path is not None and options['segment_size']
-                    and getsize(path) > int(options['segment_size'])):
+                    and (getsize(path) > int(options['segment_size']))):
                 res['large_object'] = True
                 seg_container = container + '_segments'
                 if options['segment_container']:
@@ -1711,6 +1711,7 @@ class SwiftService(object):
                     )
                     res['response_dict'] = obr
             if old_manifest or old_slo_manifest_paths:
+                drs = []
                 if old_manifest:
                     scontainer, sprefix = old_manifest.split('/', 1)
                     scontainer = unquote(scontainer)
@@ -1719,26 +1720,24 @@ class SwiftService(object):
                     for delobj in conn.get_container(scontainer,
                                                      prefix=sprefix)[1]:
                         delobjs.append(delobj['name'])
-                    drs = []
                     for dr in self.delete(container=scontainer,
                                           objects=delobjs):
                         drs.append(dr)
-                    res['segment_delete_results'] = drs
                 if old_slo_manifest_paths:
                     delobjsmap = {}
                     for seg_to_delete in old_slo_manifest_paths:
                         if seg_to_delete in new_slo_manifest_paths:
                             continue
                         scont, sobj = \
-                            seg_to_delete.split('/', 1)
+                            seg_to_delete.split(b'/', 1)
                         delobjs_cont = delobjsmap.get(scont, [])
                         delobjs_cont.append(sobj)
-                        drs = []
-                        for (dscont, dsobjs) in delobjsmap.items():
-                            for dr in self.delete(container=dscont,
-                                                  objects=dsobjs):
-                                drs.append(dr)
-                        res['segment_delete_results'] = drs
+                        delobjsmap[scont] = delobjs_cont
+                    for (dscont, dsobjs) in delobjsmap.items():
+                        for dr in self.delete(container=dscont,
+                                              objects=dsobjs):
+                            drs.append(dr)
+                res['segment_delete_results'] = drs
 
             # return dict for printing
             res.update({
