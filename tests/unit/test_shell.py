@@ -458,9 +458,8 @@ class TestShell(unittest.TestCase):
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
 
-    @mock.patch('swiftclient.shell.walk')
     @mock.patch('swiftclient.service.Connection')
-    def test_upload_delete(self, connection, walk):
+    def test_upload_delete_slo_segments(self, connection):
         # Upload delete existing segments
         connection.return_value.head_container.return_value = {
             'x-storage-policy': 'one'}
@@ -501,6 +500,94 @@ class TestShell(unittest.TestCase):
             sorted(expected_delete_calls),
             sorted(connection.return_value.delete_object.mock_calls)
         )
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_leave_slo_segments(self, connection):
+        # Test upload overwriting a manifest respects --leave-segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", self.tmpfile, "--leave-segments"]
+        connection.return_value.head_object.side_effect = [
+            {'x-static-large-object': 'true',  # For the upload call
+             'content-length': '2'}]
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
+        swiftclient.shell.main(argv)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+        self.assertFalse(connection.return_value.delete_object.mock_calls)
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_delete_dlo_segments(self, connection):
+        # Upload delete existing segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", self.tmpfile]
+        connection.return_value.head_object.side_effect = [
+            {'x-object-manifest': 'container1/prefix',
+             'content-length': '0'},
+            {},
+            {}
+        ]
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'prefix_a', 'bytes': 0,
+                     'last_modified': '123T456'},
+                    {'name': 'prefix_b', 'bytes': 0,
+                     'last_modified': '123T456'}]]
+        ]
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
+        swiftclient.shell.main(argv)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+        expected_delete_calls = [
+            mock.call(
+                'container1', 'prefix_a',
+                query_string=None, response_dict={}
+            ),
+            mock.call(
+                'container1', 'prefix_b',
+                query_string=None, response_dict={}
+            )
+        ]
+        self.assertEqual(
+            sorted(expected_delete_calls),
+            sorted(connection.return_value.delete_object.mock_calls)
+        )
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_leave_dlo_segments(self, connection):
+        # Upload delete existing segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", self.tmpfile, "--leave-segments"]
+        connection.return_value.head_object.side_effect = [
+            {'x-object-manifest': 'container1/prefix',
+             'content-length': '0'}]
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
+        swiftclient.shell.main(argv)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+        self.assertFalse(connection.return_value.delete_object.mock_calls)
 
     @mock.patch('swiftclient.service.Connection')
     def test_upload_segments_to_same_container(self, connection):
