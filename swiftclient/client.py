@@ -247,8 +247,9 @@ def http_connection(*arg, **kwarg):
 
 
 def get_auth_1_0(url, user, key, snet, **kwargs):
+    cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
-    parsed, conn = http_connection(url, insecure=insecure)
+    parsed, conn = http_connection(url, cacert=cacert, insecure=insecure)
     method = 'GET'
     conn.request(method, parsed.path, '',
                  {'X-Auth-User': user, 'X-Auth-Key': key})
@@ -374,12 +375,14 @@ def get_auth(auth_url, user, key, **kwargs):
     os_options = kwargs.get('os_options', {})
 
     storage_url, token = None, None
+    cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
     if auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
                                           user,
                                           key,
                                           kwargs.get('snet'),
+                                          cacert=cacert,
                                           insecure=insecure)
     elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:
         # We are handling a special use case here where the user argument
@@ -400,7 +403,6 @@ def get_auth(auth_url, user, key, **kwargs):
                 raise ClientException('No tenant specified')
             raise ClientException('No project name or project id specified.')
 
-        cacert = kwargs.get('cacert', None)
         storage_url, token = get_auth_keystone(auth_url, user,
                                                key, os_options,
                                                cacert=cacert,
