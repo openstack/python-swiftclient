@@ -655,6 +655,41 @@ class TestGetObject(MockHttpTest):
             }),
         ])
 
+    def test_chunk_size_read_method(self):
+        conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
+        with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
+            mock_get_auth.return_value = ('http://auth.url/', 'tToken')
+            c.http_connection = self.fake_http_connection(200, body='abcde')
+            __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=3)
+            self.assertTrue(hasattr(resp, 'read'))
+            self.assertEquals(resp.read(3), 'abc')
+            self.assertEquals(resp.read(None), 'de')
+            self.assertEquals(resp.read(), '')
+
+    def test_chunk_size_iter(self):
+        conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
+        with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
+            mock_get_auth.return_value = ('http://auth.url/', 'tToken')
+            c.http_connection = self.fake_http_connection(200, body='abcde')
+            __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=3)
+            self.assertTrue(hasattr(resp, 'next'))
+            self.assertEquals(next(resp), 'abc')
+            self.assertEquals(next(resp), 'de')
+            self.assertRaises(StopIteration, next, resp)
+
+    def test_chunk_size_read_and_iter(self):
+        conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
+        with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
+            mock_get_auth.return_value = ('http://auth.url/', 'tToken')
+            c.http_connection = self.fake_http_connection(200, body='abcdef')
+            __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=2)
+            self.assertTrue(hasattr(resp, 'read'))
+            self.assertEquals(resp.read(3), 'abc')
+            self.assertEquals(next(resp), 'de')
+            self.assertEquals(resp.read(), 'f')
+            self.assertRaises(StopIteration, next, resp)
+            self.assertEquals(resp.read(), '')
+
 
 class TestHeadObject(MockHttpTest):
 

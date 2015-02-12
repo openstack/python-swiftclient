@@ -154,7 +154,10 @@ def fake_http_connect(*code_iter, **kwargs):
                     sleep(0.1)
                     return ' '
             rv = self.body[:amt]
-            self.body = self.body[amt:]
+            if amt is not None:
+                self.body = self.body[amt:]
+            else:
+                self.body = ''
             return rv
 
         def send(self, amt=None):

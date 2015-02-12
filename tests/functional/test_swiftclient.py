@@ -16,7 +16,6 @@
 import os
 import testtools
 import time
-import types
 from io import BytesIO
 
 from six.moves import configparser
@@ -256,8 +255,24 @@ class TestFunctional(testtools.TestCase):
         hdrs, body = self.conn.get_object(
             self.containername, self.objectname,
             resp_chunk_size=10)
-        self.assertTrue(isinstance(body, types.GeneratorType))
-        self.assertEqual(self.test_data, b''.join(body))
+        downloaded_contents = b''
+        while True:
+            try:
+                chunk = next(body)
+            except StopIteration:
+                break
+            downloaded_contents += chunk
+        self.assertEqual(self.test_data, downloaded_contents)
+
+        # Download in chunks, should also work with read
+        hdrs, body = self.conn.get_object(
+            self.containername, self.objectname,
+            resp_chunk_size=10)
+        num_bytes = 5
+        downloaded_contents = body.read(num_bytes)
+        self.assertEqual(num_bytes, len(downloaded_contents))
+        downloaded_contents += body.read()
+        self.assertEqual(self.test_data, downloaded_contents)
 
     def test_post_account(self):
         self.conn.post_account({'x-account-meta-data': 'Something'})
