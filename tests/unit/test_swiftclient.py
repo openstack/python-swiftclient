@@ -23,9 +23,10 @@ except ImportError:
 
 import six
 import socket
-import types
 import testtools
 import warnings
+import tempfile
+from hashlib import md5
 from six.moves.urllib.parse import urlparse
 from six.moves import reload_module
 
@@ -92,16 +93,22 @@ class TestJsonImport(testtools.TestCase):
         self.assertEqual(c.json_loads, json.loads)
 
 
-class MockHttpResponse():
-    def __init__(self, status=0):
+class MockHttpResponse(object):
+    def __init__(self, status=0, headers=None, verify=False):
         self.status = status
         self.status_code = status
         self.reason = "OK"
         self.buffer = []
         self.requests_params = None
+        self.verify = verify
+        self.md5sum = md5()
+        # zero byte hash
+        self.headers = {'etag': '"d41d8cd98f00b204e9800998ecf8427e"'}
+        if headers:
+            self.headers.update(headers)
 
-        class Raw:
-            def read():
+        class Raw(object):
+            def read(self):
                 pass
         self.raw = Raw()
 
@@ -109,17 +116,21 @@ class MockHttpResponse():
         return ""
 
     def getheader(self, name, default):
-        return ""
+        return self.headers.get(name, default)
 
     def getheaders(self):
         return {"key1": "value1", "key2": "value2"}
 
     def fake_response(self):
-        return MockHttpResponse(self.status)
+        return self
 
     def _fake_request(self, *arg, **kwarg):
         self.status = 200
         self.requests_params = kwarg
+        if self.verify:
+            for chunk in kwarg['data']:
+                self.md5sum.update(chunk)
+
         # This simulate previous httplib implementation that would do a
         # putrequest() and then use putheader() to send header.
         for k, v in kwarg['headers'].items():
@@ -665,7 +676,7 @@ class TestPutObject(MockHttpTest):
         conn = c.http_connection(u'http://www.test.com/')
         mock_file = six.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 mock_file)
@@ -732,25 +743,22 @@ class TestPutObject(MockHttpTest):
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
-        astring = 'asdf'
-        astring_len = len(astring)
-        mock_file = six.StringIO(astring)
+        raw_data = b'asdf' * 256
+        raw_data_len = len(raw_data)
 
-        c.put_object(url='http://www.test.com', http_conn=conn,
-                     contents=mock_file, content_length=astring_len)
-        self.assertTrue(isinstance(resp.requests_params['data'],
-                                   swiftclient.utils.LengthWrapper))
-        self.assertEqual(astring_len,
-                         len(resp.requests_params['data'].read()))
+        for kwarg in ({'headers': {'Content-Length': str(raw_data_len)}},
+                      {'content_length': raw_data_len}):
+            with tempfile.TemporaryFile() as mock_file:
+                mock_file.write(raw_data)
+                mock_file.seek(0)
 
-        mock_file = six.StringIO(astring)
-        c.put_object(url='http://www.test.com', http_conn=conn,
-                     headers={'Content-Length': str(astring_len)},
-                     contents=mock_file)
-        self.assertTrue(isinstance(resp.requests_params['data'],
-                                   swiftclient.utils.LengthWrapper))
-        self.assertEqual(astring_len,
-                         len(resp.requests_params['data'].read()))
+                c.put_object(url='http://www.test.com', http_conn=conn,
+                             contents=mock_file, **kwarg)
+
+                req_data = resp.requests_params['data']
+                self.assertTrue(isinstance(req_data,
+                                           swiftclient.utils.LengthWrapper))
+                self.assertEqual(raw_data_len, len(req_data.read()))
 
     def test_chunk_upload(self):
         # Chunked upload happens when no content_length is passed to put_object
@@ -758,19 +766,71 @@ class TestPutObject(MockHttpTest):
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
-        raw_data = 'asdf' * 256
+        raw_data = b'asdf' * 256
         chunk_size = 16
-        mock_file = six.StringIO(raw_data)
 
-        c.put_object(url='http://www.test.com', http_conn=conn,
-                     contents=mock_file, chunk_size=chunk_size)
-        request_data = resp.requests_params['data']
-        self.assertTrue(isinstance(request_data, types.GeneratorType))
-        data = ''
-        for chunk in request_data:
-            self.assertEqual(chunk_size, len(chunk))
-            data += chunk
-        self.assertEqual(data, raw_data)
+        with tempfile.TemporaryFile() as mock_file:
+            mock_file.write(raw_data)
+            mock_file.seek(0)
+
+            c.put_object(url='http://www.test.com', http_conn=conn,
+                         contents=mock_file, chunk_size=chunk_size)
+            req_data = resp.requests_params['data']
+            self.assertTrue(hasattr(req_data, '__iter__'))
+            data = b''
+            for chunk in req_data:
+                self.assertEqual(chunk_size, len(chunk))
+                data += chunk
+            self.assertEqual(data, raw_data)
+
+    def test_md5_mismatch(self):
+        conn = c.http_connection('http://www.test.com')
+        resp = MockHttpResponse(status=200, verify=True,
+                                headers={'etag': '"badresponseetag"'})
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+        raw_data = b'asdf' * 256
+        raw_data_md5 = md5(raw_data).hexdigest()
+        chunk_size = 16
+
+        with tempfile.TemporaryFile() as mock_file:
+            mock_file.write(raw_data)
+            mock_file.seek(0)
+
+            contents = swiftclient.utils.ReadableToIterable(mock_file,
+                                                            md5=True)
+
+            etag = c.put_object(url='http://www.test.com',
+                                http_conn=conn,
+                                contents=contents,
+                                chunk_size=chunk_size)
+
+            self.assertNotEquals(etag, contents.get_md5sum())
+            self.assertEquals(raw_data_md5, contents.get_md5sum())
+
+    def test_md5_match(self):
+        conn = c.http_connection('http://www.test.com')
+        raw_data = b'asdf' * 256
+        raw_data_md5 = md5(raw_data).hexdigest()
+        resp = MockHttpResponse(status=200, verify=True,
+                                headers={'etag': '"' + raw_data_md5 + '"'})
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+        chunk_size = 16
+
+        with tempfile.TemporaryFile() as mock_file:
+            mock_file.write(raw_data)
+            mock_file.seek(0)
+            contents = swiftclient.utils.ReadableToIterable(mock_file,
+                                                            md5=True)
+
+            etag = c.put_object(url='http://www.test.com',
+                                http_conn=conn,
+                                contents=contents,
+                                chunk_size=chunk_size)
+
+            self.assertEquals(raw_data_md5, contents.get_md5sum())
+            self.assertEquals(etag, contents.get_md5sum())
 
     def test_params(self):
         conn = c.http_connection(u'http://www.test.com/')

@@ -400,6 +400,8 @@ class TestShell(unittest.TestCase):
     def test_upload(self, connection, walk):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
         connection.return_value.attempts = 0
         argv = ["", "upload", "container", self.tmpfile,
                 "-H", "X-Storage-Policy:one"]
@@ -475,6 +477,8 @@ class TestShell(unittest.TestCase):
         connection.return_value.get_object.return_value = ({}, json.dumps(
             [{'name': 'container1/old_seg1'}, {'name': 'container2/old_seg2'}]
         ))
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
             'container',
@@ -504,6 +508,8 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
         connection.return_value.attempts = 0
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
         argv = ["", "upload", "container", self.tmpfile, "-S", "10",
                 "-C", "container"]
         with open(self.tmpfile, "wb") as fh:

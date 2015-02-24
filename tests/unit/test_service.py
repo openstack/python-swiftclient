@@ -16,14 +16,16 @@ import mock
 import os
 import tempfile
 import testtools
+import time
 from hashlib import md5
 from mock import Mock, PropertyMock
 from six.moves.queue import Queue, Empty as QueueEmptyError
 from six import BytesIO
 
 import swiftclient
-from swiftclient.service import SwiftService, SwiftError
+import swiftclient.utils as utils
 from swiftclient.client import Connection
+from swiftclient.service import SwiftService, SwiftError
 
 
 clean_os_environ = {}
@@ -548,3 +550,270 @@ class TestService(testtools.TestCase):
             except SwiftError as exc:
                 self.assertEqual('Segment size should be an integer value',
                                  exc.value)
+
+
+class TestServiceUpload(testtools.TestCase):
+
+    def _assertDictEqual(self, a, b, m=None):
+        # assertDictEqual is not available in py2.6 so use a shallow check
+        # instead
+        if not m:
+            m = '{0} != {1}'.format(a, b)
+
+        if hasattr(self, 'assertDictEqual'):
+            self.assertDictEqual(a, b, m)
+        else:
+            self.assertTrue(isinstance(a, dict), m)
+            self.assertTrue(isinstance(b, dict), m)
+            self.assertEqual(len(a), len(b), m)
+            for k, v in a.items():
+                self.assertIn(k, b, m)
+                self.assertEqual(b[k], v, m)
+
+    def test_upload_segment_job(self):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 10)
+            f.write(b'b' * 10)
+            f.write(b'c' * 10)
+            f.flush()
+
+            # Mock the connection to return an empty etag. This
+            # skips etag validation which would fail as the LengthWrapper
+            # isnt read from.
+            mock_conn = mock.Mock()
+            mock_conn.put_object.return_value = ''
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+            expected_r = {
+                'action': 'upload_segment',
+                'for_object': 'test_o',
+                'segment_index': 2,
+                'segment_size': 10,
+                'segment_location': '/test_c_segments/test_s_1',
+                'log_line': 'test_o segment 2',
+                'success': True,
+                'response_dict': {},
+                'segment_etag': '',
+                'attempts': 2,
+            }
+
+            s = SwiftService()
+            r = s._upload_segment_job(conn=mock_conn,
+                                      path=f.name,
+                                      container='test_c',
+                                      segment_name='test_s_1',
+                                      segment_start=10,
+                                      segment_size=10,
+                                      segment_index=2,
+                                      obj_name='test_o',
+                                      options={'segment_container': None})
+
+            self._assertDictEqual(r, expected_r)
+
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with('test_c_segments',
+                                                    'test_s_1',
+                                                    mock.ANY,
+                                                    content_length=10,
+                                                    response_dict={})
+            contents = mock_conn.put_object.call_args[0][2]
+            self.assertIsInstance(contents, utils.LengthWrapper)
+            self.assertEqual(len(contents), 10)
+            # This read forces the LengthWrapper to calculate the md5
+            # for the read content.
+            self.assertEqual(contents.read(), b'b' * 10)
+            self.assertEqual(contents.get_md5sum(), md5(b'b' * 10).hexdigest())
+
+    def test_upload_segment_job_etag_mismatch(self):
+        def _consuming_conn(*a, **kw):
+            contents = a[2]
+            contents.read()  # Force md5 calculation
+            return 'badresponseetag'
+
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 10)
+            f.write(b'b' * 10)
+            f.write(b'c' * 10)
+            f.flush()
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.side_effect = _consuming_conn
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_segment_job(conn=mock_conn,
+                                      path=f.name,
+                                      container='test_c',
+                                      segment_name='test_s_1',
+                                      segment_start=10,
+                                      segment_size=10,
+                                      segment_index=2,
+                                      obj_name='test_o',
+                                      options={'segment_container': None})
+
+            self.assertIn('error', r)
+            self.assertTrue(r['error'].value.find('md5 did not match') >= 0)
+
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with('test_c_segments',
+                                                    'test_s_1',
+                                                    mock.ANY,
+                                                    content_length=10,
+                                                    response_dict={})
+            contents = mock_conn.put_object.call_args[0][2]
+            self.assertEqual(contents.get_md5sum(), md5(b'b' * 10).hexdigest())
+
+    def test_upload_object_job_file(self):
+        # Uploading a file results in the file object being wrapped in a
+        # LengthWrapper. This test sets the options is such a way that much
+        # of _upload_object_job is skipped bringing the critical path down
+        # to around 60 lines to ease testing.
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+            expected_r = {
+                'action': 'upload_object',
+                'attempts': 2,
+                'container': 'test_c',
+                'headers': {},
+                'large_object': False,
+                'object': 'test_o',
+                'response_dict': {},
+                'status': 'uploaded',
+                'success': True,
+            }
+            expected_mtime = float(os.path.getmtime(f.name))
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.return_value = ''
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_object_job(conn=mock_conn,
+                                     container='test_c',
+                                     source=f.name,
+                                     obj='test_o',
+                                     options={'changed': False,
+                                              'skip_identical': False,
+                                              'leave_segments': True,
+                                              'header': '',
+                                              'segment_size': 0})
+
+            # Check for mtime and path separately as they are calculated
+            # from the temp file and will be different each time.
+            mtime = float(r['headers']['x-object-meta-mtime'])
+            self.assertAlmostEqual(mtime, expected_mtime, delta=1)
+            del r['headers']['x-object-meta-mtime']
+
+            self.assertEqual(r['path'], f.name)
+            del r['path']
+
+            self._assertDictEqual(r, expected_r)
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with('test_c', 'test_o',
+                                                    mock.ANY,
+                                                    content_length=30,
+                                                    headers={},
+                                                    response_dict={})
+            contents = mock_conn.put_object.call_args[0][2]
+            self.assertIsInstance(contents, utils.LengthWrapper)
+            self.assertEqual(len(contents), 30)
+            # This read forces the LengthWrapper to calculate the md5
+            # for the read content.
+            self.assertEqual(contents.read(), b'a' * 30)
+            self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
+
+    def test_upload_object_job_stream(self):
+        # Streams are wrapped as ReadableToIterable
+        with tempfile.TemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+            f.seek(0)
+            expected_r = {
+                'action': 'upload_object',
+                'attempts': 2,
+                'container': 'test_c',
+                'headers': {},
+                'large_object': False,
+                'object': 'test_o',
+                'response_dict': {},
+                'status': 'uploaded',
+                'success': True,
+                'path': None,
+            }
+            expected_mtime = round(time.time())
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.return_value = ''
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_object_job(conn=mock_conn,
+                                     container='test_c',
+                                     source=f,
+                                     obj='test_o',
+                                     options={'changed': False,
+                                              'skip_identical': False,
+                                              'leave_segments': True,
+                                              'header': '',
+                                              'segment_size': 0})
+
+            mtime = float(r['headers']['x-object-meta-mtime'])
+            self.assertAlmostEqual(mtime, expected_mtime, delta=10)
+            del r['headers']['x-object-meta-mtime']
+
+            self._assertDictEqual(r, expected_r)
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with('test_c', 'test_o',
+                                                    mock.ANY,
+                                                    content_length=None,
+                                                    headers={},
+                                                    response_dict={})
+            contents = mock_conn.put_object.call_args[0][2]
+            self.assertIsInstance(contents, utils.ReadableToIterable)
+            self.assertEqual(contents.chunk_size, 65536)
+            # next retreives the first chunk of the stream or len(chunk_size)
+            # or less, it also forces the md5 to be calculated.
+            self.assertEqual(next(contents), b'a' * 30)
+            self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
+
+    def test_upload_object_job_etag_mismatch(self):
+        # The etag test for both streams and files use the same code
+        # so only one test should be needed.
+        def _consuming_conn(*a, **kw):
+            contents = a[2]
+            contents.read()  # Force md5 calculation
+            return 'badresponseetag'
+
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.side_effect = _consuming_conn
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_object_job(conn=mock_conn,
+                                     container='test_c',
+                                     source=f.name,
+                                     obj='test_o',
+                                     options={'changed': False,
+                                              'skip_identical': False,
+                                              'leave_segments': True,
+                                              'header': '',
+                                              'segment_size': 0})
+
+            self.assertEqual(r['success'], False)
+            self.assertIn('error', r)
+            self.assertTrue(r['error'].value.find('md5 did not match') >= 0)
+
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            expected_headers = {'x-object-meta-mtime': mock.ANY}
+            mock_conn.put_object.assert_called_with('test_c', 'test_o',
+                                                    mock.ANY,
+                                                    content_length=30,
+                                                    headers=expected_headers,
+                                                    response_dict={})
+
+            contents = mock_conn.put_object.call_args[0][2]
+            self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
