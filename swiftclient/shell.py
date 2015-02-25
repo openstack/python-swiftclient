@@ -410,9 +410,8 @@ def st_list(parser, args, output_manager):
                             output_manager.print_msg(
                                 item.get('name', item.get('subdir')))
                         else:
-                            item_bytes = item.get('bytes')
-                            total_bytes += item_bytes
                             if not container:    # listing containers
+                                item_bytes = item.get('bytes')
                                 byte_str = prt_bytes(item_bytes, options.human)
                                 count = item.get('count')
                                 total_count += count
@@ -431,19 +430,23 @@ def st_list(parser, args, output_manager):
                             else:    # list container contents
                                 subdir = item.get('subdir')
                                 if subdir is None:
+                                    item_bytes = item.get('bytes')
                                     byte_str = prt_bytes(
                                         item_bytes, options.human)
                                     date, xtime = item.get(
                                         'last_modified').split('T')
                                     xtime = xtime.split('.')[0]
                                 else:
-                                    byte_str = prt_bytes(0, options.human)
+                                    item_bytes = 0
+                                    byte_str = prt_bytes(
+                                        item_bytes, options.human)
                                     date = xtime = ''
                                     item_name = subdir
                                 if not options.totals:
                                     output_manager.print_msg(
                                         "%s %10s %8s %s", byte_str, date,
                                         xtime, item_name)
+                            total_bytes += item_bytes
 
                     # report totals
                     if options.long or options.human:
