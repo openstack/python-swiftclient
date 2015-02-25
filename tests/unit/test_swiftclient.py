@@ -75,6 +75,7 @@ class MockHttpResponse(object):
         self.headers = {'etag': '"%s"' % EMPTY_ETAG}
         if headers:
             self.headers.update(headers)
+        self.closed = False
 
         class Raw(object):
             def __init__(self, headers):
@@ -92,7 +93,7 @@ class MockHttpResponse(object):
         return ""
 
     def close(self):
-        pass
+        self.closed = True
 
     def getheader(self, name, default):
         return self.headers.get(name, default)
@@ -1144,6 +1145,17 @@ class TestHTTPConnection(MockHttpTest):
     def test_insecure(self):
         conn = c.http_connection(u'http://www.test.com/', insecure=True)
         self.assertEqual(conn[1].requests_args['verify'], False)
+
+    def test_response_connection_released(self):
+        _parsed_url, conn = c.http_connection(u'http://www.test.com/')
+        conn.resp = MockHttpResponse()
+        conn.resp.raw = mock.Mock()
+        conn.resp.raw.read.side_effect = ["Chunk", ""]
+        resp = conn.getresponse()
+        self.assertFalse(resp.closed)
+        self.assertEqual("Chunk", resp.read())
+        self.assertFalse(resp.read())
+        self.assertTrue(resp.closed)
 
 
 class TestConnection(MockHttpTest):
