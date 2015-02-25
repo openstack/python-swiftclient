@@ -205,6 +205,11 @@ class TestOutputManager(testtools.TestCase):
             thread_manager.print_raw(
                 u'some raw bytes: \u062A\u062A'.encode('utf-8'))
 
+            thread_manager.print_items([
+                ('key', u'value'),
+                ('object', 'O\xcc\x88bject')
+            ])
+
             # Now we have a thread for error printing and a thread for
             # normal print messages
             self.assertEqual(starting_thread_count + 2,
@@ -227,7 +232,10 @@ class TestOutputManager(testtools.TestCase):
         self.assertEqual(''.join([
             'one-argument\n',
             'one fish, 88 fish\n',
-            'some\n', 'where\n', over_the, raw_bytes
+            'some\n', 'where\n',
+            over_the, raw_bytes,
+            '           key: value\n',
+            '        object: O\xcc\x88bject\n'
         ]), out_stream.getvalue())
 
         first_item = u'I have 99 problems, but a \u062A\u062A is not one\n'

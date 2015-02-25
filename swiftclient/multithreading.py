@@ -84,13 +84,11 @@ class OutputManager(object):
         self.print_pool.submit(self._print, msg)
 
     def print_items(self, items, offset=DEFAULT_OFFSET, skip_missing=False):
-        lines = []
         template = '%%%ds: %%s' % offset
         for k, v in items:
             if skip_missing and not v:
                 continue
-            lines.append((template % (k, v)).rstrip())
-        self.print_msg('\n'.join(lines))
+            self.print_msg((template % (k, v)).rstrip())
 
     def error(self, msg, *fmt_args):
         if fmt_args:
