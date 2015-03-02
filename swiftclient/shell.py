@@ -146,9 +146,11 @@ def st_delete(parser, args, output_manager):
 
 
 st_download_options = '''[--all] [--marker] [--prefix <prefix>]
-                      [--output <out_file>] [--object-threads <threads>]
+                      [--output <out_file>] [--output-dir <out_directory>]
+                      [--object-threads <threads>]
                       [--container-threads <threads>] [--no-download]
-                      [--skip-identical] <container> <object>
+                      [--skip-identical] [--remove-prefix]
+                      <container> <object>
 '''
 
 st_download_help = '''
@@ -167,9 +169,15 @@ Optional arguments:
   --marker              Marker to use when starting a container or account
                         download.
   --prefix <prefix>     Only download items beginning with <prefix>
+  --remove-prefix       An optional flag for --prefix <prefix>, use this
+                        option to download items without <prefix>
   --output <out_file>   For a single file download, stream the output to
                         <out_file>. Specifying "-" as <out_file> will
                         redirect to stdout.
+  --output-dir <out_directory>
+                        An optional directory to which to store objects.
+                        By default, all objects are recreated in the current
+                        directory.
   --object-threads <threads>
                         Number of threads to use for downloading objects.
                         Default is 10.
@@ -204,6 +212,14 @@ def st_download(parser, args, output_manager):
         'download, stream the output to <out_file>. '
         'Specifying "-" as <out_file> will redirect to stdout.')
     parser.add_option(
+        '-D', '--output-dir', dest='out_directory',
+        help='An optional directory to which to store objects. '
+        'By default, all objects are recreated in the current directory.')
+    parser.add_option(
+        '-r', '--remove-prefix', action='store_true', dest='remove_prefix',
+        default=False, help='An optional flag for --prefix <prefix>, '
+        'use this option to download items without <prefix>.')
+    parser.add_option(
         '', '--object-threads', type=int,
         default=10, help='Number of threads to use for downloading objects. '
         'Default is 10.')
@@ -232,6 +248,12 @@ def st_download(parser, args, output_manager):
 
     if options.out_file and len(args) != 2:
         exit('-o option only allowed for single file downloads')
+
+    if not options.prefix:
+        options.remove_prefix = False
+
+    if options.out_directory and len(args) == 2:
+        exit('Please use -o option for single file downloads and renames')
 
     if (not args and not options.yes_all) or (args and options.yes_all):
         output_manager.error('Usage: %s download %s\n%s', BASENAME,
