@@ -1159,7 +1159,7 @@ class SwiftService(object):
                                 'headers': [],
                                 'segment_size': None,
                                 'use_slo': False,
-                                'segment_container: None,
+                                'segment_container': None,
                                 'leave_segments': False,
                                 'changed': None,
                                 'skip_identical': False,
@@ -1502,6 +1502,51 @@ class SwiftService(object):
                 results_queue.put(res)
             return res
 
+    def _get_chunk_data(self, conn, container, obj, headers):
+        chunks = []
+        if 'x-object-manifest' in headers:
+            scontainer, sprefix = headers['x-object-manifest'].split('/', 1)
+            for part in self.list(scontainer, {'prefix': sprefix}):
+                if part["success"]:
+                    chunks.extend(part["listing"])
+                else:
+                    raise part["error"]
+        elif config_true_value(headers.get('x-static-large-object')):
+            _, manifest_data = conn.get_object(
+                container, obj, query_string='multipart-manifest=get')
+            for chunk in json.loads(manifest_data):
+                if chunk.get('sub_slo'):
+                    scont, sobj = chunk['name'].lstrip('/').split('/', 1)
+                    chunks.extend(self._get_chunk_data(
+                        conn, scont, sobj, {'x-static-large-object': True}))
+                else:
+                    chunks.append(chunk)
+        else:
+            chunks.append({'hash': headers.get('etag').strip('"'),
+                           'bytes': int(headers.get('content-length'))})
+        return chunks
+
+    def _is_identical(self, chunk_data, path):
+        try:
+            fp = open(path, 'rb')
+        except IOError:
+            return False
+
+        with fp:
+            for chunk in chunk_data:
+                to_read = chunk['bytes']
+                md5sum = md5()
+                while to_read:
+                    data = fp.read(min(65536, to_read))
+                    if not data:
+                        return False
+                    md5sum.update(data)
+                    to_read -= len(data)
+                if md5sum.hexdigest() != chunk['hash']:
+                    return False
+            # Each chunk is verified; check that we're at the end of the file
+            return not fp.read(1)
+
     def _upload_object_job(self, conn, container, source, obj, options,
                            results_queue=None):
         res = {
@@ -1533,32 +1578,27 @@ class SwiftService(object):
             old_manifest = None
             old_slo_manifest_paths = []
             new_slo_manifest_paths = set()
+            segment_size = int(0 if options['segment_size'] is None
+                               else options['segment_size'])
             if (options['changed'] or options['skip_identical']
                     or not options['leave_segments']):
-                checksum = None
-                if options['skip_identical']:
-                    try:
-                        fp = open(path, 'rb')
-                    except IOError:
-                        pass
-                    else:
-                        with fp:
-                            md5sum = md5()
-                            while True:
-                                data = fp.read(65536)
-                                if not data:
-                                    break
-                                md5sum.update(data)
-                        checksum = md5sum.hexdigest()
                 try:
                     headers = conn.head_object(container, obj)
-                    if options['skip_identical'] and checksum is not None:
-                        if checksum == headers.get('etag'):
-                            res.update({
-                                'success': True,
-                                'status': 'skipped-identical'
-                            })
-                            return res
+                    is_slo = config_true_value(
+                        headers.get('x-static-large-object'))
+
+                    if options['skip_identical'] or (
+                            is_slo and not options['leave_segments']):
+                        chunk_data = self._get_chunk_data(
+                            conn, container, obj, headers)
+
+                    if options['skip_identical'] and self._is_identical(
+                            chunk_data, path):
+                        res.update({
+                            'success': True,
+                            'status': 'skipped-identical'
+                        })
+                        return res
 
                     cl = int(headers.get('content-length'))
                     mt = headers.get('x-object-meta-mtime')
@@ -1572,13 +1612,8 @@ class SwiftService(object):
                         return res
                     if not options['leave_segments']:
                         old_manifest = headers.get('x-object-manifest')
-                        if config_true_value(
-                                headers.get('x-static-large-object')):
-                            headers, manifest_data = conn.get_object(
-                                container, obj,
-                                query_string='multipart-manifest=get'
-                            )
-                            for old_seg in json.loads(manifest_data):
+                        if is_slo:
+                            for old_seg in chunk_data:
                                 seg_path = old_seg['name'].lstrip('/')
                                 if isinstance(seg_path, text_type):
                                     seg_path = seg_path.encode('utf-8')
@@ -1598,8 +1633,8 @@ class SwiftService(object):
             # a segment job if we're reading from a stream - we may fail if we
             # go over the single object limit, but this gives us a nice way
             # to create objects from memory
-            if (path is not None and options['segment_size']
-                    and (getsize(path) > int(options['segment_size']))):
+            if (path is not None and segment_size
+                    and (getsize(path) > segment_size)):
                 res['large_object'] = True
                 seg_container = container + '_segments'
                 if options['segment_container']:
@@ -1612,7 +1647,6 @@ class SwiftService(object):
                 segment_start = 0
 
                 while segment_start < full_size:
-                    segment_size = int(options['segment_size'])
                     if segment_start + segment_size > full_size:
                         segment_size = full_size - segment_start
                     if options['use_slo']:

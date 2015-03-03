@@ -817,3 +817,131 @@ class TestServiceUpload(testtools.TestCase):
 
             contents = mock_conn.put_object.call_args[0][2]
             self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
+
+    def test_upload_object_job_identical_etag(self):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+
+            mock_conn = mock.Mock()
+            mock_conn.head_object.return_value = {
+                'content-length': 30,
+                'etag': md5(b'a' * 30).hexdigest()}
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_object_job(conn=mock_conn,
+                                     container='test_c',
+                                     source=f.name,
+                                     obj='test_o',
+                                     options={'changed': False,
+                                              'skip_identical': True,
+                                              'leave_segments': True,
+                                              'header': '',
+                                              'segment_size': 0})
+
+            self.assertTrue(r['success'])
+            self.assertIn('status', r)
+            self.assertEqual(r['status'], 'skipped-identical')
+            self.assertEqual(mock_conn.put_object.call_count, 0)
+            self.assertEqual(mock_conn.head_object.call_count, 1)
+            mock_conn.head_object.assert_called_with('test_c', 'test_o')
+
+    def test_upload_object_job_identical_slo_with_nesting(self):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+            seg_etag = md5(b'a' * 10).hexdigest()
+            submanifest = "[%s]" % ",".join(
+                ['{"bytes":10,"hash":"%s"}' % seg_etag] * 2)
+            submanifest_etag = md5(seg_etag.encode('ascii') * 2).hexdigest()
+            manifest = "[%s]" % ",".join([
+                '{"sub_slo":true,"name":"/test_c_segments/test_sub_slo",'
+                '"bytes":20,"hash":"%s"}' % submanifest_etag,
+                '{"bytes":10,"hash":"%s"}' % seg_etag])
+
+            mock_conn = mock.Mock()
+            mock_conn.head_object.return_value = {
+                'x-static-large-object': True,
+                'content-length': 30,
+                'etag': md5(submanifest_etag.encode('ascii') +
+                            seg_etag.encode('ascii')).hexdigest()}
+            mock_conn.get_object.side_effect = [
+                (None, manifest),
+                (None, submanifest)]
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_object_job(conn=mock_conn,
+                                     container='test_c',
+                                     source=f.name,
+                                     obj='test_o',
+                                     options={'changed': False,
+                                              'skip_identical': True,
+                                              'leave_segments': True,
+                                              'header': '',
+                                              'segment_size': 10})
+
+            self.assertIsNone(r.get('error'))
+            self.assertTrue(r['success'])
+            self.assertEqual('skipped-identical', r.get('status'))
+            self.assertEqual(0, mock_conn.put_object.call_count)
+            self.assertEqual([mock.call('test_c', 'test_o')],
+                             mock_conn.head_object.mock_calls)
+            self.assertEqual([
+                mock.call('test_c', 'test_o',
+                          query_string='multipart-manifest=get'),
+                mock.call('test_c_segments', 'test_sub_slo',
+                          query_string='multipart-manifest=get'),
+            ], mock_conn.get_object.mock_calls)
+
+    def test_upload_object_job_identical_dlo(self):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+            segment_etag = md5(b'a' * 10).hexdigest()
+
+            mock_conn = mock.Mock()
+            mock_conn.head_object.return_value = {
+                'x-object-manifest': 'test_c_segments/test_o/prefix',
+                'content-length': 30,
+                'etag': md5(segment_etag.encode('ascii') * 3).hexdigest()}
+            mock_conn.get_container.side_effect = [
+                (None, [{"bytes": 10, "hash": segment_etag,
+                         "name": "test_o/prefix/00"},
+                        {"bytes": 10, "hash": segment_etag,
+                         "name": "test_o/prefix/01"}]),
+                (None, [{"bytes": 10, "hash": segment_etag,
+                         "name": "test_o/prefix/02"}]),
+                (None, {})]
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            with mock.patch('swiftclient.service.get_conn',
+                            return_value=mock_conn):
+                r = s._upload_object_job(conn=mock_conn,
+                                         container='test_c',
+                                         source=f.name,
+                                         obj='test_o',
+                                         options={'changed': False,
+                                                  'skip_identical': True,
+                                                  'leave_segments': True,
+                                                  'header': '',
+                                                  'segment_size': 10})
+
+            self.assertIsNone(r.get('error'))
+            self.assertTrue(r['success'])
+            self.assertEqual('skipped-identical', r.get('status'))
+            self.assertEqual(0, mock_conn.put_object.call_count)
+            self.assertEqual(1, mock_conn.head_object.call_count)
+            self.assertEqual(3, mock_conn.get_container.call_count)
+            mock_conn.head_object.assert_called_with('test_c', 'test_o')
+            expected = [
+                mock.call('test_c_segments', prefix='test_o/prefix',
+                          marker='', delimiter=None),
+                mock.call('test_c_segments', prefix='test_o/prefix',
+                          marker="test_o/prefix/01", delimiter=None),
+                mock.call('test_c_segments', prefix='test_o/prefix',
+                          marker="test_o/prefix/02", delimiter=None),
+            ]
+            mock_conn.get_container.assert_has_calls(expected)
