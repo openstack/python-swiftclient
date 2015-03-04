@@ -835,6 +835,23 @@ class TestGetObject(MockHttpTest):
             self.assertRaises(StopIteration, next, resp)
             self.assertEqual(resp.read(), '')
 
+    def test_get_object_with_resp_chunk_size_zero(self):
+        def get_connection(self):
+            def get_auth():
+                return 'http://auth.test.com', 'token'
+
+            conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
+            self.assertIs(type(conn), c.Connection)
+            conn.get_auth = get_auth
+            self.assertEqual(conn.attempts, 0)
+            return conn
+
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = get_connection(self)
+            conn.get_object('container1', 'obj1', resp_chunk_size=0)
+            self.assertEqual(conn.attempts, 1)
+
 
 class TestHeadObject(MockHttpTest):
 

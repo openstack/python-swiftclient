@@ -187,13 +187,74 @@ class _ObjectBody(object):
         return self
 
     def next(self):
-        buf = self.resp.read(self.chunk_size)
+        buf = self.read(self.chunk_size)
         if not buf:
             raise StopIteration()
         return buf
 
     def __next__(self):
         return self.next()
+
+
+class _RetryBody(_ObjectBody):
+    """
+    Wrapper for object body response which triggers a retry
+    (from offset) if the connection is dropped after partially
+    downloading the object.
+    """
+    def __init__(self, resp, expected_length, etag, connection, container, obj,
+                 resp_chunk_size=None, query_string=None, response_dict=None,
+                 headers=None):
+        """
+        Wrap the underlying response
+
+        :param resp: the response to wrap
+        :param expected_length: the object size in bytes
+        :param etag: the object's etag
+        :param connection: Connection class instance
+        :param container: the name of the container the object is in
+        :param obj: the name of object we are downloading
+        :param resp_chunk_size: if defined, chunk size of data to read
+        :param query_string: if set will be appended with '?' to generated path
+        :param response_dict: an optional dictionary into which to place
+                         the response - status, reason and headers
+        :param headers: an optional dictionary with additional headers to
+                         include in the request
+        """
+        super(_RetryBody, self).__init__(resp, resp_chunk_size)
+        self.expected_length = expected_length
+        self.expected_etag = etag
+        self.conn = connection
+        self.container = container
+        self.obj = obj
+        self.query_string = query_string
+        self.response_dict = response_dict
+        self.headers = headers if headers is not None else {}
+        self.bytes_read = 0
+
+    def read(self, length=None):
+        buf = None
+        try:
+            buf = self.resp.read(length)
+            self.bytes_read += len(buf)
+        except (socket.error, RequestException) as e:
+            if self.conn.attempts > self.conn.retries:
+                logger.exception(e)
+                raise
+        if (not buf and self.bytes_read < self.expected_length and
+                self.conn.attempts <= self.conn.retries):
+            self.headers['Range'] = 'bytes=%d-' % self.bytes_read
+            self.headers['If-Match'] = self.expected_etag
+            hdrs, body = self.conn._retry(None, get_object,
+                                          self.container, self.obj,
+                                          resp_chunk_size=self.chunk_size,
+                                          query_string=self.query_string,
+                                          response_dict=self.response_dict,
+                                          headers=self.headers,
+                                          attempts=self.conn.attempts)
+            self.resp = body
+            buf = self.read(length)
+        return buf
 
 
 class HTTPConnection(object):
@@ -1408,10 +1469,10 @@ class Connection(object):
             target_dict.update(response_dict)
 
     def _retry(self, reset_func, func, *args, **kwargs):
-        self.attempts = 0
         retried_auth = False
         backoff = self.starting_backoff
         caller_response_dict = kwargs.pop('response_dict', None)
+        self.attempts = kwargs.pop('attempts', 0)
         while self.attempts <= self.retries:
             self.attempts += 1
             try:
@@ -1523,10 +1584,25 @@ class Connection(object):
     def get_object(self, container, obj, resp_chunk_size=None,
                    query_string=None, response_dict=None, headers=None):
         """Wrapper for :func:`get_object`"""
-        return self._retry(None, get_object, container, obj,
-                           resp_chunk_size=resp_chunk_size,
-                           query_string=query_string,
-                           response_dict=response_dict, headers=headers)
+        rheaders, body = self._retry(None, get_object, container, obj,
+                                     resp_chunk_size=resp_chunk_size,
+                                     query_string=query_string,
+                                     response_dict=response_dict,
+                                     headers=headers)
+        is_not_range_request = (
+            not headers or 'range' not in (k.lower() for k in headers))
+        retry_is_possible = (
+            is_not_range_request and resp_chunk_size and
+            self.attempts <= self.retries)
+        if retry_is_possible:
+            body = _RetryBody(body.resp, int(rheaders['content-length']),
+                              rheaders['etag'],
+                              self, container, obj,
+                              resp_chunk_size=resp_chunk_size,
+                              query_string=query_string,
+                              response_dict=response_dict,
+                              headers=headers)
+        return rheaders, body
 
     def put_object(self, container, obj, contents, content_length=None,
                    etag=None, chunk_size=None, content_type=None,
