@@ -21,6 +21,7 @@ import time
 import six
 
 TRUE_VALUES = set(('true', '1', 'yes', 'on', 't', 'y'))
+EMPTY_ETAG = 'd41d8cd98f00b204e9800998ecf8427e'
 
 
 def config_true_value(value):

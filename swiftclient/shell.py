@@ -637,7 +637,7 @@ def st_post(parser, args, output_manager):
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
-                    [--header <header>] [--use-slo]
+                    [--header <header>] [--use-slo] [--ignore-checksum]
                     [--object-name <object-name>]
                     <container> <file_or_directory>
 '''
@@ -681,6 +681,7 @@ Optional arguments:
                         Upload file and name object to <object-name> or upload
                         dir and use <object-name> as object prefix instead of
                         folder name.
+  --ignore-checksum     Turn off checksum validation for uploads.
 '''.strip('\n')
 
 
@@ -733,6 +734,9 @@ def st_upload(parser, args, output_manager):
         '', '--object-name', dest='object_name',
         help='Upload file and name object to <object-name> or upload dir and '
         'use <object-name> as object prefix instead of folder name.')
+    parser.add_option(
+        '', '--ignore-checksum', dest='checksum', default=True,
+        action='store_false', help='Turn off checksum validation for uploads.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if len(args) < 2:
@@ -848,7 +852,7 @@ def st_upload(parser, args, output_manager):
                         output_manager.error("%s" % error)
 
         except SwiftError as e:
-            output_manager.error("%s" % e)
+            output_manager.error(e.value)
 
 
 st_capabilities_options = "[<proxy_url>]"

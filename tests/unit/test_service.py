@@ -563,8 +563,8 @@ class TestServiceUpload(testtools.TestCase):
         if hasattr(self, 'assertDictEqual'):
             self.assertDictEqual(a, b, m)
         else:
-            self.assertTrue(isinstance(a, dict), m)
-            self.assertTrue(isinstance(b, dict), m)
+            self.assertIsInstance(a, dict, m)
+            self.assertIsInstance(b, dict, m)
             self.assertEqual(len(a), len(b), m)
             for k, v in a.items():
                 self.assertIn(k, b, m)
@@ -605,7 +605,8 @@ class TestServiceUpload(testtools.TestCase):
                                       segment_size=10,
                                       segment_index=2,
                                       obj_name='test_o',
-                                      options={'segment_container': None})
+                                      options={'segment_container': None,
+                                               'checksum': True})
 
             self._assertDictEqual(r, expected_r)
 
@@ -622,6 +623,45 @@ class TestServiceUpload(testtools.TestCase):
             # for the read content.
             self.assertEqual(contents.read(), b'b' * 10)
             self.assertEqual(contents.get_md5sum(), md5(b'b' * 10).hexdigest())
+
+    def test_etag_mismatch_with_ignore_checksum(self):
+        def _consuming_conn(*a, **kw):
+            contents = a[2]
+            contents.read()  # Force md5 calculation
+            return 'badresponseetag'
+
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 10)
+            f.write(b'b' * 10)
+            f.write(b'c' * 10)
+            f.flush()
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.side_effect = _consuming_conn
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            r = s._upload_segment_job(conn=mock_conn,
+                                      path=f.name,
+                                      container='test_c',
+                                      segment_name='test_s_1',
+                                      segment_start=10,
+                                      segment_size=10,
+                                      segment_index=2,
+                                      obj_name='test_o',
+                                      options={'segment_container': None,
+                                               'checksum': False})
+
+            self.assertNotIn('error', r)
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with('test_c_segments',
+                                                    'test_s_1',
+                                                    mock.ANY,
+                                                    content_length=10,
+                                                    response_dict={})
+            contents = mock_conn.put_object.call_args[0][2]
+            # Check that md5sum is not calculated.
+            self.assertEqual(contents.get_md5sum(), '')
 
     def test_upload_segment_job_etag_mismatch(self):
         def _consuming_conn(*a, **kw):
@@ -648,10 +688,11 @@ class TestServiceUpload(testtools.TestCase):
                                       segment_size=10,
                                       segment_index=2,
                                       obj_name='test_o',
-                                      options={'segment_container': None})
+                                      options={'segment_container': None,
+                                               'checksum': True})
 
             self.assertIn('error', r)
-            self.assertTrue(r['error'].value.find('md5 did not match') >= 0)
+            self.assertIn('md5 mismatch', str(r['error']))
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c_segments',
@@ -664,7 +705,7 @@ class TestServiceUpload(testtools.TestCase):
 
     def test_upload_object_job_file(self):
         # Uploading a file results in the file object being wrapped in a
-        # LengthWrapper. This test sets the options is such a way that much
+        # LengthWrapper. This test sets the options in such a way that much
         # of _upload_object_job is skipped bringing the critical path down
         # to around 60 lines to ease testing.
         with tempfile.NamedTemporaryFile() as f:
@@ -696,12 +737,11 @@ class TestServiceUpload(testtools.TestCase):
                                               'skip_identical': False,
                                               'leave_segments': True,
                                               'header': '',
-                                              'segment_size': 0})
+                                              'segment_size': 0,
+                                              'checksum': True})
 
-            # Check for mtime and path separately as they are calculated
-            # from the temp file and will be different each time.
             mtime = float(r['headers']['x-object-meta-mtime'])
-            self.assertAlmostEqual(mtime, expected_mtime, delta=1)
+            self.assertAlmostEqual(mtime, expected_mtime, delta=0.5)
             del r['headers']['x-object-meta-mtime']
 
             self.assertEqual(r['path'], f.name)
@@ -718,7 +758,8 @@ class TestServiceUpload(testtools.TestCase):
             self.assertIsInstance(contents, utils.LengthWrapper)
             self.assertEqual(len(contents), 30)
             # This read forces the LengthWrapper to calculate the md5
-            # for the read content.
+            # for the read content. This also checks that LengthWrapper was
+            # initialized with md5=True
             self.assertEqual(contents.read(), b'a' * 30)
             self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
 
@@ -740,7 +781,7 @@ class TestServiceUpload(testtools.TestCase):
                 'success': True,
                 'path': None,
             }
-            expected_mtime = round(time.time())
+            expected_mtime = float(time.time())
 
             mock_conn = mock.Mock()
             mock_conn.put_object.return_value = ''
@@ -755,10 +796,11 @@ class TestServiceUpload(testtools.TestCase):
                                               'skip_identical': False,
                                               'leave_segments': True,
                                               'header': '',
-                                              'segment_size': 0})
+                                              'segment_size': 0,
+                                              'checksum': True})
 
             mtime = float(r['headers']['x-object-meta-mtime'])
-            self.assertAlmostEqual(mtime, expected_mtime, delta=10)
+            self.assertAlmostEqual(mtime, expected_mtime, delta=0.5)
             del r['headers']['x-object-meta-mtime']
 
             self._assertDictEqual(r, expected_r)
@@ -771,7 +813,7 @@ class TestServiceUpload(testtools.TestCase):
             contents = mock_conn.put_object.call_args[0][2]
             self.assertIsInstance(contents, utils.ReadableToIterable)
             self.assertEqual(contents.chunk_size, 65536)
-            # next retreives the first chunk of the stream or len(chunk_size)
+            # next retrieves the first chunk of the stream or len(chunk_size)
             # or less, it also forces the md5 to be calculated.
             self.assertEqual(next(contents), b'a' * 30)
             self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
@@ -801,11 +843,12 @@ class TestServiceUpload(testtools.TestCase):
                                               'skip_identical': False,
                                               'leave_segments': True,
                                               'header': '',
-                                              'segment_size': 0})
+                                              'segment_size': 0,
+                                              'checksum': True})
 
             self.assertEqual(r['success'], False)
             self.assertIn('error', r)
-            self.assertTrue(r['error'].value.find('md5 did not match') >= 0)
+            self.assertIn('md5 mismatch', str(r['error']))
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
             expected_headers = {'x-object-meta-mtime': mock.ANY}

@@ -25,6 +25,7 @@ from six.moves import reload_module
 from six.moves.urllib.parse import urlparse, ParseResult
 from swiftclient import client as c
 from swiftclient import shell as s
+from swiftclient.utils import EMPTY_ETAG
 
 
 def fake_get_auth_keystone(expected_os_options=None, exc=None,
@@ -127,7 +128,7 @@ def fake_http_connect(*code_iter, **kwargs):
                        'last-modified': self.timestamp,
                        'x-object-meta-test': 'testing',
                        'etag':
-                       self.etag or '"d41d8cd98f00b204e9800998ecf8427e"',
+                       self.etag or '"%s"' % EMPTY_ETAG,
                        'x-works': 'yes',
                        'x-account-container-count': 12345}
             if not self.timestamp:

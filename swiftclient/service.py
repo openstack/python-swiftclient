@@ -40,7 +40,7 @@ from swiftclient.command_helpers import (
     stat_account, stat_container, stat_object
 )
 from swiftclient.utils import (
-    config_true_value, ReadableToIterable, LengthWrapper
+    config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
@@ -174,7 +174,8 @@ _default_local_options = {
     'delimiter': None,
     'fail_fast': False,
     'human': False,
-    'dir_marker': False
+    'dir_marker': False,
+    'checksum': True
 }
 
 POLICY = 'X-Storage-Policy'
@@ -1410,16 +1411,16 @@ class SwiftService(object):
         res['headers'] = put_headers
         if options['changed']:
             try:
-                _empty_string_etag = 'd41d8cd98f00b204e9800998ecf8427e'
                 headers = conn.head_object(container, obj)
                 ct = headers.get('content-type')
                 cl = int(headers.get('content-length'))
                 et = headers.get('etag')
                 mt = headers.get('x-object-meta-mtime')
-                if ct.split(';', 1)[0] == 'text/directory' and \
-                        cl == 0 and \
-                        et == _empty_string_etag and \
-                        mt == put_headers['x-object-meta-mtime']:
+
+                if (ct.split(';', 1)[0] == 'text/directory' and
+                        cl == 0 and
+                        et == EMPTY_ETAG and
+                        mt == put_headers['x-object-meta-mtime']):
                     res['success'] = True
                     return res
             except ClientException as err:
@@ -1467,17 +1468,19 @@ class SwiftService(object):
             fp = open(path, 'rb')
             fp.seek(segment_start)
 
-            contents = LengthWrapper(fp, segment_size, md5=True)
+            contents = LengthWrapper(fp, segment_size, md5=options['checksum'])
             etag = conn.put_object(segment_container,
                                    segment_name, contents,
                                    content_length=segment_size,
                                    response_dict=results_dict)
 
-            if etag and etag != contents.get_md5sum():
-                raise SwiftError('Segment upload failed: remote and local '
-                                 'object md5 did not match, {0} != {1}\n'
-                                 'remote segment has not been removed.'
-                                 .format(etag, contents.get_md5sum()))
+            if options['checksum'] and etag and etag != contents.get_md5sum():
+                raise SwiftError('Segment {0}: upload verification failed: '
+                                 'md5 mismatch, local {1} != remote {2} '
+                                 '(remote segment has not been removed)'
+                                 .format(segment_index,
+                                         contents.get_md5sum(),
+                                         etag))
 
             res.update({
                 'success': True,
@@ -1707,11 +1710,13 @@ class SwiftService(object):
                 obr = {}
                 if path is not None:
                     content_length = getsize(path)
-                    contents = LengthWrapper(open(path, 'rb'), content_length,
-                                             md5=True)
+                    contents = LengthWrapper(open(path, 'rb'),
+                                             content_length,
+                                             md5=options['checksum'])
                 else:
                     content_length = None
-                    contents = ReadableToIterable(stream, md5=True)
+                    contents = ReadableToIterable(stream,
+                                                  md5=options['checksum'])
 
                 etag = conn.put_object(
                     container, obj, contents,
@@ -1720,11 +1725,12 @@ class SwiftService(object):
                 )
                 res['response_dict'] = obr
 
-                if etag and etag != contents.get_md5sum():
-                    raise SwiftError('Object upload failed: remote and local '
-                                     'object md5 did not match, {0} != {1}\n'
-                                     'remote object has not been removed.'
-                                     .format(etag, contents.get_md5sum()))
+                if (options['checksum'] and
+                        etag and etag != contents.get_md5sum()):
+                    raise SwiftError('Object upload verification failed: '
+                                     'md5 mismatch, local {0} != remote {1} '
+                                     '(remote object has not been removed)'
+                                     .format(contents.get_md5sum(), etag))
 
             if old_manifest or old_slo_manifest_paths:
                 drs = []

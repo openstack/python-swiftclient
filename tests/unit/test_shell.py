@@ -32,6 +32,7 @@ import swiftclient.utils
 from os.path import basename, dirname
 from tests.unit.test_swiftclient import MockHttpTest
 from tests.unit.utils import CaptureOutput, fake_get_auth_keystone
+from swiftclient.utils import EMPTY_ETAG
 
 
 if six.PY2:
@@ -314,7 +315,7 @@ class TestShell(unittest.TestCase):
               'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
              objcontent),
             ({'content-type': 'text/plain',
-              'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
+              'etag': EMPTY_ETAG},
              '')
         ]
 
@@ -370,7 +371,7 @@ class TestShell(unittest.TestCase):
     @mock.patch('swiftclient.service.Connection')
     def test_download_no_content_type(self, connection):
         connection.return_value.get_object.return_value = [
-            {'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
+            {'etag': EMPTY_ETAG},
             '']
 
         # Test downloading whole container
@@ -400,8 +401,7 @@ class TestShell(unittest.TestCase):
     def test_upload(self, connection, walk):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
-        connection.return_value.put_object.return_value = (
-            'd41d8cd98f00b204e9800998ecf8427e')
+        connection.return_value.put_object.return_value = EMPTY_ETAG
         connection.return_value.attempts = 0
         argv = ["", "upload", "container", self.tmpfile,
                 "-H", "X-Storage-Policy:one"]
@@ -477,8 +477,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.get_object.return_value = ({}, json.dumps(
             [{'name': 'container1/old_seg1'}, {'name': 'container2/old_seg2'}]
         ))
-        connection.return_value.put_object.return_value = (
-            'd41d8cd98f00b204e9800998ecf8427e')
+        connection.return_value.put_object.return_value = EMPTY_ETAG
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
             'container',
@@ -508,8 +507,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.return_value = {
             'content-length': '0'}
         connection.return_value.attempts = 0
-        connection.return_value.put_object.return_value = (
-            'd41d8cd98f00b204e9800998ecf8427e')
+        connection.return_value.put_object.return_value = EMPTY_ETAG
         argv = ["", "upload", "container", self.tmpfile, "-S", "10",
                 "-C", "container"]
         with open(self.tmpfile, "wb") as fh:
@@ -1660,9 +1658,8 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
     def test_download_with_read_write_access(self):
         req_handler = self._fake_cross_account_auth(True, True)
-        empty_str_etag = 'd41d8cd98f00b204e9800998ecf8427e'
         fake_conn = self.fake_http_connection(403, on_request=req_handler,
-                                              etags=[empty_str_etag])
+                                              etags=[EMPTY_ETAG])
 
         args, env = self._make_cmd('download', cmd_args=[self.cont,
                                                          self.obj.lstrip('/'),
@@ -1683,9 +1680,8 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
     def test_download_with_read_only_access(self):
         req_handler = self._fake_cross_account_auth(True, False)
-        empty_str_etag = 'd41d8cd98f00b204e9800998ecf8427e'
         fake_conn = self.fake_http_connection(403, on_request=req_handler,
-                                              etags=[empty_str_etag])
+                                              etags=[EMPTY_ETAG])
 
         args, env = self._make_cmd('download', cmd_args=[self.cont,
                                                          self.obj.lstrip('/'),

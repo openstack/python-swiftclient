@@ -32,6 +32,7 @@ from six.moves import reload_module
 
 from .utils import MockHttpTest, fake_get_auth_keystone, StubResponse
 
+from swiftclient.utils import EMPTY_ETAG
 from swiftclient import client as c
 import swiftclient.utils
 import swiftclient
@@ -102,8 +103,7 @@ class MockHttpResponse(object):
         self.requests_params = None
         self.verify = verify
         self.md5sum = md5()
-        # zero byte hash
-        self.headers = {'etag': '"d41d8cd98f00b204e9800998ecf8427e"'}
+        self.headers = {'etag': '"%s"' % EMPTY_ETAG}
         if headers:
             self.headers.update(headers)
 
@@ -806,6 +806,7 @@ class TestPutObject(MockHttpTest):
                                 chunk_size=chunk_size)
 
             self.assertNotEquals(etag, contents.get_md5sum())
+            self.assertEquals(etag, 'badresponseetag')
             self.assertEquals(raw_data_md5, contents.get_md5sum())
 
     def test_md5_match(self):
