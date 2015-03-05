@@ -350,6 +350,57 @@ Optional arguments:
 
 
 def st_list(parser, args, output_manager):
+
+    def _print_stats(options, stats):
+        total_count = total_bytes = 0
+        container = stats.get("container", None)
+        for item in stats["listing"]:
+            item_name = item.get('name')
+            if not options.long and not options.human:
+                output_manager.print_msg(item.get('name', item.get('subdir')))
+            else:
+                if not container:    # listing containers
+                    item_bytes = item.get('bytes')
+                    byte_str = prt_bytes(item_bytes, options.human)
+                    count = item.get('count')
+                    total_count += count
+                    try:
+                        meta = item.get('meta')
+                        utc = gmtime(float(meta.get('x-timestamp')))
+                        datestamp = strftime('%Y-%m-%d %H:%M:%S', utc)
+                    except TypeError:
+                        datestamp = '????-??-?? ??:??:??'
+                    if not options.totals:
+                        output_manager.print_msg(
+                            "%5s %s %s %s", count, byte_str,
+                            datestamp, item_name)
+                else:    # list container contents
+                    subdir = item.get('subdir')
+                    if subdir is None:
+                        item_bytes = item.get('bytes')
+                        byte_str = prt_bytes(item_bytes, options.human)
+                        date, xtime = item.get('last_modified').split('T')
+                        xtime = xtime.split('.')[0]
+                    else:
+                        item_bytes = 0
+                        byte_str = prt_bytes(item_bytes, options.human)
+                        date = xtime = ''
+                        item_name = subdir
+                    if not options.totals:
+                        output_manager.print_msg(
+                            "%s %10s %8s %s", byte_str, date, xtime, item_name)
+                total_bytes += item_bytes
+
+        # report totals
+        if options.long or options.human:
+            if not container:
+                output_manager.print_msg(
+                    "%5s %s", prt_bytes(total_count, True),
+                    prt_bytes(total_bytes, options.human))
+            else:
+                output_manager.print_msg(
+                    prt_bytes(total_bytes, options.human))
+
     parser.add_option(
         '-l', '--long', dest='long', action='store_true', default=False,
         help='Long listing format, similar to ls -l.')
@@ -400,64 +451,8 @@ def st_list(parser, args, output_manager):
                     stats_parts_gen = swift.list(container=container)
 
             for stats in stats_parts_gen:
-                total_count = total_bytes = 0
-                container = stats.get("container", None)
                 if stats["success"]:
-                    for item in stats["listing"]:
-                        item_name = item.get('name')
-
-                        if not options.long and not options.human:
-                            output_manager.print_msg(
-                                item.get('name', item.get('subdir')))
-                        else:
-                            if not container:    # listing containers
-                                item_bytes = item.get('bytes')
-                                byte_str = prt_bytes(item_bytes, options.human)
-                                count = item.get('count')
-                                total_count += count
-                                try:
-                                    meta = item.get('meta')
-                                    utc = gmtime(
-                                        float(meta.get('x-timestamp')))
-                                    datestamp = strftime(
-                                        '%Y-%m-%d %H:%M:%S', utc)
-                                except TypeError:
-                                    datestamp = '????-??-?? ??:??:??'
-                                if not options.totals:
-                                    output_manager.print_msg(
-                                        "%5s %s %s %s", count, byte_str,
-                                        datestamp, item_name)
-                            else:    # list container contents
-                                subdir = item.get('subdir')
-                                if subdir is None:
-                                    item_bytes = item.get('bytes')
-                                    byte_str = prt_bytes(
-                                        item_bytes, options.human)
-                                    date, xtime = item.get(
-                                        'last_modified').split('T')
-                                    xtime = xtime.split('.')[0]
-                                else:
-                                    item_bytes = 0
-                                    byte_str = prt_bytes(
-                                        item_bytes, options.human)
-                                    date = xtime = ''
-                                    item_name = subdir
-                                if not options.totals:
-                                    output_manager.print_msg(
-                                        "%s %10s %8s %s", byte_str, date,
-                                        xtime, item_name)
-                            total_bytes += item_bytes
-
-                    # report totals
-                    if options.long or options.human:
-                        if not container:
-                            output_manager.print_msg(
-                                "%5s %s", prt_bytes(total_count, True),
-                                prt_bytes(total_bytes, options.human))
-                        else:
-                            output_manager.print_msg(
-                                prt_bytes(total_bytes, options.human))
-
+                    _print_stats(options, stats)
                 else:
                     raise stats["error"]
 
