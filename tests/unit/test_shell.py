@@ -489,11 +489,11 @@ class TestShell(unittest.TestCase):
         expected_delete_calls = [
             mock.call(
                 b'container1', b'old_seg1',
-                query_string=None, response_dict={}
+                response_dict={}
             ),
             mock.call(
                 b'container2', b'old_seg2',
-                query_string=None, response_dict={}
+                response_dict={}
             )
         ]
         self.assertEqual(
@@ -538,9 +538,11 @@ class TestShell(unittest.TestCase):
         ]
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'prefix_a', 'bytes': 0,
-                     'last_modified': '123T456'},
-                    {'name': 'prefix_b', 'bytes': 0,
-                     'last_modified': '123T456'}]]
+                     'last_modified': '123T456'}]],
+            # Have multiple pages worth of DLO segments
+            [None, [{'name': 'prefix_b', 'bytes': 0,
+                     'last_modified': '123T456'}]],
+            [None, []]
         ]
         connection.return_value.put_object.return_value = (
             'd41d8cd98f00b204e9800998ecf8427e')
@@ -555,11 +557,11 @@ class TestShell(unittest.TestCase):
         expected_delete_calls = [
             mock.call(
                 'container1', 'prefix_a',
-                query_string=None, response_dict={}
+                response_dict={}
             ),
             mock.call(
                 'container1', 'prefix_b',
-                query_string=None, response_dict={}
+                response_dict={}
             )
         ]
         self.assertEqual(
