@@ -845,6 +845,12 @@ def st_upload(parser, args, output_manager):
                         )
                     else:
                         output_manager.error("%s" % error)
+                        too_large = (isinstance(error, ClientException) and
+                                     error.http_status == 413)
+                        if too_large and options.verbose > 0:
+                            output_manager.error(
+                                "Consider using the --segment-size option "
+                                "to chunk the object")
 
         except SwiftError as e:
             output_manager.error(e.value)
