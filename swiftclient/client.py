@@ -140,7 +140,8 @@ def encode_meta_headers(headers):
 
 class HTTPConnection(object):
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
-                 ssl_compression=False, default_user_agent=None):
+                 ssl_compression=False, default_user_agent=None,
+                 timeout=None):
         """
         Make an HTTPConnection or HTTPSConnection
 
@@ -160,6 +161,8 @@ class HTTPConnection(object):
                                    may be overridden on a per-request basis by
                                    explicitly setting the user-agent header on
                                    a call to request().
+        :param timeout: socket read timeout value, passed directly to
+                        the requests library.
         :raises ClientException: Unable to handle protocol scheme
         """
         self.url = url
@@ -189,6 +192,8 @@ class HTTPConnection(object):
             default_user_agent = \
                 'python-swiftclient-%s' % swiftclient_version.version_string
         self.default_user_agent = default_user_agent
+        if timeout:
+            self.requests_args['timeout'] = timeout
 
     def _request(self, *arg, **kwarg):
         """ Final wrapper before requests call, to be patched in tests """
@@ -1154,7 +1159,7 @@ class Connection(object):
                  starting_backoff=1, max_backoff=64, tenant_name=None,
                  os_options=None, auth_version="1", cacert=None,
                  insecure=False, ssl_compression=True,
-                 retry_on_ratelimit=False):
+                 retry_on_ratelimit=False, timeout=None):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1207,6 +1212,7 @@ class Connection(object):
         self.ssl_compression = ssl_compression
         self.auth_end_time = 0
         self.retry_on_ratelimit = retry_on_ratelimit
+        self.timeout = timeout
 
     def close(self):
         if (self.http_conn and isinstance(self.http_conn, tuple)
@@ -1230,7 +1236,8 @@ class Connection(object):
         return http_connection(url if url else self.url,
                                cacert=self.cacert,
                                insecure=self.insecure,
-                               ssl_compression=self.ssl_compression)
+                               ssl_compression=self.ssl_compression,
+                               timeout=self.timeout)
 
     def _add_response_dict(self, target_dict, kwargs):
         if target_dict is not None and 'response_dict' in kwargs:

@@ -220,7 +220,7 @@ class MockHttpTest(testtools.TestCase):
             on_request = kwargs.get('on_request')
 
             def wrapper(url, proxy=None, cacert=None, insecure=False,
-                        ssl_compression=True):
+                        ssl_compression=True, timeout=None):
                 if storage_url:
                     self.assertEqual(storage_url, url)
 
