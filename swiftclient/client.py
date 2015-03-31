@@ -169,7 +169,8 @@ class HTTPConnection(object):
         self.requests_args = {}
         self.request_session = requests.Session()
         if self.parsed_url.scheme not in ('http', 'https'):
-            raise ClientException("Unsupported scheme")
+            raise ClientException('Unsupported scheme "%s" in url "%s"'
+                                  % (self.parsed_url.scheme, url))
         self.requests_args['verify'] = not insecure
         if cacert and not insecure:
             # verify requests parameter is used to pass the CA_BUNDLE file

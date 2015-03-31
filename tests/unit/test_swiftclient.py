@@ -1036,6 +1036,29 @@ class TestGetCapabilities(MockHttpTest):
 
 class TestHTTPConnection(MockHttpTest):
 
+    def test_bad_url_scheme(self):
+        url = u'www.test.com'
+        exc = self.assertRaises(c.ClientException, c.http_connection, url)
+        expected = u'Unsupported scheme "" in url "www.test.com"'
+        self.assertEqual(expected, str(exc))
+
+        url = u'://www.test.com'
+        exc = self.assertRaises(c.ClientException, c.http_connection, url)
+        expected = u'Unsupported scheme "" in url "://www.test.com"'
+        self.assertEqual(expected, str(exc))
+
+        url = u'blah://www.test.com'
+        exc = self.assertRaises(c.ClientException, c.http_connection, url)
+        expected = u'Unsupported scheme "blah" in url "blah://www.test.com"'
+        self.assertEqual(expected, str(exc))
+
+    def test_ok_url_scheme(self):
+        for scheme in ('http', 'https', 'HTTP', 'HTTPS'):
+            url = u'%s://www.test.com' % scheme
+            parsed_url, conn = c.http_connection(url)
+            self.assertEqual(scheme.lower(), parsed_url.scheme)
+            self.assertEqual(u'%s://www.test.com' % scheme, conn.url)
+
     def test_ok_proxy(self):
         conn = c.http_connection(u'http://www.test.com/',
                                  proxy='http://localhost:8080')
