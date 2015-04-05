@@ -227,16 +227,23 @@ class TestServiceDelete(_TestServiceBase):
             'action': 'delete_segment',
             'object': 'test_s',
             'success': False,
-            'error': self.exc
+            'error': self.exc,
+            'traceback': mock.ANY,
+            'error_timestamp': mock.ANY
         })
 
+        before = time.time()
         r = SwiftService._delete_segment(mock_conn, 'test_c', 'test_s', mock_q)
+        after = time.time()
 
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_s', response_dict={}
         )
         self._assertDictEqual(expected_r, r)
         self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertGreaterEqual(r['error_timestamp'], before)
+        self.assertLessEqual(r['error_timestamp'], after)
+        self.assertTrue('Traceback' in r['traceback'])
 
     def test_delete_object(self):
         mock_q = Queue()
@@ -263,20 +270,27 @@ class TestServiceDelete(_TestServiceBase):
         expected_r = self._get_expected({
             'action': 'delete_object',
             'success': False,
-            'error': self.exc
+            'error': self.exc,
+            'traceback': mock.ANY,
+            'error_timestamp': mock.ANY
         })
         # _delete_object doesnt populate attempts or response dict if it hits
         # an error. This may not be the correct behaviour.
         del expected_r['response_dict'], expected_r['attempts']
 
+        before = time.time()
         s = SwiftService()
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
+        after = time.time()
 
         mock_conn.head_object.assert_called_once_with('test_c', 'test_o')
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o', query_string=None, response_dict={}
         )
         self._assertDictEqual(expected_r, r)
+        self.assertGreaterEqual(r['error_timestamp'], before)
+        self.assertLessEqual(r['error_timestamp'], after)
+        self.assertTrue('Traceback' in r['traceback'])
 
     def test_delete_object_slo_support(self):
         # If SLO headers are present the delete call should include an
@@ -353,23 +367,30 @@ class TestServiceDelete(_TestServiceBase):
         )
         self._assertDictEqual(expected_r, r)
 
-    def test_delete_empty_container_excpetion(self):
+    def test_delete_empty_container_exception(self):
         mock_conn = self._get_mock_connection()
         mock_conn.delete_container = Mock(side_effect=self.exc)
         expected_r = self._get_expected({
             'action': 'delete_container',
             'success': False,
             'object': None,
-            'error': self.exc
+            'error': self.exc,
+            'traceback': mock.ANY,
+            'error_timestamp': mock.ANY
         })
 
+        before = time.time()
         s = SwiftService()
         r = s._delete_empty_container(mock_conn, 'test_c')
+        after = time.time()
 
         mock_conn.delete_container.assert_called_once_with(
             'test_c', response_dict={}
         )
         self._assertDictEqual(expected_r, r)
+        self.assertGreaterEqual(r['error_timestamp'], before)
+        self.assertLessEqual(r['error_timestamp'], after)
+        self.assertTrue('Traceback' in r['traceback'])
 
 
 class TestSwiftError(testtools.TestCase):
@@ -618,7 +639,9 @@ class TestServiceList(_TestServiceBase):
             'action': 'list_account_part',
             'success': False,
             'error': self.exc,
-            'marker': ''
+            'marker': '',
+            'traceback': mock.ANY,
+            'error_timestamp': mock.ANY
         })
 
         SwiftService._list_account_job(
@@ -684,7 +707,9 @@ class TestServiceList(_TestServiceBase):
             'container': 'test_c',
             'success': False,
             'error': self.exc,
-            'marker': ''
+            'marker': '',
+            'error_timestamp': mock.ANY,
+            'traceback': mock.ANY
         })
 
         SwiftService._list_container_job(
@@ -1431,7 +1456,9 @@ class TestServiceDownload(_TestServiceBase):
         mock_conn.get_object = Mock(side_effect=self.exc)
         expected_r = self._get_expected({
             'success': False,
-            'error': self.exc
+            'error': self.exc,
+            'error_timestamp': mock.ANY,
+            'traceback': mock.ANY
         })
 
         s = SwiftService()
@@ -1566,6 +1593,8 @@ class TestServiceDownload(_TestServiceBase):
                 'path': 'test_o',
                 'pseudodir': False,
                 'attempts': 2,
+                'traceback': mock.ANY,
+                'error_timestamp': mock.ANY
             }
 
             s = SwiftService()
@@ -1619,6 +1648,8 @@ class TestServiceDownload(_TestServiceBase):
                 'path': 'test_o',
                 'pseudodir': False,
                 'attempts': 2,
+                'traceback': mock.ANY,
+                'error_timestamp': mock.ANY
             }
 
             s = SwiftService()
@@ -1700,6 +1731,8 @@ class TestServiceDownload(_TestServiceBase):
                 'path': 'test_o',
                 'pseudodir': False,
                 'attempts': 2,
+                'traceback': mock.ANY,
+                'error_timestamp': mock.ANY
             }
 
             s = SwiftService()
