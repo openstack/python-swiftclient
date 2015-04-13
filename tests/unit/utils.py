@@ -504,8 +504,8 @@ class FakeKeystone(object):
         self.token = token
 
     class _Client(object):
-        def __init__(self, endpoint, token, **kwargs):
-            self.auth_token = token
+        def __init__(self, endpoint, auth_token, **kwargs):
+            self.auth_token = auth_token
             self.endpoint = endpoint
             self.service_catalog = self.ServiceCatalog(endpoint)
 
@@ -520,8 +520,8 @@ class FakeKeystone(object):
 
     def Client(self, **kwargs):
         self.calls.append(kwargs)
-        self.client = self._Client(endpoint=self.endpoint, token=self.token,
-                                   **kwargs)
+        self.client = self._Client(
+            endpoint=self.endpoint, auth_token=self.token, **kwargs)
         return self.client
 
     class Unauthorized(Exception):

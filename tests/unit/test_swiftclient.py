@@ -1534,9 +1534,10 @@ class TestConnection(MockHttpTest):
 
         # v2 auth
         timeouts = []
+        os_options = {'tenant_name': 'tenant', 'auth_token': 'meta-token'}
         conn = c.Connection(
             'http://auth.example.com', 'user', 'password', timeout=33.0,
-            os_options=dict(tenant_name='tenant'), auth_version=2.0)
+            os_options=os_options, auth_version=2.0)
         fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
         with mock.patch('swiftclient.client._import_keystone_client',
                         _make_fake_import_keystone_client(fake_ks)):
@@ -1551,6 +1552,10 @@ class TestConnection(MockHttpTest):
         self.assertEqual(33.0, fake_ks.calls[0].get('timeout'))
         # check timeout passed to HEAD for account
         self.assertEqual(timeouts, [33.0])
+
+        # check token passed to keystone client
+        self.assertIn('token', fake_ks.calls[0])
+        self.assertEqual('meta-token', fake_ks.calls[0].get('token'))
 
     def test_reset_stream(self):
 
