@@ -1157,7 +1157,7 @@ class SwiftService(object):
 
                             {
                                 'meta': [],
-                                'headers': [],
+                                'header': [],
                                 'segment_size': None,
                                 'use_slo': False,
                                 'segment_container: None,
