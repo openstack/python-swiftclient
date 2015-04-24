@@ -1464,7 +1464,8 @@ class TestConnection(MockHttpTest):
                 return ''
 
         def local_http_connection(url, proxy=None, cacert=None,
-                                  insecure=False, ssl_compression=True):
+                                  insecure=False, ssl_compression=True,
+                                  timeout=None):
             parsed = urlparse(url)
             return parsed, LocalConnection()
 
