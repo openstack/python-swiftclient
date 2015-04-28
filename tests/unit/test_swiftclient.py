@@ -30,7 +30,8 @@ from hashlib import md5
 from six.moves.urllib.parse import urlparse
 from six.moves import reload_module
 
-from .utils import MockHttpTest, fake_get_auth_keystone, StubResponse
+from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
+                    FakeKeystone, _make_fake_import_keystone_client)
 
 from swiftclient.utils import EMPTY_ETAG
 from swiftclient import client as c
@@ -1443,6 +1444,7 @@ class TestConnection(MockHttpTest):
             conn._request = my_request_handler
             return url, conn
 
+        # v1 auth
         conn = c.Connection(
             'http://auth.example.com', 'user', 'password', timeout=33.0)
         with mock.patch.multiple('swiftclient.client',
@@ -1452,6 +1454,26 @@ class TestConnection(MockHttpTest):
 
         # 1 call is through get_auth, 1 call is HEAD for account
         self.assertEqual(timeouts, [33.0, 33.0])
+
+        # v2 auth
+        timeouts = []
+        conn = c.Connection(
+            'http://auth.example.com', 'user', 'password', timeout=33.0,
+            os_options=dict(tenant_name='tenant'), auth_version=2.0)
+        fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            with mock.patch.multiple('swiftclient.client',
+                                     http_connection=shim_connection,
+                                     sleep=mock.DEFAULT):
+                conn.head_account()
+
+        # check timeout is passed to keystone client
+        self.assertEqual(1, len(fake_ks.calls))
+        self.assertTrue('timeout' in fake_ks.calls[0])
+        self.assertEqual(33.0, fake_ks.calls[0].get('timeout'))
+        # check timeout passed to HEAD for account
+        self.assertEqual(timeouts, [33.0])
 
     def test_reset_stream(self):
 

@@ -480,3 +480,52 @@ class CaptureOutput(object):
 
     def __getattr__(self, name):
         return getattr(self.out, name)
+
+
+class FakeKeystone(object):
+    '''
+    Fake keystone client module. Returns given endpoint url and auth token.
+    '''
+    def __init__(self, endpoint, token):
+        self.calls = []
+        self.auth_version = None
+        self.endpoint = endpoint
+        self.token = token
+
+    class _Client():
+        def __init__(self, endpoint, token, **kwargs):
+            self.auth_token = token
+            self.endpoint = endpoint
+            self.service_catalog = self.ServiceCatalog(endpoint)
+
+        class ServiceCatalog(object):
+            def __init__(self, endpoint):
+                self.calls = []
+                self.endpoint_url = endpoint
+
+            def url_for(self, **kwargs):
+                self.calls.append(kwargs)
+                return self.endpoint_url
+
+    def Client(self, **kwargs):
+        self.calls.append(kwargs)
+        self.client = self._Client(endpoint=self.endpoint, token=self.token,
+                                   **kwargs)
+        return self.client
+
+    class Unauthorized(Exception):
+        pass
+
+    class AuthorizationFailure(Exception):
+        pass
+
+    class EndpointNotFound(Exception):
+        pass
+
+
+def _make_fake_import_keystone_client(fake_import):
+    def _fake_import_keystone_client(auth_version):
+        fake_import.auth_version = auth_version
+        return fake_import, fake_import
+
+    return _fake_import_keystone_client
