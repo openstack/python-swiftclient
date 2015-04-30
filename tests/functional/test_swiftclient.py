@@ -51,8 +51,13 @@ class TestFunctional(testtools.TestCase):
             auth_ssl = config.getboolean('func_test', 'auth_ssl')
             auth_prefix = config.get('func_test', 'auth_prefix')
             self.auth_version = config.get('func_test', 'auth_version')
-            self.account = config.get('func_test', 'account')
-            self.username = config.get('func_test', 'username')
+            try:
+                self.account_username = config.get('func_test',
+                                                   'account_username')
+            except configparser.NoOptionError:
+                account = config.get('func_test', 'account')
+                username = config.get('func_test', 'username')
+                self.account_username = "%s:%s" % (account, username)
             self.password = config.get('func_test', 'password')
             self.auth_url = ""
             if auth_ssl:
@@ -62,7 +67,6 @@ class TestFunctional(testtools.TestCase):
             self.auth_url += "%s:%s%s" % (auth_host, auth_port, auth_prefix)
             if self.auth_version == "1":
                 self.auth_url += 'v1.0'
-            self.account_username = "%s:%s" % (self.account, self.username)
 
         else:
             self.skip_tests = True

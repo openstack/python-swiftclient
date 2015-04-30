@@ -208,6 +208,12 @@ class MockHttpTest(testtools.TestCase):
         self.fake_connect = None
         self.request_log = []
 
+        # Capture output, since the test-runner stdout/stderr moneky-patching
+        # won't cover the references to sys.stdout/sys.stderr in
+        # swiftclient.multithreading
+        self.capture_output = CaptureOutput()
+        self.capture_output.__enter__()
+
         def fake_http_connection(*args, **kwargs):
             self.validateMockedRequestsConsumed()
             self.request_log = []
@@ -368,6 +374,7 @@ class MockHttpTest(testtools.TestCase):
         # un-hygienic mocking on the swiftclient.client module; which may lead
         # to some unfortunate test order dependency bugs by way of the broken
         # window theory if any other modules are similarly patched
+        self.capture_output.__exit__()
         reload_module(c)
 
 
@@ -393,7 +400,7 @@ class CaptureStream(object):
         self.stream = stream
         self._capture = six.StringIO()
         self._buffer = CaptureStreamBuffer(self)
-        self.streams = [self.stream, self._capture]
+        self.streams = [self._capture]
 
     @property
     def buffer(self):

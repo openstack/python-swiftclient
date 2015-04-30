@@ -45,7 +45,7 @@ class OutputManager(object):
     """
     DEFAULT_OFFSET = 14
 
-    def __init__(self, print_stream=sys.stdout, error_stream=sys.stderr):
+    def __init__(self, print_stream=None, error_stream=None):
         """
         :param print_stream: The stream to which :meth:`print_msg` sends
                              formatted messages.
@@ -54,9 +54,10 @@ class OutputManager(object):
 
         On Python 2, Unicode messages are encoded to utf8.
         """
-        self.print_stream = print_stream
+        self.print_stream = print_stream or sys.stdout
         self.print_pool = ThreadPoolExecutor(max_workers=1)
-        self.error_stream = error_stream
+
+        self.error_stream = error_stream or sys.stderr
         self.error_print_pool = ThreadPoolExecutor(max_workers=1)
         self.error_count = 0
 
