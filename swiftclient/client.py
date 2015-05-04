@@ -140,8 +140,7 @@ def encode_meta_headers(headers):
 
 class HTTPConnection(object):
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
-                 ssl_compression=False, default_user_agent=None,
-                 timeout=None):
+                 ssl_compression=False, default_user_agent=None, timeout=None):
         """
         Make an HTTPConnection or HTTPSConnection
 
@@ -266,7 +265,9 @@ def http_connection(*arg, **kwarg):
 def get_auth_1_0(url, user, key, snet, **kwargs):
     cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
-    parsed, conn = http_connection(url, cacert=cacert, insecure=insecure)
+    timeout = kwargs.get('timeout', None)
+    parsed, conn = http_connection(url, cacert=cacert, insecure=insecure,
+                                   timeout=timeout)
     method = 'GET'
     conn.request(method, parsed.path, '',
                  {'X-Auth-User': user, 'X-Auth-Key': key})
@@ -326,6 +327,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     """
 
     insecure = kwargs.get('insecure', False)
+    timeout = kwargs.get('timeout', None)
     auth_version = kwargs.get('auth_version', '2.0')
     debug = logger.isEnabledFor(logging.DEBUG) and True or False
 
@@ -346,7 +348,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
             project_domain_id=os_options.get('project_domain_id'),
             debug=debug,
             cacert=kwargs.get('cacert'),
-            auth_url=auth_url, insecure=insecure)
+            auth_url=auth_url, insecure=insecure, timeout=timeout)
     except exceptions.Unauthorized:
         msg = 'Unauthorized. Check username, password and tenant name/id.'
         if auth_version in AUTH_VERSIONS_V3:
@@ -394,13 +396,15 @@ def get_auth(auth_url, user, key, **kwargs):
     storage_url, token = None, None
     cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
+    timeout = kwargs.get('timeout', False)
     if auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
                                           user,
                                           key,
                                           kwargs.get('snet'),
                                           cacert=cacert,
-                                          insecure=insecure)
+                                          insecure=insecure,
+                                          timeout=timeout)
     elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:
         # We are handling a special use case here where the user argument
         # specifies both the user name and tenant name in the form tenant:user
@@ -423,6 +427,7 @@ def get_auth(auth_url, user, key, **kwargs):
                                                key, os_options,
                                                cacert=cacert,
                                                insecure=insecure,
+                                               timeout=timeout,
                                                auth_version=auth_version)
     else:
         raise ClientException('Unknown auth_version %s specified.'
@@ -1190,6 +1195,7 @@ class Connection(object):
                                    raise an exception to the caller. Setting
                                    this parameter to True will cause a retry
                                    after a backoff.
+        :param timeout: The connect timeout for the HTTP connection.
         """
         self.authurl = authurl
         self.user = user
@@ -1231,7 +1237,8 @@ class Connection(object):
                         auth_version=self.auth_version,
                         os_options=self.os_options,
                         cacert=self.cacert,
-                        insecure=self.insecure)
+                        insecure=self.insecure,
+                        timeout=self.timeout)
 
     def http_connection(self, url=None):
         return http_connection(url if url else self.url,

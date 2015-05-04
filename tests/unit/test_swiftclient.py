@@ -108,18 +108,28 @@ class MockHttpResponse(object):
             self.headers.update(headers)
 
         class Raw(object):
-            def read(self):
-                pass
-        self.raw = Raw()
+            def __init__(self, headers):
+                self.headers = headers
+
+            def read(self, **kw):
+                return ""
+
+            def getheader(self, name, default):
+                return self.headers.get(name, default)
+
+        self.raw = Raw(headers)
 
     def read(self):
         return ""
+
+    def close(self):
+        pass
 
     def getheader(self, name, default):
         return self.headers.get(name, default)
 
     def getheaders(self):
-        return {"key1": "value1", "key2": "value2"}
+        return dict(self.headers)
 
     def fake_response(self):
         return self
@@ -1403,6 +1413,45 @@ class TestConnection(MockHttpTest):
         self.assertRequests([
             ('HEAD', '/v1/AUTH_pre_url', '', {'x-auth-token': 'post_token'}),
         ])
+
+    def test_timeout_passed_down(self):
+        # We want to avoid mocking http_connection(), and most especially
+        # avoid passing it down in argument. However, we cannot simply
+        # instantiate C=Connection(), then shim C.http_conn. Doing so would
+        # avoid some of the code under test (where _retry() invokes
+        # http_connection()), and would miss get_auth() completely.
+        # So, with regret, we do mock http_connection(), but with a very
+        # light shim that swaps out _request() as originally intended.
+
+        orig_http_connection = c.http_connection
+
+        timeouts = []
+
+        def my_request_handler(*a, **kw):
+            if 'timeout' in kw:
+                timeouts.append(kw['timeout'])
+            else:
+                timeouts.append(None)
+            return MockHttpResponse(
+                status=200,
+                headers={
+                    'x-auth-token': 'a_token',
+                    'x-storage-url': 'http://files.example.com/v1/AUTH_user'})
+
+        def shim_connection(*a, **kw):
+            url, conn = orig_http_connection(*a, **kw)
+            conn._request = my_request_handler
+            return url, conn
+
+        conn = c.Connection(
+            'http://auth.example.com', 'user', 'password', timeout=33.0)
+        with mock.patch.multiple('swiftclient.client',
+                                 http_connection=shim_connection,
+                                 sleep=mock.DEFAULT):
+            conn.head_account()
+
+        # 1 call is through get_auth, 1 call is HEAD for account
+        self.assertEqual(timeouts, [33.0, 33.0])
 
     def test_reset_stream(self):
 
