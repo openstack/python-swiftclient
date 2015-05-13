@@ -1035,7 +1035,7 @@ def main(arguments=None):
         argv = sys_argv
 
     version = client_version
-    parser = OptionParser(version='%%prog %s' % version,
+    parser = OptionParser(version='python-swiftclient %s' % version,
                           usage='''
 usage: %%prog [--version] [--help] [--os-help] [--snet] [--verbose]
              [--debug] [--info] [--quiet] [--auth <auth_url>]
