@@ -15,7 +15,6 @@
 from genericpath import getmtime
 
 import hashlib
-import json
 import mock
 import os
 import tempfile
@@ -31,8 +30,9 @@ import swiftclient.utils
 
 from os.path import basename, dirname
 from tests.unit.test_swiftclient import MockHttpTest
-from tests.unit.utils import (CaptureOutput, fake_get_auth_keystone,
-                              _make_fake_import_keystone_client, FakeKeystone)
+from tests.unit.utils import (
+    CaptureOutput, fake_get_auth_keystone, _make_fake_import_keystone_client,
+    FakeKeystone, StubResponse)
 from swiftclient.utils import EMPTY_ETAG
 
 
@@ -474,9 +474,11 @@ class TestShell(unittest.TestCase):
             {'x-static-large-object': 'false',  # For the 2nd delete call
              'content-length': '2'}
         ]
-        connection.return_value.get_object.return_value = ({}, json.dumps(
-            [{'name': 'container1/old_seg1'}, {'name': 'container2/old_seg2'}]
-        ))
+        connection.return_value.get_object.return_value = (
+            {},
+            b'[{"name": "container1/old_seg1"},'
+            b' {"name": "container2/old_seg2"}]'
+        )
         connection.return_value.put_object.return_value = EMPTY_ETAG
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
@@ -1763,13 +1765,10 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
     def test_list_with_read_access(self):
         req_handler = self._fake_cross_account_auth(True, False)
-        resp_body = '{}'
-        m = hashlib.md5()
-        m.update(resp_body.encode())
-        etag = m.hexdigest()
-        fake_conn = self.fake_http_connection(403, on_request=req_handler,
-                                              etags=[etag],
-                                              body=resp_body)
+        resp_body = b'{}'
+        resp = StubResponse(403, resp_body, {
+            'etag': hashlib.md5(resp_body).hexdigest()})
+        fake_conn = self.fake_http_connection(resp, on_request=req_handler)
 
         args, env = self._make_cmd('download', cmd_args=[self.cont])
         with mock.patch('swiftclient.client._import_keystone_client',

@@ -15,6 +15,7 @@
 """Miscellaneous utility functions for use with Swift."""
 import hashlib
 import hmac
+import json
 import logging
 import time
 
@@ -28,7 +29,7 @@ def config_true_value(value):
     """
     Returns True if the value is either True or a string in TRUE_VALUES.
     Returns False otherwise.
-    This function come from swift.common.utils.config_true_value()
+    This function comes from swift.common.utils.config_true_value()
     """
     return value is True or \
         (isinstance(value, six.string_types) and value.lower() in TRUE_VALUES)
@@ -106,6 +107,16 @@ def generate_temp_url(path, seconds, key, method):
                 path=path,
                 sig=sig,
                 exp=expiration))
+
+
+def parse_api_response(headers, body):
+    charset = 'utf-8'
+    # Swift *should* be speaking UTF-8, but check content-type just in case
+    content_type = headers.get('content-type', '')
+    if '; charset=' in content_type:
+        charset = content_type.split('; charset=', 1)[1].split(';', 1)[0]
+
+    return json.loads(body.decode(charset))
 
 
 class NoopMD5(object):

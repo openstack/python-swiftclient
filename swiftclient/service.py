@@ -29,10 +29,7 @@ from six.moves.queue import Empty as QueueEmpty
 from six.moves.urllib.parse import quote, unquote
 from six import Iterator, string_types
 
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import json
 
 
 from swiftclient import Connection
@@ -40,7 +37,8 @@ from swiftclient.command_helpers import (
     stat_account, stat_container, stat_object
 )
 from swiftclient.utils import (
-    config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG
+    config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG,
+    parse_api_response
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
@@ -1515,9 +1513,10 @@ class SwiftService(object):
                 else:
                     raise part["error"]
         elif config_true_value(headers.get('x-static-large-object')):
-            _, manifest_data = conn.get_object(
+            manifest_headers, manifest_data = conn.get_object(
                 container, obj, query_string='multipart-manifest=get')
-            for chunk in json.loads(manifest_data):
+            manifest_data = parse_api_response(manifest_headers, manifest_data)
+            for chunk in manifest_data:
                 if chunk.get('sub_slo'):
                     scont, sobj = chunk['name'].lstrip('/').split('/', 1)
                     chunks.extend(self._get_chunk_data(

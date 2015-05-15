@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import logging
-import json
 
 try:
     from unittest import mock
@@ -28,7 +27,6 @@ import warnings
 import tempfile
 from hashlib import md5
 from six.moves.urllib.parse import urlparse
-from six.moves import reload_module
 
 from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
                     FakeKeystone, _make_fake_import_keystone_client)
@@ -63,36 +61,6 @@ class TestClientException(testtools.TestCase):
             }
             exc = c.ClientException('test', **kwargs)
             self.assertTrue(value in str(exc))
-
-
-class TestJsonImport(testtools.TestCase):
-
-    def tearDown(self):
-        reload_module(json)
-
-        try:
-            import simplejson
-        except ImportError:
-            pass
-        else:
-            reload_module(simplejson)
-        super(TestJsonImport, self).tearDown()
-
-    def test_any(self):
-        self.assertTrue(hasattr(c, 'json_loads'))
-
-    def test_no_simplejson_falls_back_to_stdlib_when_reloaded(self):
-        # break simplejson
-        try:
-            import simplejson
-        except ImportError:
-            # not installed, so we don't have to break it for these tests
-            pass
-        else:
-            delattr(simplejson, 'loads')  # break simple json
-            reload_module(c)  # reload to repopulate json_loads
-
-        self.assertEqual(c.json_loads, json.loads)
 
 
 class MockHttpResponse(object):
@@ -936,7 +904,7 @@ class TestDeleteObject(MockHttpTest):
 class TestGetCapabilities(MockHttpTest):
 
     def test_ok(self):
-        conn = self.fake_http_connection(200, body='{}')
+        conn = self.fake_http_connection(200, body=b'{}')
         http_conn = conn('http://www.test.com/info')
         info = c.get_capabilities(http_conn)
         self.assertRequests([
@@ -957,7 +925,7 @@ class TestGetCapabilities(MockHttpTest):
         }
         auth_v1_response = StubResponse(headers=auth_headers)
         stub_info = {'swift': {'fake': True}}
-        info_response = StubResponse(body=json.dumps(stub_info))
+        info_response = StubResponse(body=b'{"swift":{"fake":true}}')
         fake_conn = self.fake_http_connection(auth_v1_response, info_response)
 
         conn = c.Connection('http://auth.example.com/auth/v1.0',
@@ -975,7 +943,7 @@ class TestGetCapabilities(MockHttpTest):
         fake_keystone = fake_get_auth_keystone(
             storage_url='http://storage.example.com/v1/AUTH_test')
         stub_info = {'swift': {'fake': True}}
-        info_response = StubResponse(body=json.dumps(stub_info))
+        info_response = StubResponse(body=b'{"swift":{"fake":true}}')
         fake_conn = self.fake_http_connection(info_response)
 
         os_options = {'project_id': 'test'}
@@ -993,7 +961,7 @@ class TestGetCapabilities(MockHttpTest):
 
     def test_conn_get_capabilities_with_url_param(self):
         stub_info = {'swift': {'fake': True}}
-        info_response = StubResponse(body=json.dumps(stub_info))
+        info_response = StubResponse(body=b'{"swift":{"fake":true}}')
         fake_conn = self.fake_http_connection(info_response)
 
         conn = c.Connection('http://auth.example.com/auth/v1.0',
@@ -1009,7 +977,7 @@ class TestGetCapabilities(MockHttpTest):
 
     def test_conn_get_capabilities_with_preauthurl_param(self):
         stub_info = {'swift': {'fake': True}}
-        info_response = StubResponse(body=json.dumps(stub_info))
+        info_response = StubResponse(body=b'{"swift":{"fake":true}}')
         fake_conn = self.fake_http_connection(info_response)
 
         storage_url = 'http://storage.example.com/v1/AUTH_test'
@@ -1025,7 +993,7 @@ class TestGetCapabilities(MockHttpTest):
 
     def test_conn_get_capabilities_with_os_options(self):
         stub_info = {'swift': {'fake': True}}
-        info_response = StubResponse(body=json.dumps(stub_info))
+        info_response = StubResponse(body=b'{"swift":{"fake":true}}')
         fake_conn = self.fake_http_connection(info_response)
 
         storage_url = 'http://storage.example.com/v1/AUTH_test'
@@ -1165,7 +1133,7 @@ class TestConnection(MockHttpTest):
 
             for method, args in method_signatures:
                 c.http_connection = self.fake_http_connection(
-                    200, body='[]', storage_url=static_url)
+                    200, body=b'[]', storage_url=static_url)
                 method(*args)
                 self.assertEqual(len(self.request_log), 1)
                 for request in self.iter_request_log():

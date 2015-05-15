@@ -21,10 +21,6 @@ import socket
 import requests
 import logging
 import warnings
-try:
-    from simplejson import loads as json_loads
-except ImportError:
-    from json import loads as json_loads
 
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
@@ -35,7 +31,8 @@ import six
 
 from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
-from swiftclient.utils import LengthWrapper, ReadableToIterable
+from swiftclient.utils import (
+    LengthWrapper, ReadableToIterable, parse_api_response)
 
 AUTH_VERSIONS_V1 = ('1.0', '1', 1)
 AUTH_VERSIONS_V2 = ('2.0', '2', 2)
@@ -520,7 +517,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
                               http_response_content=body)
     if resp.status == 204:
         return resp_headers, []
-    return resp_headers, json_loads(body)
+    return resp_headers, parse_api_response(resp_headers, body)
 
 
 def head_account(url, token, http_conn=None):
@@ -670,7 +667,7 @@ def get_container(url, token, container, marker=None, limit=None,
         resp_headers[header.lower()] = value
     if resp.status == 204:
         return resp_headers, []
-    return resp_headers, json_loads(body)
+    return resp_headers, parse_api_response(resp_headers, body)
 
 
 def head_container(url, token, container, http_conn=None, headers=None):
@@ -1154,7 +1151,10 @@ def get_capabilities(http_conn):
                               http_host=conn.host, http_path=parsed.path,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
-    return json_loads(body)
+    resp_headers = {}
+    for header, value in resp.getheaders():
+        resp_headers[header.lower()] = value
+    return parse_api_response(resp_headers, body)
 
 
 class Connection(object):

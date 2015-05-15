@@ -910,8 +910,8 @@ class TestServiceUpload(testtools.TestCase):
                 'etag': md5(submanifest_etag.encode('ascii') +
                             seg_etag.encode('ascii')).hexdigest()}
             mock_conn.get_object.side_effect = [
-                (None, manifest),
-                (None, submanifest)]
+                ({}, manifest.encode('ascii')),
+                ({}, submanifest.encode('ascii'))]
             type(mock_conn).attempts = mock.PropertyMock(return_value=2)
 
             s = SwiftService()
