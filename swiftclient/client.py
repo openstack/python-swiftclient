@@ -24,7 +24,7 @@ import warnings
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
 from six.moves import http_client
-from six.moves.urllib.parse import quote as _quote
+from six.moves.urllib.parse import quote as _quote, unquote
 from six.moves.urllib.parse import urlparse, urlunparse
 from time import sleep, time
 import six
@@ -101,6 +101,36 @@ def http_log(args, kwargs, resp, body):
     log_method("RESP HEADERS: %s", resp.getheaders())
     if body:
         log_method("RESP BODY: %s", body)
+
+
+def parse_header_string(data):
+    if six.PY2:
+        if isinstance(data, six.text_type):
+            # Under Python2 requests only returns binary_type, but if we get
+            # some stray text_type input, this should prevent unquote from
+            # interpretting %-encoded data as raw code-points.
+            data = data.encode('utf8')
+        try:
+            unquoted = unquote(data).decode('utf8')
+        except UnicodeDecodeError:
+            try:
+                return data.decode('utf8')
+            except UnicodeDecodeError:
+                return quote(data).decode('utf8')
+    else:
+        if isinstance(data, six.binary_type):
+            # Under Python3 requests only returns text_type and tosses (!) the
+            # rest of the headers. If that ever changes, this should be a sane
+            # approach.
+            try:
+                data = data.decode('ascii')
+            except UnicodeDecodeError:
+                data = quote(data)
+        try:
+            unquoted = unquote(data, errors='strict')
+        except UnicodeDecodeError:
+            return data
+    return unquoted
 
 
 def quote(value, safe='/'):
@@ -472,6 +502,14 @@ def get_auth(auth_url, user, key, **kwargs):
         return storage_url, token
 
 
+def resp_header_dict(resp):
+    resp_headers = {}
+    for header, value in resp.getheaders():
+        header = parse_header_string(header).lower()
+        resp_headers[header] = parse_header_string(value)
+    return resp_headers
+
+
 def store_response(resp, response_dict):
     """
     store information about an operation into a dict
@@ -482,13 +520,9 @@ def store_response(resp, response_dict):
        status, reason and a dict of lower-cased headers
     """
     if response_dict is not None:
-        resp_headers = {}
-        for header, value in resp.getheaders():
-            resp_headers[header.lower()] = value
-
         response_dict['status'] = resp.status
         response_dict['reason'] = resp.reason
-        response_dict['headers'] = resp_headers
+        response_dict['headers'] = resp_header_dict(resp)
 
 
 def get_account(url, token, marker=None, limit=None, prefix=None,
@@ -545,9 +579,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     body = resp.read()
     http_log(("%s?%s" % (url, qs), method,), {'headers': headers}, resp, body)
 
-    resp_headers = {}
-    for header, value in resp.getheaders():
-        resp_headers[header.lower()] = value
+    resp_headers = resp_header_dict(resp)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException('Account GET failed', http_scheme=parsed.scheme,
                               http_host=conn.host, http_path=parsed.path,
@@ -589,9 +621,7 @@ def head_account(url, token, http_conn=None, service_token=None):
                               http_host=conn.host, http_path=parsed.path,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
-    resp_headers = {}
-    for header, value in resp.getheaders():
-        resp_headers[header.lower()] = value
+    resp_headers = resp_header_dict(resp)
     return resp_headers
 
 
@@ -712,9 +742,7 @@ def get_container(url, token, container, marker=None, limit=None,
                               http_path=cont_path, http_query=qs,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
-    resp_headers = {}
-    for header, value in resp.getheaders():
-        resp_headers[header.lower()] = value
+    resp_headers = resp_header_dict(resp)
     if resp.status == 204:
         return resp_headers, []
     return resp_headers, parse_api_response(resp_headers, body)
@@ -758,9 +786,7 @@ def head_container(url, token, container, http_conn=None, headers=None,
                               http_path=path, http_status=resp.status,
                               http_reason=resp.reason,
                               http_response_content=body)
-    resp_headers = {}
-    for header, value in resp.getheaders():
-        resp_headers[header.lower()] = value
+    resp_headers = resp_header_dict(resp)
     return resp_headers
 
 
@@ -992,9 +1018,7 @@ def head_object(url, token, container, name, http_conn=None,
                               http_host=conn.host, http_path=path,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
-    resp_headers = {}
-    for header, value in resp.getheaders():
-        resp_headers[header.lower()] = value
+    resp_headers = resp_header_dict(resp)
     return resp_headers
 
 
@@ -1224,9 +1248,7 @@ def get_capabilities(http_conn):
                               http_host=conn.host, http_path=parsed.path,
                               http_status=resp.status, http_reason=resp.reason,
                               http_response_content=body)
-    resp_headers = {}
-    for header, value in resp.getheaders():
-        resp_headers[header.lower()] = value
+    resp_headers = resp_header_dict(resp)
     return parse_api_response(resp_headers, body)
 
 
