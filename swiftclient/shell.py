@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import logging
 import signal
@@ -23,6 +23,7 @@ import socket
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
+from six import text_type
 from sys import argv as sys_argv, exit, stderr
 from time import gmtime, strftime
 
@@ -106,7 +107,7 @@ def st_delete(parser, args, output_manager):
                 if '/' in container:
                     output_manager.error(
                         'WARNING: / in container name; you '
-                        'might have meant %r instead of %r.' % (
+                        "might have meant '%s' instead of '%s'." % (
                         container.replace('/', ' ', 1), container)
                     )
                     return
@@ -249,7 +250,7 @@ def st_download(parser, args, output_manager):
                 if '/' in container:
                     output_manager.error(
                         'WARNING: / in container name; you '
-                        'might have meant %r instead of %r.' % (
+                        "might have meant '%s' instead of '%s'." % (
                         container.replace('/', ' ', 1), container)
                     )
                     return
@@ -500,7 +501,7 @@ def st_stat(parser, args, output_manager):
                 if '/' in container:
                     output_manager.error(
                         'WARNING: / in container name; you might have '
-                        'meant %r instead of %r.' %
+                        "meant '%s' instead of '%s'." %
                         (container.replace('/', ' ', 1), container))
                     return
                 args = args[1:]
@@ -604,7 +605,7 @@ def st_post(parser, args, output_manager):
                 if '/' in container:
                     output_manager.error(
                         'WARNING: / in container name; you might have '
-                        'meant %r instead of %r.' %
+                        "meant '%s' instead of '%s'." %
                         (args[0].replace('/', ' ', 1), args[0]))
                     return
                 args = args[1:]
@@ -844,7 +845,7 @@ def st_upload(parser, args, output_manager):
                             msg = ': %s' % error
                         output_manager.warning(
                             'Warning: failed to create container '
-                            '%r%s', container, msg
+                            "'%s'%s", container, msg
                         )
                     else:
                         output_manager.error("%s" % error)
@@ -1036,6 +1037,8 @@ def main(arguments=None):
         argv = arguments
     else:
         argv = sys_argv
+
+    argv = [a if isinstance(a, text_type) else a.decode('utf-8') for a in argv]
 
     version = client_version
     parser = OptionParser(version='python-swiftclient %s' % version,
