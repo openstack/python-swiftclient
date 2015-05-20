@@ -170,6 +170,8 @@ class HTTPConnection(object):
         self.port = self.parsed_url.port
         self.requests_args = {}
         self.request_session = requests.Session()
+        # Don't use requests's default headers
+        self.request_session.headers = None
         if self.parsed_url.scheme not in ('http', 'https'):
             raise ClientException('Unsupported scheme "%s" in url "%s"'
                                   % (self.parsed_url.scheme, url))
@@ -238,7 +240,6 @@ class HTTPConnection(object):
             return old_getheader(k.lower(), v)
 
         def releasing_read(*args, **kwargs):
-            kwargs['decode_content'] = True
             chunk = self.resp.raw.read(*args, **kwargs)
             if not chunk:
                 # NOTE(sigmavirus24): Release the connection back to the
