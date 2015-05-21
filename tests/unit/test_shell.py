@@ -31,7 +31,8 @@ import swiftclient.utils
 
 from os.path import basename, dirname
 from tests.unit.test_swiftclient import MockHttpTest
-from tests.unit.utils import CaptureOutput, fake_get_auth_keystone
+from tests.unit.utils import (CaptureOutput, fake_get_auth_keystone,
+                              _make_fake_import_keystone_client, FakeKeystone)
 from swiftclient.utils import EMPTY_ETAG
 
 
@@ -1132,55 +1133,6 @@ class TestParsing(TestBase):
             self.assertRaises(SystemExit, swiftclient.shell.main, args)
         self.assertTrue(out.find('[--key <api_key>]') > 0)
         self.assertTrue(out.find('--os-username=<auth-user-name>') > 0)
-
-
-class FakeKeystone(object):
-    '''
-    Fake keystone client module. Returns given endpoint url and auth token.
-    '''
-    def __init__(self, endpoint, token):
-        self.calls = []
-        self.auth_version = None
-        self.endpoint = endpoint
-        self.token = token
-
-    class _Client():
-        def __init__(self, endpoint, token, **kwargs):
-            self.auth_token = token
-            self.endpoint = endpoint
-            self.service_catalog = self.ServiceCatalog(endpoint)
-
-        class ServiceCatalog(object):
-            def __init__(self, endpoint):
-                self.calls = []
-                self.endpoint_url = endpoint
-
-            def url_for(self, **kwargs):
-                self.calls.append(kwargs)
-                return self.endpoint_url
-
-    def Client(self, **kwargs):
-        self.calls.append(kwargs)
-        self.client = self._Client(endpoint=self.endpoint, token=self.token,
-                                   **kwargs)
-        return self.client
-
-    class Unauthorized(Exception):
-        pass
-
-    class AuthorizationFailure(Exception):
-        pass
-
-    class EndpointNotFound(Exception):
-        pass
-
-
-def _make_fake_import_keystone_client(fake_import):
-    def _fake_import_keystone_client(auth_version):
-        fake_import.auth_version = auth_version
-        return fake_import, fake_import
-
-    return _fake_import_keystone_client
 
 
 class TestKeystoneOptions(MockHttpTest):
