@@ -581,6 +581,7 @@ class TestGetAccount(MockHttpTest):
         self.assertEqual(value, [])
         self.assertRequests([
             ('GET', '/v1/acct?format=json', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'asdf'}),
         ])
 
@@ -591,6 +592,7 @@ class TestGetAccount(MockHttpTest):
         c.get_account('http://www.test.com/v1/acct', 'asdf', marker='marker')
         self.assertRequests([
             ('GET', '/v1/acct?format=json&marker=marker', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'asdf'}),
         ])
 
@@ -601,6 +603,7 @@ class TestGetAccount(MockHttpTest):
         c.get_account('http://www.test.com/v1/acct', 'asdf', limit=10)
         self.assertRequests([
             ('GET', '/v1/acct?format=json&limit=10', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'asdf'}),
         ])
 
@@ -611,6 +614,7 @@ class TestGetAccount(MockHttpTest):
         c.get_account('http://www.test.com/v1/acct', 'asdf', prefix='asdf/')
         self.assertRequests([
             ('GET', '/v1/acct?format=json&prefix=asdf/', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'asdf'}),
         ])
 
@@ -622,6 +626,7 @@ class TestGetAccount(MockHttpTest):
                       end_marker='end_marker')
         self.assertRequests([
             ('GET', '/v1/acct?format=json&end_marker=end_marker', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'asdf'}),
         ])
 
@@ -700,6 +705,7 @@ class TestGetContainer(MockHttpTest):
         self.assertEqual(value, [])
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'token'}),
         ])
 
@@ -711,6 +717,7 @@ class TestGetContainer(MockHttpTest):
                         marker='marker')
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json&marker=marker', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'token'}),
         ])
 
@@ -722,6 +729,7 @@ class TestGetContainer(MockHttpTest):
                         limit=10)
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json&limit=10', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'token'}),
         ])
 
@@ -733,6 +741,7 @@ class TestGetContainer(MockHttpTest):
                         prefix='asdf/')
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json&prefix=asdf/', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'token'}),
         ])
 
@@ -744,6 +753,7 @@ class TestGetContainer(MockHttpTest):
                         delimiter='/')
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json&delimiter=/', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'token'}),
         ])
 
@@ -755,7 +765,7 @@ class TestGetContainer(MockHttpTest):
                         end_marker='end_marker')
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json&end_marker=end_marker',
-             '', {'x-auth-token': 'token'}),
+             '', {'x-auth-token': 'token', 'accept-encoding': 'gzip'}),
         ])
 
     def test_param_path(self):
@@ -766,6 +776,7 @@ class TestGetContainer(MockHttpTest):
                         path='asdf')
         self.assertRequests([
             ('GET', '/v1/acct/container?format=json&path=asdf', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'token'}),
         ])
 
@@ -780,6 +791,7 @@ class TestGetContainer(MockHttpTest):
             ('GET', '/container?format=json', '', {
                 'x-auth-token': 'TOKEN',
                 'x-client-key': 'client key',
+                'accept-encoding': 'gzip',
             }),
         ])
 
@@ -790,6 +802,7 @@ class TestGetContainer(MockHttpTest):
                         query_string="hello=20")
         self.assertRequests([
             ('GET', '/asdf?format=json&hello=20', '', {
+                'accept-encoding': 'gzip',
                 'x-auth-token': 'asdf'}),
         ])
 
@@ -1583,7 +1596,7 @@ class TestGetCapabilities(MockHttpTest):
         http_conn = conn('http://www.test.com/info')
         info = c.get_capabilities(http_conn)
         self.assertRequests([
-            ('GET', '/info', '', {}),
+            ('GET', '/info', '', {'Accept-Encoding': 'gzip'}),
         ])
         self.assertEqual(info, {})
         self.assertTrue(http_conn[1].resp.has_been_read)
@@ -1619,7 +1632,8 @@ class TestGetCapabilities(MockHttpTest):
             ('GET', '/auth/v1.0', '', {
                 'x-auth-user': 'user',
                 'x-auth-key': 'key'}),
-            ('GET', 'http://storage.example.com/info', '', {}),
+            ('GET', 'http://storage.example.com/info', '', {
+                'accept-encoding': 'gzip'}),
         ])
 
     def test_conn_get_capabilities_with_os_auth(self):
@@ -2341,6 +2355,7 @@ class TestConnection(MockHttpTest):
             ('GET', '/v1/a/c1?format=json&limit=5&prefix=p', '', {
                 'x-auth-token': 'token',
                 'X-Favourite-Pet': 'Aardvark',
+                'accept-encoding': 'gzip',
             }),
         ])
         self.assertEqual(conn.attempts, 1)

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import gzip
 import unittest
 import mock
 import six
@@ -394,3 +395,39 @@ class TestGroupers(unittest.TestCase):
 
         result = list(u.n_groups(range(100), 12))
         self.assertEqual([9] * 11 + [1], list(map(len, result)))
+
+
+class TestApiResponeParser(unittest.TestCase):
+
+    def test_utf8_default(self):
+        result = u.parse_api_response(
+            {}, u'{"test": "\u2603"}'.encode('utf8'))
+        self.assertEqual({'test': u'\u2603'}, result)
+
+        result = u.parse_api_response(
+            {}, u'{"test": "\\u2603"}'.encode('utf8'))
+        self.assertEqual({'test': u'\u2603'}, result)
+
+    def test_bad_json(self):
+        self.assertRaises(ValueError, u.parse_api_response,
+                          {}, b'{"foo": "bar}')
+
+    def test_bad_utf8(self):
+        self.assertRaises(UnicodeDecodeError, u.parse_api_response,
+                          {}, b'{"foo": "b\xffr"}')
+
+    def test_latin_1(self):
+        result = u.parse_api_response(
+            {'content-type': 'application/json; charset=iso8859-1'},
+            b'{"t\xe9st": "\xff"}')
+        self.assertEqual({u't\xe9st': u'\xff'}, result)
+
+    def test_gzipped_utf8(self):
+        buf = six.BytesIO()
+        gz = gzip.GzipFile(fileobj=buf, mode='w')
+        gz.write(u'{"test": "\u2603"}'.encode('utf8'))
+        gz.close()
+        result = u.parse_api_response(
+            {'content-encoding': 'gzip'},
+            buf.getvalue())
+        self.assertEqual({'test': u'\u2603'}, result)
