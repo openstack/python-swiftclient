@@ -1608,7 +1608,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
         self.assertRequests([('PUT', self.cont_path),
                              ('PUT', self.obj_path)])
-        self.assertEqual(self.obj, out.strip())
+        self.assertEqual(self.obj[1:], out.strip())
         expected_err = 'Warning: failed to create container %r: 403 Fake' \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
@@ -1617,7 +1617,6 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         req_handler = self._fake_cross_account_auth(False, True)
         fake_conn = self.fake_http_connection(403, 403,
                                               on_request=req_handler)
-
         args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
                                                        '--leave-segments'])
         with mock.patch('swiftclient.client._import_keystone_client',
@@ -1629,10 +1628,9 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
                             swiftclient.shell.main(args)
                         except SystemExit as e:
                             self.fail('Unexpected SystemExit: %s' % e)
-
         self.assertRequests([('PUT', self.cont_path),
                              ('PUT', self.obj_path)])
-        self.assertEqual(self.obj, out.strip())
+        self.assertEqual(self.obj[1:], out.strip())
         expected_err = 'Warning: failed to create container %r: 403 Fake' \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
@@ -1667,7 +1665,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assert_request(('PUT', segment_path_0))
         self.assert_request(('PUT', segment_path_1))
         self.assert_request(('PUT', self.obj_path))
-        self.assertTrue(self.obj in out.out)
+        self.assertTrue(self.obj[1:] in out.out)
         expected_err = 'Warning: failed to create container %r: 403 Fake' \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
