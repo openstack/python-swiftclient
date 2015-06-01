@@ -974,8 +974,7 @@ class SwiftService(object):
             for o_down in interruptable_as_completed(o_downs):
                 yield o_down.result()
 
-    @staticmethod
-    def _download_object_job(conn, container, obj, options):
+    def _download_object_job(self, conn, container, obj, options):
         out_file = options['out_file']
         results_dict = {}
 
@@ -984,7 +983,10 @@ class SwiftService(object):
         pseudodir = False
         path = join(container, obj) if options['yes_all'] else obj
         path = path.lstrip(os_path_sep)
-        if options['skip_identical'] and out_file != '-':
+        options['skip_identical'] = (options['skip_identical'] and
+                                     out_file != '-')
+
+        if options['skip_identical']:
             filename = out_file if out_file else path
             try:
                 fp = open(filename, 'rb')
@@ -1002,10 +1004,55 @@ class SwiftService(object):
 
         try:
             start_time = time()
-            headers, body = \
-                conn.get_object(container, obj, resp_chunk_size=65536,
-                                headers=req_headers,
-                                response_dict=results_dict)
+            get_args = {'resp_chunk_size': 65536,
+                        'headers': req_headers,
+                        'response_dict': results_dict}
+            if options['skip_identical']:
+                # Assume the file is a large object; if we're wrong, the query
+                # string is ignored and the If-None-Match header will trigger
+                # the behavior we want
+                get_args['query_string'] = 'multipart-manifest=get'
+
+            try:
+                headers, body = conn.get_object(container, obj, **get_args)
+            except ClientException as e:
+                if not options['skip_identical']:
+                    raise
+                if e.http_status != 304:  # Only handling Not Modified
+                    raise
+
+                headers = results_dict['headers']
+                if 'x-object-manifest' in headers:
+                    # DLO: most likely it has more than one page worth of
+                    #      segments and we have an empty file locally
+                    body = []
+                elif config_true_value(headers.get('x-static-large-object')):
+                    # SLO: apparently we have a copy of the manifest locally?
+                    #      provide no chunking data to force a fresh download
+                    body = [b'[]']
+                else:
+                    # Normal object: let it bubble up
+                    raise
+
+            if options['skip_identical']:
+                if config_true_value(headers.get('x-static-large-object')) or \
+                        'x-object-manifest' in headers:
+                    # The request was chunked, so stitch it back together
+                    chunk_data = self._get_chunk_data(conn, container, obj,
+                                                      headers, b''.join(body))
+                else:
+                    chunk_data = None
+
+                if chunk_data is not None:
+                    if self._is_identical(chunk_data, filename):
+                        raise ClientException('Large object is identical',
+                                              http_status=304)
+
+                    # Large objects are different; start the real download
+                    del get_args['query_string']
+                    get_args['response_dict'].clear()
+                    headers, body = conn.get_object(container, obj, **get_args)
+
             headers_receipt = time()
 
             obj_body = _SwiftReader(path, body, headers)
@@ -1503,7 +1550,7 @@ class SwiftService(object):
                 results_queue.put(res)
             return res
 
-    def _get_chunk_data(self, conn, container, obj, headers):
+    def _get_chunk_data(self, conn, container, obj, headers, manifest=None):
         chunks = []
         if 'x-object-manifest' in headers:
             scontainer, sprefix = headers['x-object-manifest'].split('/', 1)
@@ -1513,10 +1560,11 @@ class SwiftService(object):
                 else:
                     raise part["error"]
         elif config_true_value(headers.get('x-static-large-object')):
-            manifest_headers, manifest_data = conn.get_object(
-                container, obj, query_string='multipart-manifest=get')
-            manifest_data = parse_api_response(manifest_headers, manifest_data)
-            for chunk in manifest_data:
+            if manifest is None:
+                headers, manifest = conn.get_object(
+                    container, obj, query_string='multipart-manifest=get')
+            manifest = parse_api_response(headers, manifest)
+            for chunk in manifest:
                 if chunk.get('sub_slo'):
                     scont, sobj = chunk['name'].lstrip('/').split('/', 1)
                     chunks.extend(self._get_chunk_data(
