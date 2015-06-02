@@ -394,7 +394,7 @@ def get_auth(auth_url, user, key, **kwargs):
     storage_url, token = None, None
     cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
-    timeout = kwargs.get('timeout', False)
+    timeout = kwargs.get('timeout', None)
     if auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
                                           user,

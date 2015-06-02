@@ -200,8 +200,6 @@ class TestHttpHelpers(MockHttpTest):
         ua = req_headers.get('user-agent', 'XXX-MISSING-XXX')
         self.assertEqual(ua, 'a-new-default')
 
-# TODO: following tests are placeholders, need more tests, better coverage
-
 
 class TestGetAuth(MockHttpTest):
 
@@ -238,6 +236,59 @@ class TestGetAuth(MockHttpTest):
         # TODO: this test is really on validating the mock and not the
         # the full plumbing into the requests's 'verify' option
         self.assertIn('invalid_certificate', str(e))
+
+    def test_auth_v1_timeout(self):
+        # this test has some overlap with
+        # TestConnection.test_timeout_passed_down but is required to check that
+        # get_auth does the right thing when it is not passed a timeout arg
+        orig_http_connection = c.http_connection
+        timeouts = []
+
+        def fake_request_handler(*a, **kw):
+            if 'timeout' in kw:
+                timeouts.append(kw['timeout'])
+            else:
+                timeouts.append(None)
+            return MockHttpResponse(
+                status=200,
+                headers={
+                    'x-auth-token': 'a_token',
+                    'x-storage-url': 'http://files.example.com/v1/AUTH_user'})
+
+        def fake_connection(*a, **kw):
+            url, conn = orig_http_connection(*a, **kw)
+            conn._request = fake_request_handler
+            return url, conn
+
+        with mock.patch('swiftclient.client.http_connection', fake_connection):
+            c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                       auth_version="1.0", timeout=42.0)
+            c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                       auth_version="1.0", timeout=None)
+            c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                       auth_version="1.0")
+
+        self.assertEqual(timeouts, [42.0, None, None])
+
+    def test_auth_v2_timeout(self):
+        # this test has some overlap with
+        # TestConnection.test_timeout_passed_down but is required to check that
+        # get_auth does the right thing when it is not passed a timeout arg
+        fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                       os_options=dict(tenant_name='tenant'),
+                       auth_version="2.0", timeout=42.0)
+            c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                       os_options=dict(tenant_name='tenant'),
+                       auth_version="2.0", timeout=None)
+            c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                       os_options=dict(tenant_name='tenant'),
+                       auth_version="2.0")
+        self.assertEqual(3, len(fake_ks.calls))
+        timeouts = [call['timeout'] for call in fake_ks.calls]
+        self.assertEqual([42.0, None, None], timeouts)
 
     def test_auth_v2_with_tenant_name(self):
         os_options = {'tenant_name': 'asdf'}
