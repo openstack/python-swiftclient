@@ -135,6 +135,37 @@ def encode_meta_headers(headers):
     return ret
 
 
+class _ObjectBody(object):
+    """
+    Readable and iterable object body response wrapper.
+    """
+
+    def __init__(self, resp, chunk_size):
+        """
+        Wrap the underlying response
+
+        :param resp: the response to wrap
+        :param chunk_size: number of bytes to return each iteration/next call
+        """
+        self.resp = resp
+        self.chunk_size = chunk_size
+
+    def read(self, length=None):
+        return self.resp.read(length)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        buf = self.resp.read(self.chunk_size)
+        if not buf:
+            raise StopIteration()
+        return buf
+
+    def __next__(self):
+        return self.next()
+
+
 class HTTPConnection(object):
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
                  ssl_compression=False, default_user_agent=None, timeout=None):
@@ -883,13 +914,7 @@ def get_object(url, token, container, name, http_conn=None,
                               http_reason=resp.reason,
                               http_response_content=body)
     if resp_chunk_size:
-
-        def _object_body():
-            buf = resp.read(resp_chunk_size)
-            while buf:
-                yield buf
-                buf = resp.read(resp_chunk_size)
-        object_body = _object_body()
+        object_body = _ObjectBody(resp, resp_chunk_size)
     else:
         object_body = resp.read()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
