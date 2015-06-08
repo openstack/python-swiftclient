@@ -1,5 +1,31 @@
-SwiftClient Web
-***************
+Welcome to the python-swiftclient Docs
+**************************************
+
+Developer Documentation
+=======================
+
+.. toctree::
+    :maxdepth: 2
+
+    apis
+
+Code-Generated Documentation
+============================
+
+.. toctree::
+    :maxdepth: 2
+
+    swiftclient
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
+License
+=======
 
     Copyright 2013 OpenStack, LLC.
 
@@ -15,18 +41,3 @@ SwiftClient Web
     See the License for the specific language governing permissions and
     limitations under the License.
 
-Code-Generated Documentation
-============================
-
-.. toctree::
-    :maxdepth: 2
-
-    swiftclient
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
