@@ -912,7 +912,7 @@ st_tempurl_options = '<method> <seconds> <path> <key>'
 st_tempurl_help = '''
 Generates a temporary URL for a Swift object.
 
-Positions arguments:
+Positional arguments:
   [method]              An HTTP method to allow for this temporary URL.
                         Usually 'GET' or 'PUT'.
   [seconds]             The amount of time in seconds the temporary URL will
