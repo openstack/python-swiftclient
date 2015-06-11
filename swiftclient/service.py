@@ -12,7 +12,9 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import unicode_literals
 import logging
+
 import os
 
 from concurrent.futures import as_completed, CancelledError, TimeoutError
@@ -41,7 +43,7 @@ from swiftclient.command_helpers import (
 )
 from swiftclient.utils import (
     config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG,
-    parse_api_response, report_traceback
+    parse_api_response, report_traceback, n_groups
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
@@ -380,6 +382,7 @@ class SwiftService(object):
             object_uu_threads=self._options['object_uu_threads'],
             container_threads=self._options['container_threads']
         )
+        self.capabilities_cache = {}  # Each instance should have its own cache
 
     def __enter__(self):
         self.thread_manager.__enter__()
@@ -2040,13 +2043,14 @@ class SwiftService(object):
                             {
                                 'yes_all': False,
                                 'leave_segments': False,
+                                'prefix': None,
                             }
 
         :returns: A generator for returning the results of the delete
                   operations. Each result yielded from the generator is either
-                  a 'delete_container', 'delete_object' or 'delete_segment'
-                  dictionary containing the results of an individual delete
-                  operation.
+                  a 'delete_container', 'delete_object', 'delete_segment', or
+                  'bulk_delete' dictionary containing the results of an
+                  individual delete operation.
 
         :raises: ClientException
         :raises: SwiftError
@@ -2056,19 +2060,24 @@ class SwiftService(object):
         else:
             options = self._options
 
-        rq = Queue()
         if container is not None:
             if objects is not None:
+                if options['prefix']:
+                    objects = [obj for obj in objects
+                               if obj.startswith(options['prefix'])]
+                rq = Queue()
                 obj_dels = {}
-                for obj in objects:
-                    obj_del = self.thread_manager.object_dd_pool.submit(
-                        self._delete_object, container, obj, options,
-                        results_queue=rq
-                    )
-                    obj_details = {'container': container, 'object': obj}
-                    obj_dels[obj_del] = obj_details
 
-                # Start a thread to watch for upload results
+                if self._should_bulk_delete(objects):
+                    for obj_slice in n_groups(
+                            objects, self._options['object_dd_threads']):
+                        self._bulk_delete(container, obj_slice, options,
+                                          obj_dels)
+                else:
+                    self._per_item_delete(container, objects, options,
+                                          obj_dels, rq)
+
+                # Start a thread to watch for delete results
                 Thread(
                     target=self._watch_futures, args=(obj_dels, rq)
                 ).start()
@@ -2091,6 +2100,8 @@ class SwiftService(object):
         else:
             if objects:
                 raise SwiftError('Objects specified without container')
+            if options['prefix']:
+                raise SwiftError('Prefix specified without container')
             if options['yes_all']:
                 cancelled = False
                 containers = []
@@ -2113,6 +2124,33 @@ class SwiftService(object):
                             if (not cancelled and options['fail_fast']
                                     and not res['success']):
                                 cancelled = True
+
+    def _should_bulk_delete(self, objects):
+        if len(objects) < 2 * self._options['object_dd_threads']:
+            # Not many objects; may as well delete one-by-one
+            return False
+
+        try:
+            cap_result = self.capabilities()
+            if not cap_result['success']:
+                # This shouldn't actually happen, but just in case we start
+                # being more nuanced about our capabilities result...
+                return False
+        except ClientException:
+            # Old swift, presumably; assume no bulk middleware
+            return False
+
+        swift_info = cap_result['capabilities']
+        return 'bulk_delete' in swift_info
+
+    def _per_item_delete(self, container, objects, options, rdict, rq):
+        for obj in objects:
+            obj_del = self.thread_manager.object_dd_pool.submit(
+                self._delete_object, container, obj, options,
+                results_queue=rq
+            )
+            obj_details = {'container': container, 'object': obj}
+            rdict[obj_del] = obj_details
 
     @staticmethod
     def _delete_segment(conn, container, obj, results_queue=None):
@@ -2242,17 +2280,19 @@ class SwiftService(object):
 
     def _delete_container(self, container, options):
         try:
-            for part in self.list(container=container):
-                if part["success"]:
-                    objs = [o['name'] for o in part['listing']]
+            for part in self.list(container=container, options=options):
+                if not part["success"]:
 
-                    o_dels = self.delete(
-                        container=container, objects=objs, options=options
-                    )
-                    for res in o_dels:
-                        yield res
-                else:
                     raise part["error"]
+
+                for res in self.delete(
+                        container=container,
+                        objects=[o['name'] for o in part['listing']],
+                        options=options):
+                    yield res
+            if options['prefix']:
+                # We're only deleting a subset of objects within the container
+                return
 
             con_del = self.thread_manager.container_pool.submit(
                 self._delete_empty_container, container
@@ -2274,9 +2314,55 @@ class SwiftService(object):
 
         yield con_del_res
 
+    # Bulk methods
+    #
+    def _bulk_delete(self, container, objects, options, rdict):
+        if objects:
+            bulk_del = self.thread_manager.object_dd_pool.submit(
+                self._bulkdelete, container, objects, options
+            )
+            bulk_details = {'container': container, 'objects': objects}
+            rdict[bulk_del] = bulk_details
+
+    @staticmethod
+    def _bulkdelete(conn, container, objects, options):
+        results_dict = {}
+        try:
+            headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'text/plain',
+            }
+            res = {'container': container, 'objects': objects}
+            objects = [quote(('/%s/%s' % (container, obj)).encode('utf-8'))
+                       for obj in objects]
+            headers, body = conn.post_account(
+                headers=headers,
+                query_string='bulk-delete',
+                data=b''.join(obj.encode('utf-8') + b'\n' for obj in objects),
+                response_dict=results_dict)
+            if body:
+                res.update({'success': True,
+                            'result': parse_api_response(headers, body)})
+            else:
+                res.update({
+                    'success': False,
+                    'error': SwiftError(
+                        'No content received on account POST. '
+                        'Is the bulk operations middleware enabled?')})
+        except Exception as e:
+            res.update({'success': False, 'error': e})
+
+        res.update({
+            'action': 'bulk_delete',
+            'attempts': conn.attempts,
+            'response_dict': results_dict
+        })
+
+        return res
+
     # Capabilities related methods
     #
-    def capabilities(self, url=None):
+    def capabilities(self, url=None, refresh_cache=False):
         """
         List the cluster capabilities.
 
@@ -2285,30 +2371,29 @@ class SwiftService(object):
         :returns: A dictionary containing the capabilities of the cluster.
 
         :raises: ClientException
-        :raises: SwiftError
         """
+        if not refresh_cache and url in self.capabilities_cache:
+            return self.capabilities_cache[url]
+
         res = {
-            'action': 'capabilities'
+            'action': 'capabilities',
+            'timestamp': time(),
         }
 
-        try:
-            cap = self.thread_manager.container_pool.submit(
-                self._get_capabilities, url
-            )
-            capabilities = get_future_result(cap)
+        cap = self.thread_manager.container_pool.submit(
+            self._get_capabilities, url
+        )
+        capabilities = get_future_result(cap)
+        res.update({
+            'success': True,
+            'capabilities': capabilities
+        })
+        if url is not None:
             res.update({
-                'success': True,
-                'capabilities': capabilities
+                'url': url
             })
-            if url is not None:
-                res.update({
-                    'url': url
-                })
-        except ClientException as err:
-            if err.http_status != 404:
-                raise err
-            raise SwiftError('Account not found', exc=err)
 
+        self.capabilities_cache[url] = res
         return res
 
     @staticmethod

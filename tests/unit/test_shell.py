@@ -693,25 +693,147 @@ class TestShell(testtools.TestCase):
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
 
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_account(self, connection):
         connection.return_value.get_account.side_effect = [
-            [None, [{'name': 'container'}]],
+            [None, [{'name': 'container'}, {'name': 'container2'}]],
+            [None, [{'name': 'empty_container'}]],
             [None, []],
         ]
         connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'}]],
+            [None, []],
             [None, [{'name': 'object'}]],
+            [None, []],
             [None, []],
         ]
         connection.return_value.attempts = 0
         argv = ["", "delete", "--all"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
-        connection.return_value.delete_container.assert_called_with(
-            'container', response_dict={})
-        connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None, response_dict={})
+        self.assertEqual(
+            connection.return_value.delete_object.mock_calls, [
+                mock.call('container', 'object', query_string=None,
+                          response_dict={}),
+                mock.call('container', 'obj\xe9ct2', query_string=None,
+                          response_dict={}),
+                mock.call('container2', 'object', query_string=None,
+                          response_dict={})])
+        self.assertEqual(
+            connection.return_value.delete_container.mock_calls, [
+                mock.call('container', response_dict={}),
+                mock.call('container2', response_dict={}),
+                mock.call('empty_container', response_dict={})])
 
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: True)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_bulk_account(self, connection):
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container'}, {'name': 'container2'}]],
+            [None, [{'name': 'empty_container'}]],
+            [None, []],
+        ]
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'},
+                    {'name': 'object3'}]],
+            [None, []],
+            [None, [{'name': 'object'}]],
+            [None, []],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "--all", "--object-threads", "2"]
+        connection.return_value.post_account.return_value = {}, (
+            b'{"Number Not Found": 0, "Response Status": "200 OK", '
+            b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
+        swiftclient.shell.main(argv)
+        self.assertEqual(
+            connection.return_value.post_account.mock_calls, [
+                mock.call(query_string='bulk-delete',
+                          data=b'/container/object\n/container/obj%C3%A9ct2\n',
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={}),
+                mock.call(query_string='bulk-delete',
+                          data=b'/container/object3\n',
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={}),
+                mock.call(query_string='bulk-delete',
+                          data=b'/container2/object\n',
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={})])
+        self.assertEqual(
+            connection.return_value.delete_container.mock_calls, [
+                mock.call('container', response_dict={}),
+                mock.call('container2', response_dict={}),
+                mock.call('empty_container', response_dict={})])
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_bulk_account_with_capabilities(self, connection):
+        connection.return_value.get_capabilities.return_value = {
+            'bulk_delete': {
+                'max_deletes_per_request': 10000,
+                'max_failed_deletes': 1000,
+            },
+        }
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container'}]],
+            [None, [{'name': 'container2'}]],
+            [None, [{'name': 'empty_container'}]],
+            [None, []],
+        ]
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'},
+                    {'name': 'z_object'}, {'name': 'z_obj\xe9ct2'}]],
+            [None, []],
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'},
+                    {'name': 'z_object'}, {'name': 'z_obj\xe9ct2'}]],
+            [None, []],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "--all", "--object-threads", "1"]
+        connection.return_value.post_account.return_value = {}, (
+            b'{"Number Not Found": 0, "Response Status": "200 OK", '
+            b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
+        swiftclient.shell.main(argv)
+        self.assertEqual(
+            connection.return_value.post_account.mock_calls, [
+                mock.call(query_string='bulk-delete',
+                          data=b''.join([
+                              b'/container/object\n',
+                              b'/container/obj%C3%A9ct2\n',
+                              b'/container/z_object\n',
+                              b'/container/z_obj%C3%A9ct2\n'
+                          ]),
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={}),
+                mock.call(query_string='bulk-delete',
+                          data=b''.join([
+                              b'/container2/object\n',
+                              b'/container2/obj%C3%A9ct2\n',
+                              b'/container2/z_object\n',
+                              b'/container2/z_obj%C3%A9ct2\n'
+                          ]),
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={})])
+        self.assertEqual(
+            connection.return_value.delete_container.mock_calls, [
+                mock.call('container', response_dict={}),
+                mock.call('container2', response_dict={}),
+                mock.call('empty_container', response_dict={})])
+        self.assertEqual(connection.return_value.get_capabilities.mock_calls,
+                         [mock.call(None)])  # only one /info request
+
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_container(self, connection):
         connection.return_value.get_container.side_effect = [
@@ -726,6 +848,28 @@ class TestShell(testtools.TestCase):
             'container', response_dict={})
         connection.return_value.delete_object.assert_called_with(
             'container', 'object', query_string=None, response_dict={})
+
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: True)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_bulk_container(self, connection):
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}]],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "container"]
+        connection.return_value.post_account.return_value = {}, (
+            b'{"Number Not Found": 0, "Response Status": "200 OK", '
+            b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
+        swiftclient.shell.main(argv)
+        connection.return_value.post_account.assert_called_with(
+            query_string='bulk-delete', data=b'/container/object\n',
+            headers={'Content-Type': 'text/plain',
+                     'Accept': 'application/json'},
+            response_dict={})
+        connection.return_value.delete_container.assert_called_with(
+            'container', response_dict={})
 
     def test_delete_verbose_output_utf8(self):
         container = 't\u00e9st_c'
@@ -759,14 +903,32 @@ class TestShell(testtools.TestCase):
                 self.assertTrue(out.out.find(
                     't\u00e9st_c [after 2 attempts]') >= 0, out)
 
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
     @mock.patch('swiftclient.service.Connection')
-    def test_delete_object(self, connection):
+    def test_delete_per_object(self, connection):
         argv = ["", "delete", "container", "object"]
         connection.return_value.head_object.return_value = {}
         connection.return_value.attempts = 0
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_called_with(
             'container', 'object', query_string=None, response_dict={})
+
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: True)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_bulk_object(self, connection):
+        argv = ["", "delete", "container", "object"]
+        connection.return_value.post_account.return_value = {}, (
+            b'{"Number Not Found": 0, "Response Status": "200 OK", '
+            b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
+        connection.return_value.attempts = 0
+        swiftclient.shell.main(argv)
+        connection.return_value.post_account.assert_called_with(
+            query_string='bulk-delete', data=b'/container/object\n',
+            headers={'Content-Type': 'text/plain',
+                     'Accept': 'application/json'},
+            response_dict={})
 
     def test_delete_verbose_output(self):
         del_obj_res = {'success': True, 'response_dict': {}, 'attempts': 2,

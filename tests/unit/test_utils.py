@@ -290,3 +290,31 @@ class TestLengthWrapper(testtools.TestCase):
                 self.assertEqual(segment_length, len(read_data))
                 self.assertEqual(s, read_data)
                 self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+
+
+class TestGroupers(testtools.TestCase):
+    def test_n_at_a_time(self):
+        result = list(u.n_at_a_time(range(100), 9))
+        self.assertEqual([9] * 11 + [1], list(map(len, result)))
+
+        result = list(u.n_at_a_time(range(100), 10))
+        self.assertEqual([10] * 10, list(map(len, result)))
+
+        result = list(u.n_at_a_time(range(100), 11))
+        self.assertEqual([11] * 9 + [1], list(map(len, result)))
+
+        result = list(u.n_at_a_time(range(100), 12))
+        self.assertEqual([12] * 8 + [4], list(map(len, result)))
+
+    def test_n_groups(self):
+        result = list(u.n_groups(range(100), 9))
+        self.assertEqual([12] * 8 + [4], list(map(len, result)))
+
+        result = list(u.n_groups(range(100), 10))
+        self.assertEqual([10] * 10, list(map(len, result)))
+
+        result = list(u.n_groups(range(100), 11))
+        self.assertEqual([10] * 10, list(map(len, result)))
+
+        result = list(u.n_groups(range(100), 12))
+        self.assertEqual([9] * 11 + [1], list(map(len, result)))
