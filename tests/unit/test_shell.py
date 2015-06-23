@@ -897,6 +897,29 @@ class TestShell(unittest.TestCase):
                     swiftclient.shell.main(argv)
                 self.assertEquals(output.err, "Invalid segment size\n")
 
+    def test_negative_upload_segment_size(self):
+        with CaptureOutput() as output:
+            with ExpectedException(SystemExit):
+                argv = ["", "upload", "-S", "-40", "container", "object"]
+                swiftclient.shell.main(argv)
+            self.assertEquals(output.err, "segment-size should be positive\n")
+            output.clear()
+            with ExpectedException(SystemExit):
+                argv = ["", "upload", "-S", "-40K", "container", "object"]
+                swiftclient.shell.main(argv)
+            self.assertEquals(output.err, "segment-size should be positive\n")
+            output.clear()
+            with ExpectedException(SystemExit):
+                argv = ["", "upload", "-S", "-40M", "container", "object"]
+                swiftclient.shell.main(argv)
+            self.assertEquals(output.err, "segment-size should be positive\n")
+            output.clear()
+            with ExpectedException(SystemExit):
+                argv = ["", "upload", "-S", "-40G", "container", "object"]
+                swiftclient.shell.main(argv)
+            self.assertEquals(output.err, "segment-size should be positive\n")
+            output.clear()
+
 
 class TestSubcommandHelp(unittest.TestCase):
 
