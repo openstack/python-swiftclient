@@ -102,7 +102,7 @@ class OutputManager(object):
     def _print(self, item, stream=None):
         if stream is None:
             stream = self.print_stream
-        if six.PY2 and isinstance(item, unicode):
+        if six.PY2 and isinstance(item, six.text_type):
             item = item.encode('utf8')
         print(item, file=stream)
 
