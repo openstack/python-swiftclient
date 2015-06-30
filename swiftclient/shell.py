@@ -913,13 +913,13 @@ st_tempurl_help = '''
 Generates a temporary URL for a Swift object.
 
 Positional arguments:
-  [method]              An HTTP method to allow for this temporary URL.
+  <method>              An HTTP method to allow for this temporary URL.
                         Usually 'GET' or 'PUT'.
-  [seconds]             The amount of time in seconds the temporary URL will
+  <seconds>             The amount of time in seconds the temporary URL will
                         be valid for.
-  [path]                The full path to the Swift object. Example:
+  <path>                The full path to the Swift object. Example:
                         /v1/AUTH_account/c/o.
-  [key]                 The secret temporary URL key set on the Swift cluster.
+  <key>                 The secret temporary URL key set on the Swift cluster.
                         To set a key, run \'swift post -m
                         "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"\'
 '''.strip('\n')
