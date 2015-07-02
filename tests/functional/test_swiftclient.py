@@ -44,6 +44,7 @@ class TestFunctional(testtools.TestCase):
                                      '/etc/swift/test.conf')
         config = configparser.SafeConfigParser({'auth_version': '1'})
         config.read(config_file)
+        self.config = config
         if config.has_section('func_test'):
             auth_host = config.get('func_test', 'auth_host')
             auth_port = config.getint('func_test', 'auth_port')
@@ -70,15 +71,20 @@ class TestFunctional(testtools.TestCase):
         else:
             self.skip_tests = True
 
+    def _get_connection(self):
+        """
+        Subclasses may override to use different connection setup
+        """
+        return swiftclient.Connection(
+            self.auth_url, self.account_username, self.password,
+            auth_version=self.auth_version)
+
     def setUp(self):
         super(TestFunctional, self).setUp()
         if self.skip_tests:
             self.skipTest('SKIPPING FUNCTIONAL TESTS DUE TO NO CONFIG')
 
-        self.conn = swiftclient.Connection(
-            self.auth_url, self.account_username, self.password,
-            auth_version=self.auth_version)
-
+        self.conn = self._get_connection()
         self.conn.put_container(self.containername)
         self.conn.put_container(self.containername_2)
         self.conn.put_object(
@@ -301,3 +307,58 @@ class TestFunctional(testtools.TestCase):
     def test_get_capabilities(self):
         resp = self.conn.get_capabilities()
         self.assertTrue(resp.get('swift'))
+
+
+class TestUsingKeystone(TestFunctional):
+    """
+    Repeat tests using os_options parameter to Connection.
+    """
+
+    def _get_connection(self):
+        account = username = password = None
+        if self.auth_version not in ('2', '3'):
+            self.skipTest('SKIPPING KEYSTONE-SPECIFIC FUNCTIONAL TESTS')
+        try:
+            account = self.config.get('func_test', 'account')
+            username = self.config.get('func_test', 'username')
+            password = self.config.get('func_test', 'password')
+        except Exception:
+            self.skipTest('SKIPPING KEYSTONE-SPECIFIC FUNCTIONAL TESTS' +
+                          ' - NO CONFIG')
+        os_options = {'tenant_name': account}
+        return swiftclient.Connection(
+            self.auth_url, username, password, auth_version=self.auth_version,
+            os_options=os_options)
+
+    def setUp(self):
+        super(TestUsingKeystone, self).setUp()
+
+
+class TestUsingKeystoneV3(TestFunctional):
+    """
+    Repeat tests using a keystone user with domain specified.
+    """
+
+    def _get_connection(self):
+        account = username = password = project_domain = user_domain = None
+        if self.auth_version != '3':
+            self.skipTest('SKIPPING KEYSTONE-V3-SPECIFIC FUNCTIONAL TESTS')
+        try:
+            account = self.config.get('func_test', 'account4')
+            username = self.config.get('func_test', 'username4')
+            user_domain = self.config.get('func_test', 'domain4')
+            project_domain = self.config.get('func_test', 'domain4')
+            password = self.config.get('func_test', 'password4')
+        except Exception:
+            self.skipTest('SKIPPING KEYSTONE-V3-SPECIFIC FUNCTIONAL TESTS' +
+                          ' - NO CONFIG')
+
+        os_options = {'project_name': account,
+                      'project_domain_name': project_domain,
+                      'user_domain_name': user_domain}
+        return swiftclient.Connection(self.auth_url, username, password,
+                                      auth_version=self.auth_version,
+                                      os_options=os_options)
+
+    def setUp(self):
+        super(TestUsingKeystoneV3, self).setUp()
