@@ -1815,19 +1815,19 @@ class SwiftService(object):
 
             if old_manifest or old_slo_manifest_paths:
                 drs = []
+                delobjsmap = {}
                 if old_manifest:
                     scontainer, sprefix = old_manifest.split('/', 1)
                     scontainer = unquote(scontainer)
                     sprefix = unquote(sprefix).rstrip('/') + '/'
-                    delobjs = []
-                    for delobj in conn.get_container(scontainer,
-                                                     prefix=sprefix)[1]:
-                        delobjs.append(delobj['name'])
-                    for dr in self.delete(container=scontainer,
-                                          objects=delobjs):
-                        drs.append(dr)
+                    delobjsmap[scontainer] = []
+                    for part in self.list(scontainer, {'prefix': sprefix}):
+                        if not part["success"]:
+                            raise part["error"]
+                        delobjsmap[scontainer].extend(
+                            seg['name'] for seg in part['listing'])
+
                 if old_slo_manifest_paths:
-                    delobjsmap = {}
                     for seg_to_delete in old_slo_manifest_paths:
                         if seg_to_delete in new_slo_manifest_paths:
                             continue
@@ -1836,10 +1836,18 @@ class SwiftService(object):
                         delobjs_cont = delobjsmap.get(scont, [])
                         delobjs_cont.append(sobj)
                         delobjsmap[scont] = delobjs_cont
-                    for (dscont, dsobjs) in delobjsmap.items():
-                        for dr in self.delete(container=dscont,
-                                              objects=dsobjs):
-                            drs.append(dr)
+
+                del_segs = []
+                for dscont, dsobjs in delobjsmap.items():
+                    for dsobj in dsobjs:
+                        del_seg = self.thread_manager.segment_pool.submit(
+                            self._delete_segment, dscont, dsobj,
+                            results_queue=results_queue
+                        )
+                        del_segs.append(del_seg)
+
+                for del_seg in interruptable_as_completed(del_segs):
+                    drs.append(del_seg.result())
                 res['segment_delete_results'] = drs
 
             # return dict for printing
