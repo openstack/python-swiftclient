@@ -763,6 +763,9 @@ def st_upload(parser, args, output_manager):
                 return
 
             options.segment_size = str((1024 ** size_mod) * multiplier)
+        if int(options.segment_size) <= 0:
+            output_manager.error("segment-size should be positive")
+            return
 
     _opts = vars(options)
     _opts['object_uu_threads'] = options.object_threads
