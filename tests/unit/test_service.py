@@ -21,12 +21,16 @@ from hashlib import md5
 from mock import Mock, PropertyMock
 from six.moves.queue import Queue, Empty as QueueEmptyError
 from six import BytesIO
-
 import swiftclient
 import swiftclient.utils as utils
-from swiftclient.client import Connection
-from swiftclient.service import SwiftService, SwiftError
-
+from swiftclient.client import Connection, ClientException
+from swiftclient.service import SwiftService, SwiftError,\
+    SwiftUploadObject
+import six
+if six.PY2:
+    import __builtin__ as builtins
+else:
+    import builtins
 
 clean_os_environ = {}
 environ_prefixes = ('ST_', 'OS_')
@@ -550,6 +554,39 @@ class TestService(testtools.TestCase):
             except SwiftError as exc:
                 self.assertEqual('Segment size should be an integer value',
                                  exc.value)
+
+    @mock.patch('swiftclient.service.stat')
+    @mock.patch('swiftclient.service.getmtime', return_value=1.0)
+    @mock.patch('swiftclient.service.getsize', return_value=4)
+    @mock.patch.object(builtins, 'open', return_value=six.StringIO('asdf'))
+    def test_upload_with_relative_path(self, *args, **kwargs):
+        service = SwiftService({})
+        objects = [{'path': "./test",
+                    'strt_indx': 2},
+                   {'path': os.path.join(os.getcwd(), "test"),
+                    'strt_indx': 1},
+                   {'path': ".\\test",
+                    'strt_indx': 2}]
+        for obj in objects:
+            with mock.patch('swiftclient.service.Connection') as mock_conn:
+                mock_conn.return_value.head_object.side_effect = \
+                    ClientException('Not Found', http_status=404)
+                mock_conn.return_value.put_object.return_value =\
+                    'd41d8cd98f00b204e9800998ecf8427e'
+                resp_iter = service.upload(
+                    'c', [SwiftUploadObject(obj['path'])])
+                responses = [x for x in resp_iter]
+                for resp in responses:
+                    self.assertTrue(resp['success'])
+                self.assertEqual(2, len(responses))
+                create_container_resp, upload_obj_resp = responses
+                self.assertEqual(create_container_resp['action'],
+                                 'create_container')
+                self.assertEqual(upload_obj_resp['action'],
+                                 'upload_object')
+                self.assertEqual(upload_obj_resp['object'],
+                                 obj['path'][obj['strt_indx']:])
+                self.assertEqual(upload_obj_resp['path'], obj['path'])
 
 
 class TestServiceUpload(testtools.TestCase):

@@ -1599,6 +1599,10 @@ class SwiftService(object):
 
     def _upload_object_job(self, conn, container, source, obj, options,
                            results_queue=None):
+        if obj.startswith('./') or obj.startswith('.\\'):
+            obj = obj[2:]
+        if obj.startswith('/'):
+            obj = obj[1:]
         res = {
             'action': 'upload_object',
             'container': container,
@@ -1611,10 +1615,6 @@ class SwiftService(object):
             path = source
         res['path'] = path
         try:
-            if obj.startswith('./') or obj.startswith('.\\'):
-                obj = obj[2:]
-            if obj.startswith('/'):
-                obj = obj[1:]
             if path is not None:
                 put_headers = {'x-object-meta-mtime': "%f" % getmtime(path)}
             else:
