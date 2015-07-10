@@ -2,7 +2,8 @@ hacking>=0.10.0,<0.11
 
 coverage>=3.6
 discover
-mock>=1.0
+mock>=1.0;python_version!='2.6'
+mock==1.0.1;python_version=='2.6'
 oslosphinx
 python-keystoneclient>=0.7.0
 sphinx>=1.1.2,<1.2
