@@ -1029,6 +1029,17 @@ class TestServiceUpload(testtools.TestCase):
 
 class TestServiceDownload(testtools.TestCase):
 
+    def setUp(self):
+        super(TestServiceDownload, self).setUp()
+        self.opts = swiftclient.service._default_local_options.copy()
+        self.opts['no_download'] = True
+        self.obj_content = b'c' * 10
+        self.obj_etag = md5(self.obj_content).hexdigest()
+        self.obj_len = len(self.obj_content)
+
+    def _readbody(self):
+        yield self.obj_content
+
     def _assertDictEqual(self, a, b, m=None):
         # assertDictEqual is not available in py2.6 so use a shallow check
         # instead
@@ -1044,6 +1055,103 @@ class TestServiceDownload(testtools.TestCase):
             for k, v in a.items():
                 self.assertIn(k, b, m)
                 self.assertEqual(b[k], v, m)
+
+    def test_download(self):
+        service = SwiftService()
+        with mock.patch('swiftclient.service.Connection') as mock_conn:
+            header = {'content-length': self.obj_len,
+                      'etag': self.obj_etag}
+            mock_conn.get_object.return_value = header, self._readbody()
+
+            resp = service._download_object_job(mock_conn,
+                                                'c',
+                                                'test',
+                                                self.opts)
+
+        self.assertTrue(resp['success'])
+        self.assertEqual(resp['action'], 'download_object')
+        self.assertEqual(resp['object'], 'test')
+        self.assertEqual(resp['path'], 'test')
+
+    def test_download_with_output_dir(self):
+        service = SwiftService()
+        with mock.patch('swiftclient.service.Connection') as mock_conn:
+            header = {'content-length': self.obj_len,
+                      'etag': self.obj_etag}
+            mock_conn.get_object.return_value = header, self._readbody()
+
+            options = self.opts.copy()
+            options['out_directory'] = 'temp_dir'
+            resp = service._download_object_job(mock_conn,
+                                                'c',
+                                                'example/test',
+                                                options)
+
+        self.assertTrue(resp['success'])
+        self.assertEqual(resp['action'], 'download_object')
+        self.assertEqual(resp['object'], 'example/test')
+        self.assertEqual(resp['path'], 'temp_dir/example/test')
+
+    def test_download_with_remove_prefix(self):
+        service = SwiftService()
+        with mock.patch('swiftclient.service.Connection') as mock_conn:
+            header = {'content-length': self.obj_len,
+                      'etag': self.obj_etag}
+            mock_conn.get_object.return_value = header, self._readbody()
+
+            options = self.opts.copy()
+            options['prefix'] = 'example/'
+            options['remove_prefix'] = True
+            resp = service._download_object_job(mock_conn,
+                                                'c',
+                                                'example/test',
+                                                options)
+
+        self.assertTrue(resp['success'])
+        self.assertEqual(resp['action'], 'download_object')
+        self.assertEqual(resp['object'], 'example/test')
+        self.assertEqual(resp['path'], 'test')
+
+    def test_download_with_remove_prefix_and_remove_slashes(self):
+        service = SwiftService()
+        with mock.patch('swiftclient.service.Connection') as mock_conn:
+            header = {'content-length': self.obj_len,
+                      'etag': self.obj_etag}
+            mock_conn.get_object.return_value = header, self._readbody()
+
+            options = self.opts.copy()
+            options['prefix'] = 'example'
+            options['remove_prefix'] = True
+            resp = service._download_object_job(mock_conn,
+                                                'c',
+                                                'example/test',
+                                                options)
+
+        self.assertTrue(resp['success'])
+        self.assertEqual(resp['action'], 'download_object')
+        self.assertEqual(resp['object'], 'example/test')
+        self.assertEqual(resp['path'], 'test')
+
+    def test_download_with_output_dir_and_remove_prefix(self):
+        service = SwiftService()
+        with mock.patch('swiftclient.service.Connection') as mock_conn:
+            header = {'content-length': self.obj_len,
+                      'etag': self.obj_etag}
+            mock_conn.get_object.return_value = header, self._readbody()
+
+            options = self.opts.copy()
+            options['prefix'] = 'example'
+            options['out_directory'] = 'new/dir'
+            options['remove_prefix'] = True
+            resp = service._download_object_job(mock_conn,
+                                                'c',
+                                                'example/test',
+                                                options)
+
+        self.assertTrue(resp['success'])
+        self.assertEqual(resp['action'], 'download_object')
+        self.assertEqual(resp['object'], 'example/test')
+        self.assertEqual(resp['path'], 'new/dir/test')
 
     def test_download_object_job_skip_identical(self):
         with tempfile.NamedTemporaryFile() as f:
@@ -1077,6 +1185,9 @@ class TestServiceDownload(testtools.TestCase):
                                        container='test_c',
                                        obj='test_o',
                                        options={'out_file': f.name,
+                                                'out_directory': None,
+                                                'prefix': None,
+                                                'remove_prefix': False,
                                                 'header': {},
                                                 'yes_all': False,
                                                 'skip_identical': True})
@@ -1129,6 +1240,9 @@ class TestServiceDownload(testtools.TestCase):
                                            container='test_c',
                                            obj='test_o',
                                            options={'out_file': f.name,
+                                                    'out_directory': None,
+                                                    'prefix': None,
+                                                    'remove_prefix': False,
                                                     'header': {},
                                                     'yes_all': False,
                                                     'skip_identical': True})
@@ -1207,6 +1321,9 @@ class TestServiceDownload(testtools.TestCase):
                                            container='test_c',
                                            obj='test_o',
                                            options={'out_file': f.name,
+                                                    'out_directory': None,
+                                                    'prefix': None,
+                                                    'remove_prefix': False,
                                                     'header': {},
                                                     'yes_all': False,
                                                     'skip_identical': True})
@@ -1268,6 +1385,9 @@ class TestServiceDownload(testtools.TestCase):
                 'auth_end_time': mock_conn.auth_end_time,
             }
 
+            options = self.opts.copy()
+            options['out_file'] = f.name
+            options['skip_identical'] = True
             s = SwiftService()
             with mock.patch('swiftclient.service.time', side_effect=range(3)):
                 with mock.patch('swiftclient.service.get_conn',
@@ -1276,11 +1396,7 @@ class TestServiceDownload(testtools.TestCase):
                         conn=mock_conn,
                         container='test_c',
                         obj='test_o',
-                        options={'out_file': f.name,
-                                 'header': {},
-                                 'no_download': True,
-                                 'yes_all': False,
-                                 'skip_identical': True})
+                        options=options)
 
             self._assertDictEqual(r, expected_r)
 
@@ -1360,6 +1476,9 @@ class TestServiceDownload(testtools.TestCase):
                 'auth_end_time': mock_conn.auth_end_time,
             }
 
+            options = self.opts.copy()
+            options['out_file'] = f.name
+            options['skip_identical'] = True
             s = SwiftService()
             with mock.patch('swiftclient.service.time', side_effect=range(3)):
                 with mock.patch('swiftclient.service.get_conn',
@@ -1368,11 +1487,7 @@ class TestServiceDownload(testtools.TestCase):
                         conn=mock_conn,
                         container='test_c',
                         obj='test_o',
-                        options={'out_file': f.name,
-                                 'header': {},
-                                 'no_download': True,
-                                 'yes_all': False,
-                                 'skip_identical': True})
+                        options=options)
 
             self._assertDictEqual(r, expected_r)
             self.assertEqual(mock_conn.get_object.mock_calls, [

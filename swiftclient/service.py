@@ -12,6 +12,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from concurrent.futures import as_completed, CancelledError, TimeoutError
 from copy import deepcopy
 from errno import EEXIST, ENOENT
@@ -162,6 +163,8 @@ _default_local_options = {
     'read_acl': None,
     'write_acl': None,
     'out_file': None,
+    'out_directory': None,
+    'remove_prefix': False,
     'no_download': False,
     'long': False,
     'totals': False,
@@ -889,7 +892,9 @@ class SwiftService(object):
                                 'no_download': False,
                                 'header': [],
                                 'skip_identical': False,
-                                'out_file': None
+                                'out_directory': None,
+                                'out_file': None,
+                                'remove_prefix': False,
                             }
 
         :returns: A generator for returning the results of the download
@@ -985,6 +990,12 @@ class SwiftService(object):
         path = path.lstrip(os_path_sep)
         options['skip_identical'] = (options['skip_identical'] and
                                      out_file != '-')
+
+        if options['prefix'] and options['remove_prefix']:
+            path = path[len(options['prefix']):].lstrip('/')
+
+        if options['out_directory']:
+            path = os.path.join(options['out_directory'], path)
 
         if options['skip_identical']:
             filename = out_file if out_file else path
