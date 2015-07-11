@@ -31,14 +31,19 @@ from swiftclient.utils import config_true_value, generate_temp_url, prt_bytes
 from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
-from swiftclient.service import SwiftService, SwiftError, SwiftUploadObject
+from swiftclient.service import SwiftService, SwiftError, \
+    SwiftUploadObject, get_conn
 from swiftclient.command_helpers import print_account_stats, \
     print_container_stats, print_object_stats
 
+try:
+    from shlex import quote as sh_quote
+except ImportError:
+    from pipes import quote as sh_quote
 
 BASENAME = 'swift'
-commands = ('delete', 'download', 'list', 'post',
-            'stat', 'upload', 'capabilities', 'info', 'tempurl')
+commands = ('delete', 'download', 'list', 'post', 'stat', 'upload',
+            'capabilities', 'info', 'tempurl', 'auth')
 
 
 def immediate_exit(signum, frame):
@@ -930,6 +935,46 @@ def st_capabilities(parser, args, output_manager):
 
 st_info = st_capabilities
 
+st_auth_help = '''
+Display auth related authentication variables in shell friendly format.
+
+  Commands to run to export storage url and auth token into
+  OS_STORAGE_URL and OS_AUTH_TOKEN:
+
+      swift auth
+
+  Commands to append to a runcom file (e.g. ~/.bashrc, /etc/profile) for
+  automatic authentication:
+
+      swift auth -v -U test:tester -K testing \
+          -A http://localhost:8080/auth/v1.0
+
+'''.strip('\n')
+
+
+def st_auth(parser, args, thread_manager):
+    (options, args) = parse_args(parser, args)
+    _opts = vars(options)
+    if options.verbose > 1:
+        if options.auth_version in ('1', '1.0'):
+            print('export ST_AUTH=%s' % sh_quote(options.auth))
+            print('export ST_USER=%s' % sh_quote(options.user))
+            print('export ST_KEY=%s' % sh_quote(options.key))
+        else:
+            print('export OS_IDENTITY_API_VERSION=%s' % sh_quote(
+                options.auth_version))
+            print('export OS_AUTH_VERSION=%s' % sh_quote(options.auth_version))
+            print('export OS_AUTH_URL=%s' % sh_quote(options.auth))
+            for k, v in sorted(_opts.items()):
+                if v and k.startswith('os_') and \
+                        k not in ('os_auth_url', 'os_options'):
+                    print('export %s=%s' % (k.upper(), sh_quote(v)))
+    else:
+        conn = get_conn(_opts)
+        url, token = conn.get_auth()
+        print('export OS_STORAGE_URL=%s' % sh_quote(url))
+        print('export OS_AUTH_TOKEN=%s' % sh_quote(token))
+
 
 st_tempurl_options = '<method> <seconds> <path> <key>'
 
@@ -1098,7 +1143,8 @@ Positional arguments:
                          or object.
     upload               Uploads files or directories to the given container.
     capabilities         List cluster capabilities.
-    tempurl              Create a temporary URL
+    tempurl              Create a temporary URL.
+    auth                 Display auth related environment variables.
 
 Examples:
   %%prog download --help
