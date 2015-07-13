@@ -104,6 +104,14 @@ is not provided the storage-url retrieved after authentication is used as
 proxy-url.
 .RE
 
+\fBtempurl\fR method seconds path key
+.RS 4
+Generates a temporary URL allowing unauthenticated access to the Swift object at
+the given path, using the given HTTP method, for the given number of seconds,
+using the given TempURL key. \fBExample\fR: tempurl GET 86400
+/v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key
+.RE
+
 .SH OPTIONS
 .PD 0
 .IP "--version              Show program's version number and exit"
