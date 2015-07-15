@@ -1,0 +1,418 @@
+2.5.1
+-----
+
+* Several CLI options have learned short options. The usage strings have
+  been updated to reflect this.
+
+* CLI arguments are now always decoded as UTF-8.
+
+* Stop Connection class modifying os_options parameter.
+
+* Reduce memory usage for download/delete.
+
+* Added --no-shuffle option to the CLI download command.
+
+* The swift service API now logs and reports the traceback
+  on failed operations.
+
+* Increase httplib._MAXHEADERS to 256.
+
+* Add minimal working service token support to client.py.
+
+* Various other minor bug fixes and improvements.
+
+
+2.5.0
+-----
+
+* The CLI learned an "auth" subcommand which returns bash environment
+  snippets for auth credentials.
+
+* The CLI --version option is now more explicit by calling itself
+  "python-swiftclient" rather than the name of the binary.
+
+* Now validates the checksum of each chunk of a large object as it is
+  uploaded.
+
+* Fixes uploading an object with a relative path.
+
+* Added the ability to download objects to a particular folder.
+
+* Now correctly removes all old segments of an object when replacing a
+  Dynamic Large Object (DLO).
+
+* The --skip-identical option now works properly when downloading
+  large objects.
+
+* The client.get_object() response learned a .read([length]) method.
+
+* Fixed an issue where an intermediate caching/proxy service could cause
+  object content to be improperly decoded.
+
+* Added a timeout parameter to HTTPConnection objects for socket-level
+  read timeouts.
+
+* Removed a dependency on simplejson.
+
+* Various other minor bug fixes and improvements.
+
+2.4.0
+-----
+
+* Mention --segment-size option after 413 response
+* Add improvements to MD5 validation
+* Unindent a chunk of st_list
+* Release connection after consuming the content
+* Verify MD5 of uploaded objects
+* Fix crash with -l, -d /, and pseudo folders
+* add functional tox target
+* Fix crash when stat'ing objects with non-ascii names
+* Add help message for "<subcommand> --help"
+* Fix missing ca-certificate parameter to get_auth
+* Fix deleting SLO segments on overwrite
+* This patch fixes downloading files to stdout
+* Fix environment sanitization for TestServiceUtils
+* Fix cross account upload using --os-storage-url
+* Change tests to use CaptureOutput class
+* Print info message about incorrect --totals usage when neither -l nor --lh is provided. Added test coverage for --totals
+* Make preauth params work
+* Fix misplaced check for None in SwiftUploadObject
+* Fix misnamed dictionary key
+* Change tests to use new CaptureOutput class
+* Workflow documentation is now in infra-manual
+* Show warning when auth_version >= 2 and keystoneclient is missing
+* Capture test output better
+* Suppress 'No handlers...' message from keystoneclient logger
+* Add unit tests for _encode_meta_headers
+* Fix misnamed variable in SwiftReader
+* Check that content_type header exists before using
+* Adds user friendly message when --segment-size is a non-integer
+* Make swift post output an error message when failing
+* Replaces Stacktraces with useful error messages
+* Fix KeyError raised from client Connection
+* Fix race in shell when testing for errors to raise SysExit
+* Fix race between container create jobs during upload
+* Fix the info command with --insecure
+* Allow segment size to be specified in a human readable way
+* Use skipTest from testtools instead of inherited Exception
+* Add tests for account listing using --lh switch
+* Do not crash with "swift list --lh" for Ceph RadosGW
+
+2.3.1
+-----
+
+* Remove a debugging print statement
+* Fix unit tests failing when OS_ env vars are set
+* Fix bug with some OS options not being passed to client
+* Add per policy container count to account stat output
+* Stop creating extraneous directories
+
+2.3.0
+-----
+
+* Work toward Python 3.4 support and testing
+* Add importable SwiftService incorporating shell.py logic
+* Adds console script entry point
+* Do not create an empty directory 'pseudo/'
+* fixed unit tests when env vars are set
+* Fix crash when downloading a pseudo-directory
+* Clean up raw policy stats in account stat
+* Update theme for docs
+* Add a tox job for generating docs
+* Add keystone v3 auth support
+
+2.2.0
+-----
+
+* Fix context sensitive help for info and tempurl
+* Allow to specify storage policy when uploading objects
+* Adding Swift Temporary URL support
+* Add CONTRIBUTING.md
+* Add context sensitive help
+* Relax requirement for tenant_name in get_auth()
+* replace string format arguments with function parameters
+* Removed now unnecesary workaround for PyPy
+* Use Emacs-friendly coding line
+* Remove extra double quote from docstring
+* Fix wrong assertions in unit tests
+* fixed several pep8 issues
+
+2.1.0
+-----
+
+* Fix Python3 bugs
+* Remove testtools.main() call from tests
+* Move test_shell.py under tests/unit/
+* Mark swiftclient as being a universal wheel
+* change assert_ to assertTrue
+* change assertEquals to assertEqual
+* Provide a link to the documentation to the README
+* fixed typos found by RETF rules
+* Fix running the unittests under py3
+* Add "." for help strings
+* Declare that we support Python 3
+* Make the function tests Python3-import friendly
+* Only encode metadata for user customed headers
+* Add functional tests for python-swiftclient
+* Removed a duplicate word in a dostring
+* Mock auth_end_time in test_shell.test_download
+* Don't utf8 encode urls
+* Fixed several shell tests on Python3
+* Fix up StringIO use in tests for py3
+* Updated test_shell for Python3
+* Fix test_raw_upload test
+* Remove validate_headers
+* Use quote/unquote from six module for py3
+* Makes use of requests.Session
+* Fix test_multithreading on Python 3
+* Add tests for bin/swift
+* Fix swiftclient.client.quote() for Python 3
+* Add requests related unit-tests
+* Update help message to specify unit of --segment-size option
+* Python 3: fix tests on HTTP headers
+* Updated from global requirements
+* Use the standard library's copy of mock when it's available
+* Replaced print statements with print function
+* Removed usage of tuple unpacking in parameters
+* don't use mutable defaults in kwargs
+* set user-agent header
+* Python 3: Get compatible types from six
+* Python 3: Fix module names in import
+* Python 3: Add six dependency
+* Replace dict.iteritems() with dict.items()
+* Python 3: Replace iter.next() with six.next(iter)
+* Make bin/swift testable part 2
+* Make bin/swift testable part 1
+* Python 3: Fix tests using temporary text files
+* Python 3: cast map() result to list
+* Fix temporary pypy gate issue with setuptools
+* Decode HTTP responses, fixes bug #1282861
+* Copy Swift's .mailmap to swiftclient repo
+* Improve help strings
+* TCP port is appended two time in ClientException
+* add "info" as an alias to "capabilities"
+* Use six.StringIO instead of StringIO.StringIO
+
+2.0.3
+-----
+
+* Help string format persistent
+* Make the help strings constant
+* Add LengthWrapper in put_object to honor content_length param
+* Updated from global requirements
+* Remove useless statement
+* swift.1 manpage fix for groff warnings
+
+2.0.2
+-----
+
+* Remove multipart/form-data file upload
+
+2.0.1
+-----
+
+* Fix --insecure option on auth
+* Only run flake8 on swiftclient code
+
+2.0
+---
+
+
+1.9.0
+-----
+
+* Remove extraneous vim configuration comments
+* Rename Openstack to OpenStack
+* Port to python-requests
+* Add option to skip downloading/uploading identical files
+* Remove tox locale overrides
+* Fix swiftclient help
+* Fix misspellings in python swiftclient
+* changed things because reasons
+* Add missing backslash
+* match hacking rules in swift
+* Updated from global requirements
+* Install manpage in share/man/man1 instead of man/man1
+* assertEquals is deprecated, use assertEqual
+* Add capabilities option
+* Install swiftclient manpage
+* Replace xrange in for loop with range
+* Add --object-name
+* retry on ratelimit
+* Fix help of some optional arguments
+* Updates tox.ini to use new features
+* Fix Sphinx version issue
+* Enable usage of proxies defined in environment (http(s)_proxy)
+* Don't crash when header is value of None
+* Fix download bandwidth for swift command
+* Updates .gitignore
+* Allow custom headers when using swift download (CLI)
+* Replaced two references to Cloud Files with Swift
+* Fix a typo in help text: "downlad"
+* Add close to swiftclient.client.Connection
+* enhance swiftclient logging
+* Clarify main help for post subcommand
+* Fixes python-swiftclient debugging message
+
+1.8.0
+-----
+
+* Make pbr only a build-time dependency
+* Add verbose output to all stat commands
+* assertEquals is deprecated, use assertEqual (H602)
+* Skip sniffing and reseting if retry is disabled
+* user defined headers added to swift post queries
+
+1.7.0
+-----
+
+* Sync with global requirements
+* fix bug with replace old *LOs
+* Extend usage message for `swift download`
+
+1.6.0
+-----
+
+* Added support for running the tests under PyPy with tox
+* Remove redundant unit suffix
+* Reformat help outputs
+* Add a NullHandler when setting up library logging
+* Assignment to reserved built-in symbol "file"
+* Added headers argument support to get_object()
+* Move multi-threading code to a library
+* fix(gitignore) : Ignore *.egg files
+* python3: Start of adding basic python3 support
+* Added log statements in swift client
+* Update docstring for swiftclient.Connection.__init__
+* Refuse carriage return in header value
+* Adds max-backoff for retries in Connection
+* Allow setting # of retries in the binary
+
+1.5.0
+-----
+
+* Note '-V 2' is necessary for auth 2.0
+* Allow storage url override for both auth vers
+* Add *.swp into .gitignore
+* Add -p option to download command
+* add -t for totals to list command and --lh to stat
+* add optional 'response_dict' parameters to many calls into which they'll return a dictionary of the response status, reason and headers
+* Fixes re-auth flow with expired tokens
+* Remove explicit distribute depend
+* Add -l and --lh switches to swift 'list' command
+* Changed the call to set_tunnel to work in python 2.6 or python 2.7 since its name changed between versions
+* Add option to disable SSL compression
+* python3: Introduce py33 to tox.ini
+* Rename requires files to standard names
+* remove busy-wait so that swift client won't use up all CPU cycles
+* log get_auth request url instead of x-storage-url
+* Update the man page
+* Add .coveragerc file to show correct code coverage
+* do not warn about etag for slo
+* Eradicate eventlet and fix bug lp:959221
+* Add end_marker and path query parameters
+* Switch to pbr for setup
+* Switch to flake8
+* Improve Python 3.x compatibility
+* Confirm we have auth creds before clearing preauth
+
+1.4.0
+-----
+
+* Improve auth option help
+* Static large object support
+* Fixed pep8 errors in test directory
+* Allow user to specify headers at the command line
+* Enhance put_object to inform when chunk is ignored
+* Allow v2 to use storage_url/storage_token directly
+* Add client man page swift.1
+* Allow to specify segment container
+* Added "/" check when list containers
+* Print useful message when keystoneclient is not installed
+* Fix reporting version
+
+1.3.0
+-----
+
+* Use testr instead of nose
+* Update to latest oslo version/setup
+* Add generated files to .gitignore
+* Add env[SWIFTCLIENT_INSECURE]
+* Fix debug feature and add --debug to swift
+* Use testtools as base class for test cases
+* Add --os-cacert
+* Add --insecure option to fix bug #1077869
+* Don't segment objects smaller than --segment-size
+* Don't add trailing slash to auth URL
+* Adding segment size as another x-object-manifest component
+* Stop loss of precision when writing 'x-object-meta-mtime'
+* Remove unused json_request
+* fixed inconsistencies in parameter descriptions
+* tell nose to explicity test the 'tests' directory
+* Fixes setup compatibility issue on Windows
+* Force utf-8 encode of HTTPConnection params
+* swiftclient Connection : default optional arguments to None
+* Add OpenStack trove classifier for PyPI
+* Resolves issue with empty os_options for swift-bench & swift-dispersion-report
+* Catch authorization failures
+* Do not use dictionaries as default parameters
+
+1.2.0
+-----
+
+* Add region_name support
+* Allow endpoint type to be specified
+* PEP8 cleanup
+* PEP8 issues fixed
+* Add ability to download without writing to disk
+* Fix PEP8 issues
+* Change '_' to '-' in options
+* Fix swiftclient 400 error when OS_AUTH_URL is set
+* Add nosehtmloutput as a test dependency
+* Shuffle download order (of containers and objects)
+* Add timing stats to verbose download output
+* Ensure Content-Length header when PUT/POST a container
+* Make python-keystoneclient optional
+* Fix container delete throughput and 409 retries
+* Consume version info from pkg_resources
+* Use keystoneclient for authentication
+* Removes the title "Swift Web" from landing page
+
+1.1.1
+-----
+
+* Now url encodes/decodes x-object-manifest values
+* Configurable concurrency for swift client
+* Allow specify tenant:user in user
+* Make swift exit on ctrl-c
+* Add post-tag versioning
+* Don't suppress openstack auth options
+* Make swift not hang on error
+* Fix pep8 errors w/pep8==1.3
+* Add missing test/tools files to the tarball
+* Add build_sphinx options
+* Make CLI exit nonzero on error
+* Add doc and version in swiftclient.__init__.py
+* Raise ClientException for invalid auth version
+* Version bump after pypi release
+
+1.1.0
+-----
+
+* Removed now-unused .cache.bundle references
+* Added setup.cfg for verbose test output
+* Add run_tests.sh script here
+* Adding fake_http_connect to test.utils
+* Add openstack project infrastructure
+* Add logging
+* Defined version to 1.0
+* Add CHANGELOG LICENSE and MANIFEST.in
+* Delete old test_client and add a gitignore
+* Rename client to swiftclient
+* Fix links
+* Import script from swift to run unittests
+* Add test_client from original swift repository
+* Add AUTHORS file
+* Make sure we get a header StorageURL with 1.0
+* Allow specify the tenant in user
+* First commit
