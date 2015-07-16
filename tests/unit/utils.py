@@ -383,28 +383,27 @@ class MockHttpTest(testtools.TestCase):
         reload_module(c)
 
 
-class CaptureStreamBuffer(object):
+class CaptureStreamPrinter(object):
     """
-    CaptureStreamBuffer is used for testing raw byte writing for PY3. Anything
-    written here is decoded as utf-8 and written to the parent CaptureStream
+    CaptureStreamPrinter is used for testing unicode writing for PY3. Anything
+    written here is encoded as utf-8 and written to the parent CaptureStream
     """
     def __init__(self, captured_stream):
         self._captured_stream = captured_stream
 
-    def write(self, bytes_data):
+    def write(self, data):
         # No encoding, just convert the raw bytes into a str for testing
         # The below call also validates that we have a byte string.
         self._captured_stream.write(
-            ''.join(map(chr, bytes_data))
-        )
+            data if isinstance(data, six.binary_type) else data.encode('utf8'))
 
 
 class CaptureStream(object):
 
     def __init__(self, stream):
         self.stream = stream
-        self._capture = six.StringIO()
-        self._buffer = CaptureStreamBuffer(self)
+        self._buffer = six.BytesIO()
+        self._capture = CaptureStreamPrinter(self._buffer)
         self.streams = [self._capture]
 
     @property
@@ -427,11 +426,11 @@ class CaptureStream(object):
             stream.writelines(*args, **kwargs)
 
     def getvalue(self):
-        return self._capture.getvalue()
+        return self._buffer.getvalue()
 
     def clear(self):
-        self._capture.truncate(0)
-        self._capture.seek(0)
+        self._buffer.truncate(0)
+        self._buffer.seek(0)
 
 
 class CaptureOutput(object):
@@ -469,11 +468,11 @@ class CaptureOutput(object):
 
     @property
     def out(self):
-        return self._out.getvalue()
+        return self._out.getvalue().decode('utf8')
 
     @property
     def err(self):
-        return self._err.getvalue()
+        return self._err.getvalue().decode('utf8')
 
     def clear(self):
         self._out.clear()

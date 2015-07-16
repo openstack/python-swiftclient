@@ -12,7 +12,6 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import testtools
 import threading
@@ -206,9 +205,11 @@ class TestOutputManager(testtools.TestCase):
                 u'some raw bytes: \u062A\u062A'.encode('utf-8'))
 
             thread_manager.print_items([
-                ('key', u'value'),
-                ('object', 'O\xcc\x88bject')
+                ('key', 'value'),
+                ('object', u'O\u0308bject'),
             ])
+
+            thread_manager.print_raw(b'\xffugly\xffraw')
 
             # Now we have a thread for error printing and a thread for
             # normal print messages
@@ -220,31 +221,23 @@ class TestOutputManager(testtools.TestCase):
 
         if six.PY3:
             over_the = "over the '\u062a\u062a'\n"
-            # The CaptureStreamBuffer just encodes all bytes written to it by
-            # mapping chr over the byte string to produce a str.
-            raw_bytes = ''.join(
-                map(chr, u'some raw bytes: \u062A\u062A'.encode('utf-8'))
-            )
         else:
             over_the = "over the u'\\u062a\\u062a'\n"
             # We write to the CaptureStream so no decoding is performed
-            raw_bytes = 'some raw bytes: \xd8\xaa\xd8\xaa'
         self.assertEqual(''.join([
             'one-argument\n',
             'one fish, 88 fish\n',
             'some\n', 'where\n',
-            over_the, raw_bytes,
+            over_the,
+            u'some raw bytes: \u062a\u062a',
             '           key: value\n',
-            '        object: O\xcc\x88bject\n'
-        ]), out_stream.getvalue())
+            u'        object: O\u0308bject\n'
+        ]).encode('utf8') + b'\xffugly\xffraw', out_stream.getvalue())
 
-        first_item = u'I have 99 problems, but a \u062A\u062A is not one\n'
-        if six.PY2:
-            first_item = first_item.encode('utf8')
         self.assertEqual(''.join([
-            first_item,
+            u'I have 99 problems, but a \u062A\u062A is not one\n',
             'one-error-argument\n',
             'Sometimes\n', '3.1% just\n', 'does not\n', 'work!\n'
-        ]), err_stream.getvalue())
+        ]), err_stream.getvalue().decode('utf8'))
 
         self.assertEqual(3, thread_manager.error_count)
