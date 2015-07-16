@@ -12,6 +12,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import unicode_literals
 from genericpath import getmtime
 
 import hashlib
@@ -657,6 +658,38 @@ class TestShell(unittest.TestCase):
         connection.return_value.delete_object.assert_called_with(
             'container', 'object', query_string=None, response_dict={})
 
+    def test_delete_verbose_output_utf8(self):
+        container = 't\u00e9st_c'
+        base_argv = ['', '--verbose', 'delete']
+
+        # simulate container having an object with utf-8 code points in name,
+        # just returning the object delete result
+        res = {'success': True, 'response_dict': {}, 'attempts': 2,
+               'container': container, 'action': 'delete_object',
+               'object': 'obj_t\u00east_o'}
+
+        with mock.patch('swiftclient.shell.SwiftService.delete') as mock_func:
+            with CaptureOutput() as out:
+                mock_func.return_value = [res]
+                swiftclient.shell.main(base_argv + [container.encode('utf-8')])
+
+                mock_func.assert_called_once_with(container=container)
+                self.assertTrue(out.out.find(
+                    'obj_t\u00east_o [after 2 attempts]') >= 0, out)
+
+        # simulate empty container
+        res = {'success': True, 'response_dict': {}, 'attempts': 2,
+               'container': container, 'action': 'delete_container'}
+
+        with mock.patch('swiftclient.shell.SwiftService.delete') as mock_func:
+            with CaptureOutput() as out:
+                mock_func.return_value = [res]
+                swiftclient.shell.main(base_argv + [container.encode('utf-8')])
+
+                mock_func.assert_called_once_with(container=container)
+                self.assertTrue(out.out.find(
+                    't\u00e9st_c [after 2 attempts]') >= 0, out)
+
     @mock.patch('swiftclient.service.Connection')
     def test_delete_object(self, connection):
         argv = ["", "delete", "container", "object"]
@@ -668,8 +701,8 @@ class TestShell(unittest.TestCase):
 
     def test_delete_verbose_output(self):
         del_obj_res = {'success': True, 'response_dict': {}, 'attempts': 2,
-                       'container': 'test_c', 'action': 'delete_object',
-                       'object': 'test_o'}
+                       'container': 't\xe9st_c', 'action': 'delete_object',
+                       'object': 't\xe9st_o'}
 
         del_seg_res = del_obj_res.copy()
         del_seg_res.update({'action': 'delete_segment'})
@@ -677,7 +710,7 @@ class TestShell(unittest.TestCase):
         del_con_res = del_obj_res.copy()
         del_con_res.update({'action': 'delete_container', 'object': None})
 
-        test_exc = Exception('test_exc')
+        test_exc = Exception('t\xe9st_exc')
         error_res = del_obj_res.copy()
         error_res.update({'success': False, 'error': test_exc, 'object': None})
 
@@ -687,39 +720,39 @@ class TestShell(unittest.TestCase):
         with mock.patch('swiftclient.shell.SwiftService.delete', mock_delete):
             with CaptureOutput() as out:
                 mock_delete.return_value = [del_obj_res]
-                swiftclient.shell.main(base_argv + ['test_c', 'test_o'])
+                swiftclient.shell.main(base_argv + ['t\xe9st_c', 't\xe9st_o'])
 
-                mock_delete.assert_called_once_with(container='test_c',
-                                                    objects=['test_o'])
+                mock_delete.assert_called_once_with(container='t\xe9st_c',
+                                                    objects=['t\xe9st_o'])
                 self.assertTrue(out.out.find(
-                    'test_o [after 2 attempts]') >= 0)
+                    't\xe9st_o [after 2 attempts]') >= 0)
 
             with CaptureOutput() as out:
                 mock_delete.return_value = [del_seg_res]
-                swiftclient.shell.main(base_argv + ['test_c', 'test_o'])
+                swiftclient.shell.main(base_argv + ['t\xe9st_c', 't\xe9st_o'])
 
-                mock_delete.assert_called_with(container='test_c',
-                                               objects=['test_o'])
+                mock_delete.assert_called_with(container='t\xe9st_c',
+                                               objects=['t\xe9st_o'])
                 self.assertTrue(out.out.find(
-                    'test_c/test_o [after 2 attempts]') >= 0)
+                    't\xe9st_c/t\xe9st_o [after 2 attempts]') >= 0)
 
             with CaptureOutput() as out:
                 mock_delete.return_value = [del_con_res]
-                swiftclient.shell.main(base_argv + ['test_c'])
+                swiftclient.shell.main(base_argv + ['t\xe9st_c'])
 
-                mock_delete.assert_called_with(container='test_c')
+                mock_delete.assert_called_with(container='t\xe9st_c')
                 self.assertTrue(out.out.find(
-                    'test_c [after 2 attempts]') >= 0)
+                    't\xe9st_c [after 2 attempts]') >= 0)
 
             with CaptureOutput() as out:
                 mock_delete.return_value = [error_res]
                 self.assertRaises(SystemExit,
                                   swiftclient.shell.main,
-                                  base_argv + ['test_c'])
+                                  base_argv + ['t\xe9st_c'])
 
-                mock_delete.assert_called_with(container='test_c')
+                mock_delete.assert_called_with(container='t\xe9st_c')
                 self.assertTrue(out.err.find(
-                    'Error Deleting: test_c: test_exc') >= 0)
+                    'Error Deleting: t\xe9st_c: t\xe9st_exc') >= 0)
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_account(self, connection):
@@ -1738,7 +1771,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assertRequests([('PUT', self.cont_path),
                              ('PUT', self.obj_path)])
         self.assertEqual(self.obj[1:], out.strip())
-        expected_err = 'Warning: failed to create container %r: 403 Fake' \
+        expected_err = "Warning: failed to create container '%s': 403 Fake" \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
 
@@ -1760,7 +1793,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assertRequests([('PUT', self.cont_path),
                              ('PUT', self.obj_path)])
         self.assertEqual(self.obj[1:], out.strip())
-        expected_err = 'Warning: failed to create container %r: 403 Fake' \
+        expected_err = "Warning: failed to create container '%s': 403 Fake" \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
 
@@ -1795,7 +1828,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assert_request(('PUT', segment_path_1))
         self.assert_request(('PUT', self.obj_path))
         self.assertTrue(self.obj[1:] in out.out)
-        expected_err = 'Warning: failed to create container %r: 403 Fake' \
+        expected_err = "Warning: failed to create container '%s': 403 Fake" \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
 
@@ -1884,7 +1917,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
         self.assertRequests([('GET', self.obj_path)])
         path = '%s%s' % (self.cont, self.obj)
-        expected_err = 'Error downloading object %r' % path
+        expected_err = "Error downloading object '%s'" % path
         self.assertTrue(out.err.startswith(expected_err))
         self.assertEqual('', out)
 
