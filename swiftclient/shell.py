@@ -112,8 +112,8 @@ def st_delete(parser, args, output_manager):
                 if '/' in container:
                     output_manager.error(
                         'WARNING: / in container name; you '
-                        "might have meant '%s' instead of '%s'." % (
-                        container.replace('/', ' ', 1), container)
+                        "might have meant '%s' instead of '%s'." %
+                        (container.replace('/', ' ', 1), container)
                     )
                     return
                 objects = args[1:]
@@ -279,8 +279,8 @@ def st_download(parser, args, output_manager):
                 if '/' in container:
                     output_manager.error(
                         'WARNING: / in container name; you '
-                        "might have meant '%s' instead of '%s'." % (
-                        container.replace('/', ' ', 1), container)
+                        "might have meant '%s' instead of '%s'." %
+                        (container.replace('/', ' ', 1), container)
                     )
                     return
                 objects = args[1:]

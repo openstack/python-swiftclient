@@ -139,10 +139,10 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
 
             self.assertEqual(output.out,
-                              '   Account: AUTH_account\n'
-                              'Containers: 1\n'
-                              '   Objects: 2\n'
-                              '     Bytes: 3\n')
+                             '   Account: AUTH_account\n'
+                             'Containers: 1\n'
+                             '   Objects: 2\n'
+                             '     Bytes: 3\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_stat_container(self, connection):
@@ -161,14 +161,14 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
 
             self.assertEqual(output.out,
-                              '  Account: AUTH_account\n'
-                              'Container: container\n'
-                              '  Objects: 1\n'
-                              '    Bytes: 2\n'
-                              ' Read ACL: test2:tester2\n'
-                              'Write ACL: test3:tester3\n'
-                              '  Sync To: other\n'
-                              ' Sync Key: secret\n')
+                             '  Account: AUTH_account\n'
+                             'Container: container\n'
+                             '  Objects: 1\n'
+                             '    Bytes: 2\n'
+                             ' Read ACL: test2:tester2\n'
+                             'Write ACL: test3:tester3\n'
+                             '  Sync To: other\n'
+                             ' Sync Key: secret\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_stat_object(self, connection):
@@ -187,14 +187,14 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
 
             self.assertEqual(output.out,
-                              '       Account: AUTH_account\n'
-                              '     Container: container\n'
-                              '        Object: object\n'
-                              '  Content Type: text/plain\n'
-                              'Content Length: 42\n'
-                              ' Last Modified: yesterday\n'
-                              '          ETag: md5\n'
-                              '      Manifest: manifest\n')
+                             '       Account: AUTH_account\n'
+                             '     Container: container\n'
+                             '        Object: object\n'
+                             '  Content Type: text/plain\n'
+                             'Content Length: 42\n'
+                             ' Last Modified: yesterday\n'
+                             '          ETag: md5\n'
+                             '      Manifest: manifest\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_list_account(self, connection):
@@ -230,8 +230,8 @@ class TestShell(unittest.TestCase):
             connection.return_value.get_account.assert_has_calls(calls)
 
             self.assertEqual(output.out,
-                              '    0    0 1970-01-01 00:00:01 container\n'
-                              '    0    0\n')
+                             '    0    0 1970-01-01 00:00:01 container\n'
+                             '    0    0\n')
 
         # Now test again, this time without returning metadata
         connection.return_value.head_container.return_value = {}
@@ -250,8 +250,8 @@ class TestShell(unittest.TestCase):
             connection.return_value.get_account.assert_has_calls(calls)
 
             self.assertEqual(output.out,
-                              '    0    0 ????-??-?? ??:??:?? container\n'
-                              '    0    0\n')
+                             '    0    0 ????-??-?? ??:??:?? container\n'
+                             '    0    0\n')
 
     def test_list_account_totals_error(self):
         # No --lh provided: expect info message about incorrect --totals use
@@ -312,8 +312,8 @@ class TestShell(unittest.TestCase):
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out,
-                              '           0        123      456 object_a\n'
-                              '           0\n')
+                             '           0        123      456 object_a\n'
+                             '           0\n')
 
     @mock.patch('swiftclient.service.makedirs')
     @mock.patch('swiftclient.service.Connection')
@@ -1626,7 +1626,7 @@ class TestAuth(MockHttpTest):
         export OS_AUTH_TOKEN=AUTH_tk5b6b12
         """
         self.assertEqual(textwrap.dedent(expected).lstrip(),
-                          stdout.getvalue())
+                         stdout.getvalue())
 
     def test_auth_verbose(self):
         with mock.patch('swiftclient.client.http_connection') as mock_conn:
@@ -1647,7 +1647,7 @@ class TestAuth(MockHttpTest):
         export ST_KEY='te$tin&'
         """
         self.assertEqual(textwrap.dedent(expected).lstrip(),
-                          stdout.getvalue())
+                         stdout.getvalue())
         self.assertEqual([], mock_conn.mock_calls)
 
     def test_auth_v2(self):
@@ -1670,7 +1670,7 @@ class TestAuth(MockHttpTest):
         export OS_AUTH_TOKEN=token
         """
         self.assertEqual(textwrap.dedent(expected).lstrip(),
-                          stdout.getvalue())
+                         stdout.getvalue())
 
     def test_auth_verbose_v2(self):
         with mock.patch('swiftclient.client.get_auth_keystone') \
@@ -1696,7 +1696,7 @@ class TestAuth(MockHttpTest):
         export OS_USERNAME=demo
         """
         self.assertEqual(textwrap.dedent(expected).lstrip(),
-                          stdout.getvalue())
+                         stdout.getvalue())
         self.assertEqual([], mock_keystone.mock_calls)
 
 

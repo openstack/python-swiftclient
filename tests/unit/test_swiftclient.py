@@ -1486,8 +1486,8 @@ class TestConnection(MockHttpTest):
             mock_get_auth.return_value = (
                 "https://storage.url/v1/AUTH_storage_acct", "AUTH_token"
             )
-            conn = c.Connection("https://auth.url/auth/v2.0", "user", "passkey",
-                                tenant_name="tenant")
+            conn = c.Connection("https://auth.url/auth/v2.0",
+                                "user", "passkey", tenant_name="tenant")
             conn.get_auth()
         self.assertEqual("https://storage.url/v1/AUTH_storage_acct", conn.url)
         self.assertEqual("AUTH_token", conn.token)
