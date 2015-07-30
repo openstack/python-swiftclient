@@ -1271,9 +1271,19 @@ class TestParsing(TestBase):
         # --help returns condensed help message, overrides --os-help
         opts = {"help": ""}
         os_opts = {"help": ""}
-                   # "password": "secret",
-                   # "username": "user",
-                   # "auth_url": "http://example.com:5000/v3"}
+        args = _make_args("", opts, os_opts)
+        with CaptureOutput() as out:
+            self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        self.assertTrue(out.find('[--key <api_key>]') > 0)
+        self.assertEqual(-1, out.find('--os-username=<auth-user-name>'))
+
+        # --os-password, --os-username and --os-auth_url should be ignored
+        # because --help overrides it
+        opts = {"help": ""}
+        os_opts = {"help": "",
+                   "password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3"}
         args = _make_args("", opts, os_opts)
         with CaptureOutput() as out:
             self.assertRaises(SystemExit, swiftclient.shell.main, args)
