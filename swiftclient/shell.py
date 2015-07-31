@@ -66,7 +66,7 @@ Positional arguments:
                         for multiple objects.
 
 Optional arguments:
-  --all                 Delete all containers and objects.
+  -a, --all             Delete all containers and objects.
   --leave-segments      Do not delete segments of manifest objects.
   --object-threads <threads>
                         Number of threads to use for deleting objects.
@@ -89,10 +89,10 @@ def st_delete(parser, args, output_manager):
         '', '--object-threads', type=int,
         default=10, help='Number of threads to use for deleting objects. '
         'Default is 10.')
-    parser.add_option('', '--container-threads', type=int,
-                      default=10, help='Number of threads to use for '
-                      'deleting containers. '
-                      'Default is 10.')
+    parser.add_option(
+        '', '--container-threads', type=int,
+        default=10, help='Number of threads to use for deleting containers. '
+        'Default is 10.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (not args and not options.yes_all) or (args and options.yes_all):
@@ -156,6 +156,7 @@ st_download_options = '''[--all] [--marker] [--prefix <prefix>]
                       [--object-threads <threads>]
                       [--container-threads <threads>] [--no-download]
                       [--skip-identical] [--remove-prefix]
+                      [--header <header:value>]
                       <container> <object>
 '''
 
@@ -170,17 +171,18 @@ Positional arguments:
                         objects from the container.
 
 Optional arguments:
-  --all                 Indicates that you really want to download
+  -a, --all             Indicates that you really want to download
                         everything in the account.
-  --marker              Marker to use when starting a container or account
+  -m, --marker          Marker to use when starting a container or account
                         download.
-  --prefix <prefix>     Only download items beginning with <prefix>
-  --remove-prefix       An optional flag for --prefix <prefix>, use this
+  -p, --prefix <prefix> Only download items beginning with <prefix>
+  -r, --remove-prefix   An optional flag for --prefix <prefix>, use this
                         option to download items without <prefix>
-  --output <out_file>   For a single file download, stream the output to
+  -o, --output <out_file>
+                        For a single file download, stream the output to
                         <out_file>. Specifying "-" as <out_file> will
                         redirect to stdout.
-  --output-dir <out_directory>
+  -D, --output-dir <out_directory>
                         An optional directory to which to store objects.
                         By default, all objects are recreated in the current
                         directory.
@@ -192,9 +194,9 @@ Optional arguments:
                         Default is 10.
   --no-download         Perform download(s), but don't actually write anything
                         to disk.
-  --header <header_name:header_value>
+  -H, --header <header:value>
                         Adds a customized request header to the query, like
-                        "Range" or "If-Match". This argument is repeatable.
+                        "Range" or "If-Match". This option may be repeated.
                         Example --header "content-type:text/plain"
   --skip-identical      Skip downloading files that are identical on both
                         sides.
@@ -241,7 +243,7 @@ def st_download(parser, args, output_manager):
         '-H', '--header', action='append', dest='header',
         default=[],
         help='Adds a customized request header to the query, like "Range" or '
-        '"If-Match". This argument is repeatable. '
+        '"If-Match". This option may be repeated. '
         'Example: --header "content-type:text/plain"')
     parser.add_option(
         '--skip-identical', action='store_true', dest='skip_identical',
@@ -366,12 +368,12 @@ Positional arguments:
   [container]           Name of container to list object in.
 
 Optional arguments:
-  --long                Long listing format, similar to ls -l.
+  -l, --long            Long listing format, similar to ls -l.
   --lh                  Report sizes in human readable format similar to
                         ls -lh.
-  --totals              Used with -l or --lh, only report totals.
-  --prefix              Only list items beginning with the prefix.
-  --delimiter           Roll up items with the given delimiter. For containers
+  -t, --totals          Used with -l or --lh, only report totals.
+  -p, --prefix          Only list items beginning with the prefix.
+  -d, --delimiter       Roll up items with the given delimiter. For containers
                         only. See OpenStack Swift API documentation for what
                         this means.
 '''.strip('\n')
@@ -577,17 +579,22 @@ Positional arguments:
   [object]              Name of object to post.
 
 Optional arguments:
-  --read-acl <acl>      Read ACL for containers. Quick summary of ACL syntax:
+  -r, --read-acl <acl>  Read ACL for containers. Quick summary of ACL syntax:
                         .r:*, .r:-.example.com, .r:www.example.com, account1,
                         account2:user2
-  --write-acl <acl>     Write ACL for containers. Quick summary of ACL syntax:
+  -w, --write-acl <acl> Write ACL for containers. Quick summary of ACL syntax:
                         account1 account2:user2
-  --sync-to <sync-to>   Sync To for containers, for multi-cluster replication.
-  --sync-key <sync-key> Sync Key for containers, for multi-cluster replication.
-  --meta <name:value>   Sets a meta data item. This option may be repeated.
+  -t, --sync-to <sync-to>
+                        Sync To for containers, for multi-cluster replication.
+  -k, --sync-key <sync-key>
+                        Sync Key for containers, for multi-cluster replication.
+  -m, --meta <name:value>
+                        Sets a meta data item. This option may be repeated.
                         Example: -m Color:Blue -m Size:Large
-  --header <header>     Set request headers. This option may be repeated.
-                        Example -H "content-type:text/plain"
+  -H, --header <header:value>
+                        Adds a customized request header.
+                        This option may be repeated. Example
+                        -H "content-type:text/plain" -H "Content-Length: 4000"
 '''.strip('\n')
 
 
@@ -612,7 +619,8 @@ def st_post(parser, args, output_manager):
         'Example: -m Color:Blue -m Size:Large')
     parser.add_option(
         '-H', '--header', action='append', dest='header',
-        default=[], help='Set request headers. This option may be repeated. '
+        default=[], help='Adds a customized request header. '
+        'This option may be repeated. '
         'Example: -H "content-type:text/plain" '
         '-H "Content-Length: 4000"')
     (options, args) = parse_args(parser, args)
@@ -665,8 +673,7 @@ st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     <container> <file_or_directory>
 '''
 
-st_upload_help = '''
-Uploads specified files and directories to the given container.
+st_upload_help = ''' Uploads specified files and directories to the given container.
 
 Positional arguments:
   <container>           Name of container to upload to.
@@ -674,10 +681,11 @@ Positional arguments:
                         times for multiple uploads.
 
 Optional arguments:
-  --changed             Only upload files that have changed since the last
+  -c, --changed         Only upload files that have changed since the last
                         upload.
   --skip-identical      Skip uploading files that are identical on both sides.
-  --segment-size <size> Upload files in segments no larger than <size> (in
+  -S, --segment-size <size>
+                        Upload files in segments no larger than <size> (in
                         Bytes) and then create a "manifest" file that will
                         download all the segments as if it were the original
                         file.
@@ -694,9 +702,10 @@ Optional arguments:
   --segment-threads <threads>
                         Number of threads to use for uploading object segments.
                         Default is 10.
-  --header <header>     Set request headers with the syntax header:value.
-                        This option may be repeated.
-                        Example -H "content-type:text/plain".
+  -H, --header <header:value>
+                        Adds a customized request header. This option may be
+                        repeated. Example -H "content-type:text/plain"
+                         -H "Content-Length: 4000".
   --use-slo             When used in conjunction with --segment-size it will
                         create a Static Large Object instead of the default
                         Dynamic Large Object.
@@ -1130,7 +1139,7 @@ usage: %%prog [--version] [--help] [--os-help] [--snet] [--verbose]
              [--os-endpoint-type <endpoint-type>]
              [--os-cacert <ca-certificate>] [--insecure]
              [--no-ssl-compression]
-             <subcommand> [--help]
+             <subcommand> [--help] [<subcommand options>]
 
 Command-line interface to the OpenStack Swift API.
 
