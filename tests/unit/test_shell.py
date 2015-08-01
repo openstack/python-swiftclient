@@ -1290,7 +1290,7 @@ class TestParsing(TestBase):
         self.assertTrue(out.find('[--key <api_key>]') > 0)
         self.assertEqual(-1, out.find('--os-username=<auth-user-name>'))
 
-        ## --os-help return os options help
+        # --os-help return os options help
         opts = {}
         args = _make_args("", opts, os_opts)
         with CaptureOutput() as out:
