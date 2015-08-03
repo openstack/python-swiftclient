@@ -503,7 +503,7 @@ class FakeKeystone(object):
         self.endpoint = endpoint
         self.token = token
 
-    class _Client():
+    class _Client(object):
         def __init__(self, endpoint, token, **kwargs):
             self.auth_token = token
             self.endpoint = endpoint
