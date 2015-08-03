@@ -138,7 +138,7 @@ class TestShell(unittest.TestCase):
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
 
-            self.assertEquals(output.out,
+            self.assertEqual(output.out,
                               '   Account: AUTH_account\n'
                               'Containers: 1\n'
                               '   Objects: 2\n'
@@ -160,7 +160,7 @@ class TestShell(unittest.TestCase):
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
 
-            self.assertEquals(output.out,
+            self.assertEqual(output.out,
                               '  Account: AUTH_account\n'
                               'Container: container\n'
                               '  Objects: 1\n'
@@ -186,7 +186,7 @@ class TestShell(unittest.TestCase):
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
 
-            self.assertEquals(output.out,
+            self.assertEqual(output.out,
                               '       Account: AUTH_account\n'
                               '     Container: container\n'
                               '        Object: object\n'
@@ -212,7 +212,7 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None)]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEquals(output.out, 'container\n')
+            self.assertEqual(output.out, 'container\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_list_account_long(self, connection):
@@ -229,7 +229,7 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None)]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEquals(output.out,
+            self.assertEqual(output.out,
                               '    0    0 1970-01-01 00:00:01 container\n'
                               '    0    0\n')
 
@@ -249,7 +249,7 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None)]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEquals(output.out,
+            self.assertEqual(output.out,
                               '    0    0 ????-??-?? ??:??:?? container\n'
                               '    0    0\n')
 
@@ -294,7 +294,7 @@ class TestShell(unittest.TestCase):
                           delimiter=None, prefix=None)]
             connection.return_value.get_container.assert_has_calls(calls)
 
-            self.assertEquals(output.out, 'object_a\n')
+            self.assertEqual(output.out, 'object_a\n')
 
         # Test container listing with --long
         connection.return_value.get_container.side_effect = [
@@ -311,7 +311,7 @@ class TestShell(unittest.TestCase):
                           delimiter=None, prefix=None)]
             connection.return_value.get_container.assert_has_calls(calls)
 
-            self.assertEquals(output.out,
+            self.assertEqual(output.out,
                               '           0        123      456 object_a\n'
                               '           0\n')
 
@@ -771,7 +771,7 @@ class TestShell(unittest.TestCase):
             with ExpectedException(SystemExit):
                 swiftclient.shell.main(argv)
 
-            self.assertEquals(output.err, 'bad auth\n')
+            self.assertEqual(output.err, 'bad auth\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_account_not_found(self, connection):
@@ -783,7 +783,7 @@ class TestShell(unittest.TestCase):
             with ExpectedException(SystemExit):
                 swiftclient.shell.main(argv)
 
-            self.assertEquals(output.err, 'Account not found\n')
+            self.assertEqual(output.err, 'Account not found\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_container(self, connection):
@@ -802,7 +802,7 @@ class TestShell(unittest.TestCase):
             with ExpectedException(SystemExit):
                 swiftclient.shell.main(argv)
 
-            self.assertEquals(output.err, 'bad auth\n')
+            self.assertEqual(output.err, 'bad auth\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_container_not_found_causes_put(self, connection):
@@ -860,7 +860,7 @@ class TestShell(unittest.TestCase):
             with ExpectedException(SystemExit):
                 swiftclient.shell.main(argv)
 
-            self.assertEquals(output.err, 'bad auth\n')
+            self.assertEqual(output.err, 'bad auth\n')
 
     def test_post_object_too_many_args(self):
         argv = ["", "post", "container", "object", "bad_arg"]
@@ -925,41 +925,41 @@ class TestShell(unittest.TestCase):
                     #  Test invalid states
                     argv = ["", "upload", "-S", "1234X", "container", "object"]
                     swiftclient.shell.main(argv)
-                self.assertEquals(output.err, "Invalid segment size\n")
+                self.assertEqual(output.err, "Invalid segment size\n")
                 output.clear()
 
                 with ExpectedException(SystemExit):
                     argv = ["", "upload", "-S", "K1234", "container", "object"]
                     swiftclient.shell.main(argv)
-                self.assertEquals(output.err, "Invalid segment size\n")
+                self.assertEqual(output.err, "Invalid segment size\n")
                 output.clear()
 
                 with ExpectedException(SystemExit):
                     argv = ["", "upload", "-S", "K", "container", "object"]
                     swiftclient.shell.main(argv)
-                self.assertEquals(output.err, "Invalid segment size\n")
+                self.assertEqual(output.err, "Invalid segment size\n")
 
     def test_negative_upload_segment_size(self):
         with CaptureOutput() as output:
             with ExpectedException(SystemExit):
                 argv = ["", "upload", "-S", "-40", "container", "object"]
                 swiftclient.shell.main(argv)
-            self.assertEquals(output.err, "segment-size should be positive\n")
+            self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
             with ExpectedException(SystemExit):
                 argv = ["", "upload", "-S", "-40K", "container", "object"]
                 swiftclient.shell.main(argv)
-            self.assertEquals(output.err, "segment-size should be positive\n")
+            self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
             with ExpectedException(SystemExit):
                 argv = ["", "upload", "-S", "-40M", "container", "object"]
                 swiftclient.shell.main(argv)
-            self.assertEquals(output.err, "segment-size should be positive\n")
+            self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
             with ExpectedException(SystemExit):
                 argv = ["", "upload", "-S", "-40G", "container", "object"]
                 swiftclient.shell.main(argv)
-            self.assertEquals(output.err, "segment-size should be positive\n")
+            self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
 
 
@@ -1625,7 +1625,7 @@ class TestAuth(MockHttpTest):
         export OS_STORAGE_URL=https://swift.storage.example.com/v1/AUTH_test
         export OS_AUTH_TOKEN=AUTH_tk5b6b12
         """
-        self.assertEquals(textwrap.dedent(expected).lstrip(),
+        self.assertEqual(textwrap.dedent(expected).lstrip(),
                           stdout.getvalue())
 
     def test_auth_verbose(self):
@@ -1646,7 +1646,7 @@ class TestAuth(MockHttpTest):
         export ST_USER=test:tester
         export ST_KEY='te$tin&'
         """
-        self.assertEquals(textwrap.dedent(expected).lstrip(),
+        self.assertEqual(textwrap.dedent(expected).lstrip(),
                           stdout.getvalue())
         self.assertEqual([], mock_conn.mock_calls)
 
@@ -1669,7 +1669,7 @@ class TestAuth(MockHttpTest):
         export OS_STORAGE_URL=http://url/
         export OS_AUTH_TOKEN=token
         """
-        self.assertEquals(textwrap.dedent(expected).lstrip(),
+        self.assertEqual(textwrap.dedent(expected).lstrip(),
                           stdout.getvalue())
 
     def test_auth_verbose_v2(self):
@@ -1695,7 +1695,7 @@ class TestAuth(MockHttpTest):
         export OS_TENANT_NAME=demo
         export OS_USERNAME=demo
         """
-        self.assertEquals(textwrap.dedent(expected).lstrip(),
+        self.assertEqual(textwrap.dedent(expected).lstrip(),
                           stdout.getvalue())
         self.assertEqual([], mock_keystone.mock_calls)
 

@@ -693,9 +693,9 @@ class TestGetObject(MockHttpTest):
             c.http_connection = self.fake_http_connection(200, body='abcde')
             __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=3)
             self.assertTrue(hasattr(resp, 'read'))
-            self.assertEquals(resp.read(3), 'abc')
-            self.assertEquals(resp.read(None), 'de')
-            self.assertEquals(resp.read(), '')
+            self.assertEqual(resp.read(3), 'abc')
+            self.assertEqual(resp.read(None), 'de')
+            self.assertEqual(resp.read(), '')
 
     def test_chunk_size_iter(self):
         conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
@@ -704,8 +704,8 @@ class TestGetObject(MockHttpTest):
             c.http_connection = self.fake_http_connection(200, body='abcde')
             __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=3)
             self.assertTrue(hasattr(resp, 'next'))
-            self.assertEquals(next(resp), 'abc')
-            self.assertEquals(next(resp), 'de')
+            self.assertEqual(next(resp), 'abc')
+            self.assertEqual(next(resp), 'de')
             self.assertRaises(StopIteration, next, resp)
 
     def test_chunk_size_read_and_iter(self):
@@ -715,11 +715,11 @@ class TestGetObject(MockHttpTest):
             c.http_connection = self.fake_http_connection(200, body='abcdef')
             __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=2)
             self.assertTrue(hasattr(resp, 'read'))
-            self.assertEquals(resp.read(3), 'abc')
-            self.assertEquals(next(resp), 'de')
-            self.assertEquals(resp.read(), 'f')
+            self.assertEqual(resp.read(3), 'abc')
+            self.assertEqual(next(resp), 'de')
+            self.assertEqual(resp.read(), 'f')
             self.assertRaises(StopIteration, next, resp)
-            self.assertEquals(resp.read(), '')
+            self.assertEqual(resp.read(), '')
 
 
 class TestHeadObject(MockHttpTest):
@@ -871,9 +871,9 @@ class TestPutObject(MockHttpTest):
                                 contents=contents,
                                 chunk_size=chunk_size)
 
-            self.assertNotEquals(etag, contents.get_md5sum())
-            self.assertEquals(etag, 'badresponseetag')
-            self.assertEquals(raw_data_md5, contents.get_md5sum())
+            self.assertNotEqual(etag, contents.get_md5sum())
+            self.assertEqual(etag, 'badresponseetag')
+            self.assertEqual(raw_data_md5, contents.get_md5sum())
 
     def test_md5_match(self):
         conn = c.http_connection('http://www.test.com')
@@ -896,8 +896,8 @@ class TestPutObject(MockHttpTest):
                                 contents=contents,
                                 chunk_size=chunk_size)
 
-            self.assertEquals(raw_data_md5, contents.get_md5sum())
-            self.assertEquals(etag, contents.get_md5sum())
+            self.assertEqual(raw_data_md5, contents.get_md5sum())
+            self.assertEqual(etag, contents.get_md5sum())
 
     def test_params(self):
         conn = c.http_connection(u'http://www.test.com/')
