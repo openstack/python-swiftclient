@@ -1481,6 +1481,17 @@ class TestConnection(MockHttpTest):
             ('HEAD', '/v1/AUTH_pre_url', '', {'x-auth-token': 'post_token'}),
         ])
 
+    def test_get_auth_sets_url_and_token(self):
+        with mock.patch('swiftclient.client.get_auth') as mock_get_auth:
+            mock_get_auth.return_value = (
+                "https://storage.url/v1/AUTH_storage_acct", "AUTH_token"
+            )
+            conn = c.Connection("https://auth.url/auth/v2.0", "user", "passkey",
+                                tenant_name="tenant")
+            conn.get_auth()
+        self.assertEqual("https://storage.url/v1/AUTH_storage_acct", conn.url)
+        self.assertEqual("AUTH_token", conn.token)
+
     def test_timeout_passed_down(self):
         # We want to avoid mocking http_connection(), and most especially
         # avoid passing it down in argument. However, we cannot simply

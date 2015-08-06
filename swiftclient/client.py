@@ -1258,13 +1258,14 @@ class Connection(object):
                 self.http_conn = None
 
     def get_auth(self):
-        return get_auth(self.authurl, self.user, self.key,
-                        snet=self.snet,
-                        auth_version=self.auth_version,
-                        os_options=self.os_options,
-                        cacert=self.cacert,
-                        insecure=self.insecure,
-                        timeout=self.timeout)
+        self.url, self.token = get_auth(self.authurl, self.user, self.key,
+                                        snet=self.snet,
+                                        auth_version=self.auth_version,
+                                        os_options=self.os_options,
+                                        cacert=self.cacert,
+                                        insecure=self.insecure,
+                                        timeout=self.timeout)
+        return self.url, self.token
 
     def http_connection(self, url=None):
         return http_connection(url if url else self.url,
