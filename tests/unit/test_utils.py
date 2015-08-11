@@ -176,19 +176,19 @@ class TestReadableToIterable(testtools.TestCase):
             data = u.ReadableToIterable(f, chunk_size, True)
 
             for i, data_chunk in enumerate(data):
-                self.assertEquals(chunk_size, len(data_chunk))
-                self.assertEquals(data_chunk, write_data[i] * chunk_size)
+                self.assertEqual(chunk_size, len(data_chunk))
+                self.assertEqual(data_chunk, write_data[i] * chunk_size)
 
-            self.assertEquals(actual_md5sum.hexdigest(), data.get_md5sum())
+            self.assertEqual(actual_md5sum.hexdigest(), data.get_md5sum())
 
     def test_md5_creation(self):
         # Check creation with a real and noop md5 class
         data = u.ReadableToIterable(None, None, md5=True)
-        self.assertEquals(md5().hexdigest(), data.get_md5sum())
+        self.assertEqual(md5().hexdigest(), data.get_md5sum())
         self.assertTrue(isinstance(data.md5sum, type(md5())))
 
         data = u.ReadableToIterable(None, None, md5=False)
-        self.assertEquals('', data.get_md5sum())
+        self.assertEqual('', data.get_md5sum())
         self.assertTrue(isinstance(data.md5sum, type(u.NoopMD5())))
 
     def test_unicode(self):
@@ -203,14 +203,14 @@ class TestReadableToIterable(testtools.TestCase):
             data = u.ReadableToIterable(f, chunk_size, True)
 
             x = next(data)
-            self.assertEquals(2, len(x))
-            self.assertEquals(unicode_data[:2], x)
+            self.assertEqual(2, len(x))
+            self.assertEqual(unicode_data[:2], x)
 
             x = next(data)
-            self.assertEquals(1, len(x))
-            self.assertEquals(unicode_data[2:], x)
+            self.assertEqual(1, len(x))
+            self.assertEqual(unicode_data[2:], x)
 
-            self.assertEquals(actual_md5sum, data.get_md5sum())
+            self.assertEqual(actual_md5sum, data.get_md5sum())
 
 
 class TestLengthWrapper(testtools.TestCase):
