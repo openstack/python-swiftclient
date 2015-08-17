@@ -875,7 +875,8 @@ def st_upload(parser, args, output_manager):
                                 if error.http_response_content:
                                     if msg:
                                         msg += ': '
-                                    msg += error.http_response_content[:60]
+                                    msg += (error.http_response_content
+                                            .decode('utf8')[:60])
                                 msg = ': %s' % msg
                         else:
                             msg = ': %s' % error
