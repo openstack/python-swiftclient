@@ -16,7 +16,6 @@
 """
 OpenStack Swift client library used internally
 """
-
 import socket
 import requests
 import logging
@@ -24,6 +23,7 @@ import warnings
 
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
+from six.moves import http_client
 from six.moves.urllib.parse import quote as _quote
 from six.moves.urllib.parse import urlparse, urlunparse
 from time import sleep, time
@@ -33,6 +33,9 @@ from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
 from swiftclient.utils import (
     LengthWrapper, ReadableToIterable, parse_api_response)
+
+# Defautl is 100, increase to 256
+http_client._MAXHEADERS = 256
 
 AUTH_VERSIONS_V1 = ('1.0', '1', 1)
 AUTH_VERSIONS_V2 = ('2.0', '2', 2)
