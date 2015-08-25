@@ -1333,7 +1333,7 @@ class TestConnection(MockHttpTest):
             # represenative of the unit under test.  The real get_auth
             # method will always return the os_option dict's
             # object_storage_url which will be overridden by the
-            # preauthurl paramater to Connection if it is provided.
+            # preauthurl parameter to Connection if it is provided.
             return 'http://www.new.com', 'new'
 
         def swap_sleep(*args):
@@ -1806,3 +1806,308 @@ class TestCloseConnection(MockHttpTest):
         self.assertIsInstance(http_conn_obj, c.HTTPConnection)
         self.assertFalse(hasattr(http_conn_obj, 'close'))
         conn.close()
+
+
+class TestServiceToken(MockHttpTest):
+
+    def setUp(self):
+        super(TestServiceToken, self).setUp()
+        self.os_options = {
+            'object_storage_url': 'http://storage_url.com',
+            'service_username': 'service_username',
+            'service_project_name': 'service_project_name',
+            'service_key': 'service_key'}
+
+    def get_connection(self):
+        conn = c.Connection('http://www.test.com', 'asdf', 'asdf',
+                            os_options=self.os_options)
+
+        self.assertTrue(isinstance(conn, c.Connection))
+        conn.get_auth = self.get_auth
+        conn.get_service_auth = self.get_service_auth
+
+        self.assertEqual(conn.attempts, 0)
+        self.assertEqual(conn.service_token, None)
+
+        self.assertTrue(isinstance(conn, c.Connection))
+        return conn
+
+    def get_auth(self):
+        # The real get_auth function will always return the os_option
+        # dict's object_storage_url which will be overridden by the
+        # preauthurl paramater to Connection if it is provided.
+        return self.os_options.get('object_storage_url'), 'token'
+
+    def get_service_auth(self):
+        # The real get_auth function will always return the os_option
+        # dict's object_storage_url which will be overridden by the
+        # preauthurl parameter to Connection if it is provided.
+        return self.os_options.get('object_storage_url'), 'stoken'
+
+    def test_service_token_reauth(self):
+        get_auth_call_list = []
+
+        def get_auth(url, user, key, **kwargs):
+            # The real get_auth function will always return the os_option
+            # dict's object_storage_url which will be overridden by the
+            # preauthurl parameter to Connection if it is provided.
+            args = {'url': url, 'user': user, 'key': key, 'kwargs': kwargs}
+            get_auth_call_list.append(args)
+            return_dict = {'asdf': 'new', 'service_username': 'newserv'}
+            storage_url = kwargs['os_options'].get('object_storage_url')
+            return storage_url, return_dict[user]
+
+        def swap_sleep(*args):
+            self.swap_sleep_called = True
+            c.get_auth = get_auth
+
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(401, 200)):
+            with mock.patch('swiftclient.client.sleep', swap_sleep):
+                self.swap_sleep_called = False
+
+                conn = c.Connection('http://www.test.com', 'asdf', 'asdf',
+                                    preauthurl='http://www.old.com',
+                                    preauthtoken='old',
+                                    os_options=self.os_options)
+
+                self.assertEqual(conn.attempts, 0)
+                self.assertEqual(conn.url, 'http://www.old.com')
+                self.assertEqual(conn.token, 'old')
+
+                conn.head_account()
+
+        self.assertTrue(self.swap_sleep_called)
+        self.assertEqual(conn.attempts, 2)
+        # The original 'preauth' storage URL *must* be preserved
+        self.assertEqual(conn.url, 'http://www.old.com')
+        self.assertEqual(conn.token, 'new')
+        self.assertEqual(conn.service_token, 'newserv')
+
+        # Check get_auth was called with expected args
+        auth_args = get_auth_call_list[0]
+        auth_kwargs = get_auth_call_list[0]['kwargs']
+        self.assertEqual('asdf', auth_args['user'])
+        self.assertEqual('asdf', auth_args['key'])
+        self.assertEqual('service_key',
+                         auth_kwargs['os_options']['service_key'])
+        self.assertEqual('service_username',
+                         auth_kwargs['os_options']['service_username'])
+        self.assertEqual('service_project_name',
+                         auth_kwargs['os_options']['service_project_name'])
+
+        auth_args = get_auth_call_list[1]
+        auth_kwargs = get_auth_call_list[1]['kwargs']
+        self.assertEqual('service_username', auth_args['user'])
+        self.assertEqual('service_key', auth_args['key'])
+        self.assertEqual('service_project_name',
+                         auth_kwargs['os_options']['tenant_name'])
+
+    def test_service_token_get_account(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            with mock.patch('swiftclient.client.parse_api_response'):
+                conn = self.get_connection()
+                conn.get_account()
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('GET', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/?format=json',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_head_account(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = self.get_connection()
+            conn.head_account()
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('HEAD', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com', actual['full_path'])
+
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_post_account(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(201)):
+            conn = self.get_connection()
+            conn.post_account(headers={})
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('POST', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com', actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_delete_container(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(204)):
+            conn = self.get_connection()
+            conn.delete_container('container1')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('DELETE', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_get_container(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            with mock.patch('swiftclient.client.parse_api_response'):
+                conn = self.get_connection()
+                conn.get_container('container1')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('GET', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1?format=json',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_head_container(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = self.get_connection()
+            conn.head_container('container1')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('HEAD', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_post_container(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(201)):
+            conn = self.get_connection()
+            conn.post_container('container1', {})
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('POST', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_put_container(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = self.get_connection()
+            conn.put_container('container1')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('PUT', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_get_object(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = self.get_connection()
+            conn.get_object('container1', 'obj1')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('GET', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1/obj1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_head_object(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = self.get_connection()
+            conn.head_object('container1', 'obj1')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('HEAD', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1/obj1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_put_object(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            conn = self.get_connection()
+            conn.put_object('container1', 'obj1', 'a_string')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('PUT', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1/obj1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_post_object(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(202)):
+            conn = self.get_connection()
+            conn.post_object('container1', 'obj1', {})
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('POST', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1/obj1',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_service_token_delete_object(self):
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(202)):
+            conn = self.get_connection()
+            conn.delete_object('container1', 'obj1', 'a_string')
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        for actual in self.iter_request_log():
+            self.assertEqual('DELETE', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertTrue('X-Service-Token' in actual_hdrs)
+            self.assertEqual('stoken', actual_hdrs['X-Service-Token'])
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual('http://storage_url.com/container1/obj1?a_string',
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)

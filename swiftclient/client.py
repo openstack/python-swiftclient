@@ -489,7 +489,8 @@ def store_response(resp, response_dict):
 
 
 def get_account(url, token, marker=None, limit=None, prefix=None,
-                end_marker=None, http_conn=None, full_listing=False):
+                end_marker=None, http_conn=None, full_listing=False,
+                service_token=None):
     """
     Get a listing of containers for the account.
 
@@ -503,6 +504,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
                       conn object)
     :param full_listing: if True, return a full listing, else returns a max
                          of 10000 listings
+    :param service_token: service auth token
     :returns: a tuple of (response headers, a list of containers) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -532,6 +534,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
         qs += '&end_marker=%s' % quote(end_marker)
     full_path = '%s?%s' % (parsed.path, qs)
     headers = {'X-Auth-Token': token}
+    if service_token:
+        headers['X-Service-Token'] = service_token
     method = 'GET'
     conn.request(method, full_path, '', headers)
     resp = conn.getresponse()
@@ -552,7 +556,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     return resp_headers, parse_api_response(resp_headers, body)
 
 
-def head_account(url, token, http_conn=None):
+def head_account(url, token, http_conn=None, service_token=None):
     """
     Get account stats.
 
@@ -560,6 +564,7 @@ def head_account(url, token, http_conn=None):
     :param token: auth token
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
+    :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
@@ -570,6 +575,8 @@ def head_account(url, token, http_conn=None):
         parsed, conn = http_connection(url)
     method = "HEAD"
     headers = {'X-Auth-Token': token}
+    if service_token:
+        headers['X-Service-Token'] = service_token
     conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -585,7 +592,8 @@ def head_account(url, token, http_conn=None):
     return resp_headers
 
 
-def post_account(url, token, headers, http_conn=None, response_dict=None):
+def post_account(url, token, headers, http_conn=None, response_dict=None,
+                 service_token=None):
     """
     Update an account's metadata.
 
@@ -596,6 +604,7 @@ def post_account(url, token, headers, http_conn=None, response_dict=None):
                       conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :raises ClientException: HTTP POST request failed
     """
     if http_conn:
@@ -604,6 +613,8 @@ def post_account(url, token, headers, http_conn=None, response_dict=None):
         parsed, conn = http_connection(url)
     method = 'POST'
     headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -624,7 +635,7 @@ def post_account(url, token, headers, http_conn=None, response_dict=None):
 def get_container(url, token, container, marker=None, limit=None,
                   prefix=None, delimiter=None, end_marker=None,
                   path=None, http_conn=None,
-                  full_listing=False):
+                  full_listing=False, service_token=None):
     """
     Get a listing of objects for the container.
 
@@ -641,6 +652,7 @@ def get_container(url, token, container, marker=None, limit=None,
                       conn object)
     :param full_listing: if True, return a full listing, else returns a max
                          of 10000 listings
+    :param service_token: service auth token
     :returns: a tuple of (response headers, a list of objects) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -649,7 +661,8 @@ def get_container(url, token, container, marker=None, limit=None,
         http_conn = http_connection(url)
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
-                           delimiter, end_marker, path, http_conn)
+                           delimiter, end_marker, path, http_conn,
+                           service_token)
         listing = rv[1]
         while listing:
             if not delimiter:
@@ -658,7 +671,7 @@ def get_container(url, token, container, marker=None, limit=None,
                 marker = listing[-1].get('name', listing[-1].get('subdir'))
             listing = get_container(url, token, container, marker, limit,
                                     prefix, delimiter, end_marker, path,
-                                    http_conn)[1]
+                                    http_conn, service_token)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
@@ -678,6 +691,8 @@ def get_container(url, token, container, marker=None, limit=None,
     if path:
         qs += '&path=%s' % quote(path)
     headers = {'X-Auth-Token': token}
+    if service_token:
+        headers['X-Service-Token'] = service_token
     method = 'GET'
     conn.request(method, '%s?%s' % (cont_path, qs), '', headers)
     resp = conn.getresponse()
@@ -702,7 +717,8 @@ def get_container(url, token, container, marker=None, limit=None,
     return resp_headers, parse_api_response(resp_headers, body)
 
 
-def head_container(url, token, container, http_conn=None, headers=None):
+def head_container(url, token, container, http_conn=None, headers=None,
+                   service_token=None):
     """
     Get container stats.
 
@@ -711,6 +727,7 @@ def head_container(url, token, container, http_conn=None, headers=None):
     :param container: container name to get stats for
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
+    :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
@@ -722,6 +739,8 @@ def head_container(url, token, container, http_conn=None, headers=None):
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'HEAD'
     req_headers = {'X-Auth-Token': token}
+    if service_token:
+        req_headers['X-Service-Token'] = service_token
     if headers:
         req_headers.update(headers)
     conn.request(method, path, '', req_headers)
@@ -743,7 +762,7 @@ def head_container(url, token, container, http_conn=None, headers=None):
 
 
 def put_container(url, token, container, headers=None, http_conn=None,
-                  response_dict=None):
+                  response_dict=None, service_token=None):
     """
     Create a container
 
@@ -755,6 +774,7 @@ def put_container(url, token, container, headers=None, http_conn=None,
                       conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :raises ClientException: HTTP PUT request failed
     """
     if http_conn:
@@ -766,6 +786,8 @@ def put_container(url, token, container, headers=None, http_conn=None,
     if not headers:
         headers = {}
     headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     if 'content-length' not in (k.lower() for k in headers):
         headers['Content-Length'] = '0'
     conn.request(method, path, '', headers)
@@ -785,7 +807,7 @@ def put_container(url, token, container, headers=None, http_conn=None,
 
 
 def post_container(url, token, container, headers, http_conn=None,
-                   response_dict=None):
+                   response_dict=None, service_token=None):
     """
     Update a container's metadata.
 
@@ -797,6 +819,7 @@ def post_container(url, token, container, headers, http_conn=None,
                       conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :raises ClientException: HTTP POST request failed
     """
     if http_conn:
@@ -806,6 +829,8 @@ def post_container(url, token, container, headers, http_conn=None,
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'POST'
     headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     if 'content-length' not in (k.lower() for k in headers):
         headers['Content-Length'] = '0'
     conn.request(method, path, '', headers)
@@ -825,7 +850,7 @@ def post_container(url, token, container, headers, http_conn=None,
 
 
 def delete_container(url, token, container, http_conn=None,
-                     response_dict=None):
+                     response_dict=None, service_token=None):
     """
     Delete a container
 
@@ -836,6 +861,7 @@ def delete_container(url, token, container, http_conn=None,
                       conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :raises ClientException: HTTP DELETE request failed
     """
     if http_conn:
@@ -844,6 +870,8 @@ def delete_container(url, token, container, http_conn=None,
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
     headers = {'X-Auth-Token': token}
+    if service_token:
+        headers['X-Service-Token'] = service_token
     method = 'DELETE'
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
@@ -863,7 +891,7 @@ def delete_container(url, token, container, http_conn=None,
 
 def get_object(url, token, container, name, http_conn=None,
                resp_chunk_size=None, query_string=None,
-               response_dict=None, headers=None):
+               response_dict=None, headers=None, service_token=None):
     """
     Get an object
 
@@ -882,6 +910,7 @@ def get_object(url, token, container, name, http_conn=None,
                      the response - status, reason and headers
     :param headers: an optional dictionary with additional headers to include
                     in the request
+    :param service_token: service auth token
     :returns: a tuple of (response headers, the object's contents) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -896,6 +925,8 @@ def get_object(url, token, container, name, http_conn=None,
     method = 'GET'
     headers = headers.copy() if headers else {}
     headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
 
@@ -923,7 +954,8 @@ def get_object(url, token, container, name, http_conn=None,
     return parsed_response['headers'], object_body
 
 
-def head_object(url, token, container, name, http_conn=None):
+def head_object(url, token, container, name, http_conn=None,
+                service_token=None):
     """
     Get object info
 
@@ -933,6 +965,7 @@ def head_object(url, token, container, name, http_conn=None):
     :param name: object name to get info for
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
+    :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
@@ -944,6 +977,8 @@ def head_object(url, token, container, name, http_conn=None):
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
     method = 'HEAD'
     headers = {'X-Auth-Token': token}
+    if service_token:
+        headers['X-Service-Token'] = service_token
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -963,7 +998,7 @@ def head_object(url, token, container, name, http_conn=None):
 def put_object(url, token=None, container=None, name=None, contents=None,
                content_length=None, etag=None, chunk_size=None,
                content_type=None, headers=None, http_conn=None, proxy=None,
-               query_string=None, response_dict=None):
+               query_string=None, response_dict=None, service_token=None):
     """
     Put an object
 
@@ -994,6 +1029,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     :param query_string: if set will be appended with '?' to generated path
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :returns: etag
     :raises ClientException: HTTP PUT request failed
     """
@@ -1014,6 +1050,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
         headers = {}
     if token:
         headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     if etag:
         headers['ETag'] = etag.strip('"')
     if content_length is not None:
@@ -1067,7 +1105,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
 
 
 def post_object(url, token, container, name, headers, http_conn=None,
-                response_dict=None):
+                response_dict=None, service_token=None):
     """
     Update object metadata
 
@@ -1080,6 +1118,7 @@ def post_object(url, token, container, name, headers, http_conn=None,
                       conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :raises ClientException: HTTP POST request failed
     """
     if http_conn:
@@ -1088,6 +1127,8 @@ def post_object(url, token, container, name, headers, http_conn=None,
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
     headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     conn.request('POST', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -1105,7 +1146,7 @@ def post_object(url, token, container, name, headers, http_conn=None,
 
 def delete_object(url, token=None, container=None, name=None, http_conn=None,
                   headers=None, proxy=None, query_string=None,
-                  response_dict=None):
+                  response_dict=None, service_token=None):
     """
     Delete object
 
@@ -1123,6 +1164,7 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
     :param query_string: if set will be appended with '?' to generated path
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
+    :param service_token: service auth token
     :raises ClientException: HTTP DELETE request failed
     """
     if http_conn:
@@ -1142,6 +1184,8 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
         headers = {}
     if token:
         headers['X-Auth-Token'] = token
+    if service_token:
+        headers['X-Service-Token'] = service_token
     conn.request('DELETE', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -1184,7 +1228,19 @@ def get_capabilities(http_conn):
 
 
 class Connection(object):
-    """Convenience class to make requests that will also retry the request"""
+
+    """
+    Convenience class to make requests that will also retry the request
+
+    Requests will have an X-Auth-Token header whose value is either
+    the preauthtoken or a token obtained from the auth service using
+    the user credentials provided as args to the constructor. If
+    os_options includes a service_username then requests will also have
+    an X-Service-Token header whose value is a token obtained from the
+    auth service using the service credentials. In this case the request
+    url will be set to the storage_url obtained from the auth service
+    for the service user, unless this is overridden by a preauthurl.
+    """
 
     def __init__(self, authurl=None, user=None, key=None, retries=5,
                  preauthurl=None, preauthtoken=None, snet=False,
@@ -1209,7 +1265,8 @@ class Connection(object):
                             to an auth 2.0 system.
         :param os_options: The OpenStack options which can have tenant_id,
                            auth_token, service_type, endpoint_type,
-                           tenant_name, object_storage_url, region_name
+                           tenant_name, object_storage_url, region_name,
+                           service_username, service_project_name, service_key
         :param insecure: Allow to access servers without checking SSL certs.
                          The server's certificate will not be verified.
         :param ssl_compression: Whether to enable compression at the SSL layer.
@@ -1240,6 +1297,11 @@ class Connection(object):
             self.os_options['object_storage_url'] = preauthurl
         self.url = preauthurl or self.os_options.get('object_storage_url')
         self.token = preauthtoken or self.os_options.get('auth_token')
+        if self.os_options.get('service_username', None):
+            self.service_auth = True
+        else:
+            self.service_auth = False
+        self.service_token = None
         self.cacert = cacert
         self.insecure = insecure
         self.ssl_compression = ssl_compression
@@ -1266,6 +1328,24 @@ class Connection(object):
                                         insecure=self.insecure,
                                         timeout=self.timeout)
         return self.url, self.token
+
+    def get_service_auth(self):
+        opts = self.os_options
+        service_options = {}
+        service_options['tenant_name'] = opts.get('service_project_name', None)
+        service_options['region_name'] = opts.get('region_name', None)
+        service_options['object_storage_url'] = opts.get('object_storage_url',
+                                                         None)
+        service_user = opts.get('service_username', None)
+        service_key = opts.get('service_key', None)
+        return get_auth(self.authurl, service_user,
+                        service_key,
+                        snet=self.snet,
+                        auth_version=self.auth_version,
+                        os_options=service_options,
+                        cacert=self.cacert,
+                        insecure=self.insecure,
+                        timeout=self.timeout)
 
     def http_connection(self, url=None):
         return http_connection(url if url else self.url,
@@ -1294,13 +1374,17 @@ class Connection(object):
                 if not self.url or not self.token:
                     self.url, self.token = self.get_auth()
                     self.http_conn = None
+                if self.service_auth and not self.service_token:
+                    self.url, self.service_token = self.get_service_auth()
+                    self.http_conn = None
                 self.auth_end_time = time()
                 if not self.http_conn:
                     self.http_conn = self.http_connection()
                 kwargs['http_conn'] = self.http_conn
                 if caller_response_dict is not None:
                     kwargs['response_dict'] = {}
-                rv = func(self.url, self.token, *args, **kwargs)
+                rv = func(self.url, self.token, *args,
+                          service_token=self.service_token, **kwargs)
                 self._add_response_dict(caller_response_dict, kwargs)
                 return rv
             except SSLError:
@@ -1317,7 +1401,7 @@ class Connection(object):
                     logger.exception(err)
                     raise
                 if err.http_status == 401:
-                    self.url = self.token = None
+                    self.url = self.token = self.service_token = None
                     if retried_auth or not all((self.authurl,
                                                 self.user,
                                                 self.key)):
