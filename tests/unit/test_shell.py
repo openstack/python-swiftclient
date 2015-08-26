@@ -410,18 +410,12 @@ class TestShell(unittest.TestCase):
 
         # Test that the container and object lists are not shuffled
         mock_shuffle.reset_mock()
-        connection.return_value.get_object.return_value = [
-            {'content-type': 'text/plain',
-             'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
-            '']
 
         connection.return_value.get_container.side_effect = [
             (None, [{'name': 'object'}]),
             (None, [{'name': 'pseudo/'}]),
             (None, []),
         ]
-        connection.return_value.auth_end_time = 0
-        connection.return_value.attempts = 0
         connection.return_value.get_account.side_effect = [
             (None, [{'name': 'container'}]),
             (None, [])

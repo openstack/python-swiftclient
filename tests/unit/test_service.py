@@ -154,14 +154,19 @@ class _TestServiceBase(testtools.TestCase):
     def _assertDictEqual(self, a, b, m=None):
         # assertDictEqual is not available in py2.6 so use a shallow check
         # instead
+        if not m:
+            m = '{0} != {1}'.format(a, b)
+
         if hasattr(self, 'assertDictEqual'):
             self.assertDictEqual(a, b, m)
         else:
-            self.assertTrue(isinstance(a, dict))
-            self.assertTrue(isinstance(b, dict))
+            self.assertTrue(isinstance(a, dict),
+                            'First argument is not a dictionary')
+            self.assertTrue(isinstance(b, dict),
+                            'Second argument is not a dictionary')
             self.assertEqual(len(a), len(b), m)
             for k, v in a.items():
-                self.assertTrue(k in b, m)
+                self.assertIn(k, b, m)
                 self.assertEqual(b[k], v, m)
 
     def _get_mock_connection(self, attempts=2):
@@ -1268,22 +1273,6 @@ class TestServiceDownload(_TestServiceBase):
     def _readbody(self):
         yield self.obj_content
 
-    def _assertDictEqual(self, a, b, m=None):
-        # assertDictEqual is not available in py2.6 so use a shallow check
-        # instead
-        if not m:
-            m = '{0} != {1}'.format(a, b)
-
-        if hasattr(self, 'assertDictEqual'):
-            self.assertDictEqual(a, b, m)
-        else:
-            self.assertTrue(isinstance(a, dict), m)
-            self.assertTrue(isinstance(b, dict), m)
-            self.assertEqual(len(a), len(b), m)
-            for k, v in a.items():
-                self.assertIn(k, b, m)
-                self.assertEqual(b[k], v, m)
-
     @mock.patch('swiftclient.service.SwiftService.list')
     @mock.patch('swiftclient.service.SwiftService._submit_page_downloads')
     @mock.patch('swiftclient.service.interruptable_as_completed')
@@ -1291,12 +1280,32 @@ class TestServiceDownload(_TestServiceBase):
         """
         Check that paged downloads work correctly
         """
-        as_comp.side_effect = [
+        obj_count = [0]
 
-        ]
-        sub_page.side_effect = [
-            range(0, 10), range(0, 10), []  # simulate multiple result pages
-        ]
+        def make_counting_generator(object_to_yield, total_count):
+            # maintain a counter of objects yielded
+            count = [0]
+
+            def counting_generator():
+                while count[0] < 10:
+                    yield object_to_yield
+                    count[0] += 1
+                    total_count[0] += 1
+            return counting_generator()
+
+        obj_count_on_sub_page_call = []
+        sub_page_call_count = [0]
+
+        def fake_sub_page(*args):
+            # keep a record of obj_count when this function is called
+            obj_count_on_sub_page_call.append(obj_count[0])
+            sub_page_call_count[0] += 1
+            if sub_page_call_count[0] < 3:
+                return range(0, 10)
+            return None
+
+        sub_page.side_effect = fake_sub_page
+
         r = Mock(spec=Future)
         r.result.return_value = self._get_expected({
             'success': True,
@@ -1306,15 +1315,19 @@ class TestServiceDownload(_TestServiceBase):
             'auth_end_time': 4,
             'read_length': len(b'objcontent'),
         })
+
         as_comp.side_effect = [
-            [r for _ in range(0, 10)],
-            [r for _ in range(0, 10)]
+            make_counting_generator(r, obj_count),
+            make_counting_generator(r, obj_count)
         ]
 
         s = SwiftService()
         down_gen = s._download_container('test_c', self.opts)
         results = list(down_gen)
         self.assertEqual(20, len(results))
+        self.assertEqual(2, as_comp.call_count)
+        self.assertEqual(3, sub_page_call_count[0])
+        self.assertEqual([0, 7, 17], obj_count_on_sub_page_call)
 
     @mock.patch('swiftclient.service.SwiftService.list')
     @mock.patch('swiftclient.service.SwiftService._submit_page_downloads')
@@ -1365,6 +1378,7 @@ class TestServiceDownload(_TestServiceBase):
         # This was an unknown error, so make sure we attempt to cancel futures
         for spe in sub_page_effects[0]:
             spe.cancel.assert_called_once_with()
+        self.assertEqual(1, as_comp.call_count)
 
         # Now test ClientException
         sub_page_effects = [
@@ -1372,9 +1386,9 @@ class TestServiceDownload(_TestServiceBase):
             ClientException('Go Boom')
         ]
         sub_page.side_effect = sub_page_effects
+        as_comp.reset_mock()
         as_comp.side_effect = [
             [_make_result() for _ in range(0, 10)],
-            [_make_result() for _ in range(0, 10)]
         ]
         self.assertRaises(
             ClientException,
@@ -1383,6 +1397,7 @@ class TestServiceDownload(_TestServiceBase):
         # This was a ClientException, so make sure we don't cancel futures
         for spe in sub_page_effects[0]:
             self.assertFalse(spe.cancel.called)
+        self.assertEqual(1, as_comp.call_count)
 
     def test_download_object_job(self):
         mock_conn = self._get_mock_connection()
