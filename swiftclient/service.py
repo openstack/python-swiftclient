@@ -176,7 +176,8 @@ _default_local_options = {
     'fail_fast': False,
     'human': False,
     'dir_marker': False,
-    'checksum': True
+    'checksum': True,
+    'shuffle': False
 }
 
 POLICY = 'X-Storage-Policy'
@@ -752,7 +753,7 @@ class SwiftService(object):
         else:
             options = self._options
 
-        rq = Queue()
+        rq = Queue(maxsize=10)  # Just stop list running away consuming memory
 
         if container is None:
             listing_future = self.thread_manager.container_pool.submit(
@@ -895,6 +896,7 @@ class SwiftService(object):
                                 'out_directory': None,
                                 'out_file': None,
                                 'remove_prefix': False,
+                                'shuffle' : False
                             }
 
         :returns: A generator for returning the results of the download
@@ -916,39 +918,20 @@ class SwiftService(object):
                 try:
                     options_copy = deepcopy(options)
                     options_copy["long"] = False
-                    containers = []
+
                     for part in self.list(options=options_copy):
                         if part["success"]:
-                            containers.extend([
-                                i['name'] for i in part["listing"]
-                            ])
+                            containers = [i['name'] for i in part["listing"]]
+
+                            if options['shuffle']:
+                                shuffle(containers)
+
+                            for con in containers:
+                                for res in self._download_container(
+                                        con, options_copy):
+                                    yield res
                         else:
                             raise part["error"]
-
-                    shuffle(containers)
-
-                    o_downs = []
-                    for con in containers:
-                        objs = []
-                        for part in self.list(
-                                container=con, options=options_copy):
-                            if part["success"]:
-                                objs.extend([
-                                    i['name'] for i in part["listing"]
-                                ])
-                            else:
-                                raise part["error"]
-                        shuffle(objs)
-
-                        o_downs.extend(
-                            self.thread_manager.object_dd_pool.submit(
-                                self._download_object_job, con, obj,
-                                options_copy
-                            ) for obj in objs
-                        )
-
-                    for o_down in interruptable_as_completed(o_downs):
-                        yield o_down.result()
 
                 # If we see a 404 here, the listing of the account failed
                 except ClientException as err:
@@ -1153,14 +1136,17 @@ class SwiftService(object):
             }
             return res
 
-    def _download_container(self, container, options):
+    def _submit_page_downloads(self, container, page_generator, options):
         try:
-            objects = []
-            for part in self.list(container=container, options=options):
-                if part["success"]:
-                    objects.extend([o["name"] for o in part["listing"]])
-                else:
-                    raise part["error"]
+            list_page = next(page_generator)
+        except StopIteration:
+            return None
+
+        if list_page["success"]:
+            objects = [o["name"] for o in list_page["listing"]]
+
+            if options["shuffle"]:
+                shuffle(objects)
 
             o_downs = [
                 self.thread_manager.object_dd_pool.submit(
@@ -1168,14 +1154,60 @@ class SwiftService(object):
                 ) for obj in objects
             ]
 
-            for o_down in interruptable_as_completed(o_downs):
-                yield o_down.result()
+            return o_downs
+        else:
+            raise list_page["error"]
 
+    def _download_container(self, container, options):
+        _page_generator = self.list(container=container, options=options)
+        try:
+            next_page_downs = self._submit_page_downloads(
+                container, _page_generator, options
+            )
         except ClientException as err:
             if err.http_status != 404:
                 raise
-            raise SwiftError('Container %r not found' % container,
-                             container=container)
+            raise SwiftError(
+                'Container %r not found' % container, container=container
+            )
+
+        error = None
+        while next_page_downs:
+            page_downs = next_page_downs
+            next_page_downs = None
+
+            # Start downloading the next page of list results when
+            # we have completed 80% of the previous page
+            next_page_triggered = False
+            next_page_trigger_point = 0.8 * len(page_downs)
+
+            page_results_yielded = 0
+            for o_down in interruptable_as_completed(page_downs):
+                yield o_down.result()
+
+                # Do we need to start the next set of downloads yet?
+                if not next_page_triggered:
+                    page_results_yielded += 1
+                    if page_results_yielded >= next_page_trigger_point:
+                        try:
+                            next_page_downs = self._submit_page_downloads(
+                                container, _page_generator, options
+                            )
+                        except ClientException as err:
+                            # Allow the current page to finish downloading
+                            error = err
+                        except Exception:
+                            # Something unexpected went wrong - cancel
+                            # remaining downloads
+                            for _d in page_downs:
+                                _d.cancel()
+                            raise
+                        finally:
+                            # Stop counting and testing
+                            next_page_triggered = True
+
+        if error:
+            raise error
 
     # Upload related methods
     #
@@ -2080,16 +2112,17 @@ class SwiftService(object):
 
     def _delete_container(self, container, options):
         try:
-            objs = []
             for part in self.list(container=container):
                 if part["success"]:
-                    objs.extend([o['name'] for o in part['listing']])
+                    objs = [o['name'] for o in part['listing']]
+
+                    o_dels = self.delete(
+                        container=container, objects=objs, options=options
+                    )
+                    for res in o_dels:
+                        yield res
                 else:
                     raise part["error"]
-
-            for res in self.delete(
-                    container=container, objects=objs, options=options):
-                yield res
 
             con_del = self.thread_manager.container_pool.submit(
                 self._delete_empty_container, container

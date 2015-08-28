@@ -377,6 +377,62 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
             self.assertEqual('objcontent', output.out)
 
+    @mock.patch('swiftclient.service.shuffle')
+    @mock.patch('swiftclient.service.Connection')
+    def test_download_shuffle(self, connection, mock_shuffle):
+        # Test that the container and object lists are shuffled
+        mock_shuffle.side_effect = lambda l: l
+        connection.return_value.get_object.return_value = [
+            {'content-type': 'text/plain',
+             'etag': EMPTY_ETAG},
+            '']
+
+        connection.return_value.get_container.side_effect = [
+            (None, [{'name': 'object'}]),
+            (None, [{'name': 'pseudo/'}]),
+            (None, []),
+        ]
+        connection.return_value.auth_end_time = 0
+        connection.return_value.attempts = 0
+        connection.return_value.get_account.side_effect = [
+            (None, [{'name': 'container'}]),
+            (None, [])
+        ]
+
+        with mock.patch(BUILTIN_OPEN) as mock_open:
+            argv = ["", "download", "--all"]
+            swiftclient.shell.main(argv)
+            self.assertEqual(3, mock_shuffle.call_count)
+            mock_shuffle.assert_any_call(['container'])
+            mock_shuffle.assert_any_call(['object'])
+            mock_shuffle.assert_any_call(['pseudo/'])
+            mock_open.assert_called_once_with('container/object', 'wb')
+
+        # Test that the container and object lists are not shuffled
+        mock_shuffle.reset_mock()
+        connection.return_value.get_object.return_value = [
+            {'content-type': 'text/plain',
+             'etag': 'd41d8cd98f00b204e9800998ecf8427e'},
+            '']
+
+        connection.return_value.get_container.side_effect = [
+            (None, [{'name': 'object'}]),
+            (None, [{'name': 'pseudo/'}]),
+            (None, []),
+        ]
+        connection.return_value.auth_end_time = 0
+        connection.return_value.attempts = 0
+        connection.return_value.get_account.side_effect = [
+            (None, [{'name': 'container'}]),
+            (None, [])
+        ]
+
+        with mock.patch(BUILTIN_OPEN) as mock_open:
+            argv = ["", "download", "--all", "--no-shuffle"]
+            swiftclient.shell.main(argv)
+            self.assertEqual(0, mock_shuffle.call_count)
+            mock_open.assert_called_once_with('container/object', 'wb')
+
     @mock.patch('swiftclient.service.Connection')
     def test_download_no_content_type(self, connection):
         connection.return_value.get_object.return_value = [

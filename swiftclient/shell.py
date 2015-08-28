@@ -200,6 +200,14 @@ Optional arguments:
                         Example --header "content-type:text/plain"
   --skip-identical      Skip downloading files that are identical on both
                         sides.
+  --no-shuffle          By default, when downloading a complete account or
+                        container, download order is randomised in order to
+                        to reduce the load on individual drives when multiple
+                        clients are executed simultaneously to download the
+                        same set of objects (e.g. a nightly automated download
+                        script to multiple servers). Enable this option to
+                        submit download jobs to the thread pool in the order
+                        they are listed in the object store.
 '''.strip("\n")
 
 
@@ -249,6 +257,14 @@ def st_download(parser, args, output_manager):
         '--skip-identical', action='store_true', dest='skip_identical',
         default=False, help='Skip downloading files that are identical on '
         'both sides.')
+    parser.add_option(
+        '--no-shuffle', action='store_false', dest='shuffle',
+        default=True, help='By default, download order is randomised in order '
+        'to reduce the load on individual drives when multiple clients are '
+        'executed simultaneously to download the same set of objects (e.g. a '
+        'nightly automated download script to multiple servers). Enable this '
+        'option to submit download jobs to the thread pool in the order they '
+        'are listed in the object store.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options.out_file == '-':
@@ -355,6 +371,8 @@ def st_download(parser, args, output_manager):
 
         except SwiftError as e:
             output_manager.error(e.value)
+        except Exception as e:
+            output_manager.error(e)
 
 
 st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
