@@ -1290,7 +1290,7 @@ class Connection(object):
         self.starting_backoff = starting_backoff
         self.max_backoff = max_backoff
         self.auth_version = auth_version
-        self.os_options = os_options or {}
+        self.os_options = dict(os_options or {})
         if tenant_name:
             self.os_options['tenant_name'] = tenant_name
         if preauthurl:

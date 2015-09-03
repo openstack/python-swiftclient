@@ -1481,6 +1481,33 @@ class TestConnection(MockHttpTest):
             ('HEAD', '/v1/AUTH_pre_url', '', {'x-auth-token': 'post_token'}),
         ])
 
+    def test_preauth_url_trumps_os_preauth_url(self):
+        storage_url = 'http://storage.example.com/v1/AUTH_pre_url'
+        os_storage_url = 'http://storage.example.com/v1/AUTH_os_pre_url'
+        os_preauth_options = {
+            'tenant_name': 'demo',
+            'object_storage_url': os_storage_url,
+        }
+        orig_os_preauth_options = dict(os_preauth_options)
+        conn = c.Connection('http://auth.example.com', 'user', 'password',
+                            os_options=os_preauth_options, auth_version=2,
+                            preauthurl=storage_url, tenant_name='not_demo')
+        fake_keystone = fake_get_auth_keystone(
+            storage_url='http://storage.example.com/v1/AUTH_post_url',
+            token='post_token')
+        fake_conn = self.fake_http_connection(200)
+        with mock.patch.multiple('swiftclient.client',
+                                 get_auth_keystone=fake_keystone,
+                                 http_connection=fake_conn,
+                                 sleep=mock.DEFAULT):
+            conn.head_account()
+        self.assertRequests([
+            ('HEAD', '/v1/AUTH_pre_url', '', {'x-auth-token': 'post_token'}),
+        ])
+
+        # check that Connection has not modified our os_options
+        self.assertEqual(orig_os_preauth_options, os_preauth_options)
+
     def test_get_auth_sets_url_and_token(self):
         with mock.patch('swiftclient.client.get_auth') as mock_get_auth:
             mock_get_auth.return_value = (
