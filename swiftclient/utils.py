@@ -17,9 +17,9 @@ import hashlib
 import hmac
 import json
 import logging
-import time
-
 import six
+import time
+import traceback
 
 TRUE_VALUES = set(('true', '1', 'yes', 'on', 't', 'y'))
 EMPTY_ETAG = 'd41d8cd98f00b204e9800998ecf8427e'
@@ -117,6 +117,20 @@ def parse_api_response(headers, body):
         charset = content_type.split('; charset=', 1)[1].split(';', 1)[0]
 
     return json.loads(body.decode(charset))
+
+
+def report_traceback():
+    """
+    Reports a timestamp and full traceback for a given exception.
+
+    :return: Full traceback and timestamp.
+    """
+    try:
+        formatted_lines = traceback.format_exc()
+        now = time.time()
+        return formatted_lines, now
+    except AttributeError:
+        return None, None
 
 
 class NoopMD5(object):

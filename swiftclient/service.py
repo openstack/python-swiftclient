@@ -12,7 +12,9 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import os
+
 from concurrent.futures import as_completed, CancelledError, TimeoutError
 from copy import deepcopy
 from errno import EEXIST, ENOENT
@@ -39,10 +41,13 @@ from swiftclient.command_helpers import (
 )
 from swiftclient.utils import (
     config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG,
-    parse_api_response
+    parse_api_response, report_traceback
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
+
+
+logger = logging.getLogger("swiftclient.service")
 
 
 class ResultsIterator(Iterator):
@@ -435,16 +440,24 @@ class SwiftService(object):
                     return res
                 except ClientException as err:
                     if err.http_status != 404:
+                        traceback, err_time = report_traceback()
+                        logger.exception(err)
                         res.update({
                             'success': False,
-                            'error': err
+                            'error': err,
+                            'traceback': traceback,
+                            'error_timestamp': err_time
                         })
                         return res
                     raise SwiftError('Account not found', exc=err)
                 except Exception as err:
+                    traceback, err_time = report_traceback()
+                    logger.exception(err)
                     res.update({
                         'success': False,
-                        'error': err
+                        'error': err,
+                        'traceback': traceback,
+                        'error_timestamp': err_time
                     })
                     return res
         else:
@@ -467,17 +480,25 @@ class SwiftService(object):
                     return res
                 except ClientException as err:
                     if err.http_status != 404:
+                        traceback, err_time = report_traceback()
+                        logger.exception(err)
                         res.update({
                             'success': False,
-                            'error': err
+                            'error': err,
+                            'traceback': traceback,
+                            'error_timestamp': err_time
                         })
                         return res
                     raise SwiftError('Container %r not found' % container,
                                      container=container, exc=err)
                 except Exception as err:
+                    traceback, err_time = report_traceback()
+                    logger.exception(err)
                     res.update({
                         'success': False,
-                        'error': err
+                        'error': err,
+                        'traceback': traceback,
+                        'error_timestamp': err_time
                     })
                     return res
             else:
@@ -506,9 +527,13 @@ class SwiftService(object):
             })
             return res
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res.update({
                 'success': False,
-                'error': err
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
             })
             return res
 
@@ -581,18 +606,26 @@ class SwiftService(object):
                     get_future_result(post)
                 except ClientException as err:
                     if err.http_status != 404:
+                        traceback, err_time = report_traceback()
+                        logger.exception(err)
                         res.update({
                             'success': False,
                             'error': err,
+                            'traceback': traceback,
+                            'error_timestamp': err_time,
                             'response_dict': response_dict
                         })
                         return res
-                    raise SwiftError('Account not found')
+                    raise SwiftError('Account not found', exc=err)
                 except Exception as err:
+                    traceback, err_time = report_traceback()
+                    logger.exception(err)
                     res.update({
                         'success': False,
                         'error': err,
-                        'response_dict': response_dict
+                        'response_dict': response_dict,
+                        'traceback': traceback,
+                        'error_timestamp': err_time
                     })
             return res
         if not objects:
@@ -619,23 +652,31 @@ class SwiftService(object):
                 get_future_result(post)
             except ClientException as err:
                 if err.http_status != 404:
+                    traceback, err_time = report_traceback()
+                    logger.exception(err)
                     res.update({
                         'action': 'post_container',
                         'success': False,
                         'error': err,
+                        'traceback': traceback,
+                        'error_timestamp': err_time,
                         'response_dict': response_dict
                     })
                     return res
                 raise SwiftError(
                     "Container '%s' not found" % container,
-                    container=container
+                    container=container, exc=err
                 )
             except Exception as err:
+                traceback, err_time = report_traceback()
+                logger.exception(err)
                 res.update({
                     'action': 'post_container',
                     'success': False,
                     'error': err,
-                    'response_dict': response_dict
+                    'response_dict': response_dict,
+                    'traceback': traceback,
+                    'error_timestamp': err_time
                 })
             return res
         else:
@@ -720,9 +761,13 @@ class SwiftService(object):
             conn.post_object(
                 container, obj, headers=headers, response_dict=result)
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res.update({
                 'success': False,
-                'error': err
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
             })
 
         return res
@@ -775,7 +820,6 @@ class SwiftService(object):
     @staticmethod
     def _list_account_job(conn, options, result_queue):
         marker = ''
-        success = True
         error = None
         try:
             while True:
@@ -804,23 +848,30 @@ class SwiftService(object):
 
                 marker = items[-1].get('name', items[-1].get('subdir'))
         except ClientException as err:
-            success = False
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             if err.http_status != 404:
-                error = err
+                error = (err, traceback, err_time)
             else:
-                error = SwiftError('Account not found')
+                error = (
+                    SwiftError('Account not found', exc=err),
+                    traceback, err_time
+                )
 
         except Exception as err:
-            success = False
-            error = err
+            traceback, err_time = report_traceback()
+            logger.exception(err)
+            error = (err, traceback, err_time)
 
         res = {
             'action': 'list_account_part',
             'container': None,
             'prefix': options['prefix'],
-            'success': success,
+            'success': False,
             'marker': marker,
-            'error': error,
+            'error': error[0],
+            'traceback': error[1],
+            'error_timestamp': error[2]
         }
         result_queue.put(res)
         result_queue.put(None)
@@ -828,7 +879,6 @@ class SwiftService(object):
     @staticmethod
     def _list_container_job(conn, container, options, result_queue):
         marker = ''
-        success = True
         error = None
         try:
             while True:
@@ -853,23 +903,33 @@ class SwiftService(object):
 
                 marker = items[-1].get('name', items[-1].get('subdir'))
         except ClientException as err:
-            success = False
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             if err.http_status != 404:
-                error = err
+                error = (err, traceback, err_time)
             else:
-                error = SwiftError('Container %r not found' % container,
-                                   container=container)
+                error = (
+                    SwiftError(
+                        'Container %r not found' % container,
+                        container=container, exc=err
+                    ),
+                    traceback,
+                    err_time
+                )
         except Exception as err:
-            success = False
-            error = err
+            traceback, err_time = report_traceback()
+            logger.exception(err)
+            error = (err, traceback, err_time)
 
         res = {
             'action': 'list_container_part',
             'container': container,
             'prefix': options['prefix'],
-            'success': success,
+            'success': False,
             'marker': marker,
-            'error': error,
+            'error': error[0],
+            'traceback': error[1],
+            'error_timestamp': error[2]
         }
         result_queue.put(res)
         result_queue.put(None)
@@ -937,7 +997,7 @@ class SwiftService(object):
                 except ClientException as err:
                     if err.http_status != 404:
                         raise
-                    raise SwiftError('Account not found')
+                    raise SwiftError('Account not found', exc=err)
 
         elif not objects:
             if '/' in container:
@@ -1123,12 +1183,16 @@ class SwiftService(object):
             return res
 
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res = {
                 'action': 'download_object',
                 'container': container,
                 'object': obj,
                 'success': False,
                 'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time,
                 'response_dict': results_dict,
                 'path': path,
                 'pseudodir': pseudodir,
@@ -1168,7 +1232,8 @@ class SwiftService(object):
             if err.http_status != 404:
                 raise
             raise SwiftError(
-                'Container %r not found' % container, container=container
+                'Container %r not found' % container,
+                container=container, exc=err
             )
 
         error = None
@@ -1195,6 +1260,7 @@ class SwiftService(object):
                             )
                         except ClientException as err:
                             # Allow the current page to finish downloading
+                            logger.exception(err)
                             error = err
                         except Exception:
                             # Something unexpected went wrong - cancel
@@ -1368,12 +1434,16 @@ class SwiftService(object):
                         file_jobs[file_future] = details
                     except OSError as err:
                         # Avoid tying up threads with jobs that will fail
+                        traceback, err_time = report_traceback()
+                        logger.exception(err)
                         res = {
                             'action': 'upload_object',
                             'container': container,
                             'object': o,
                             'success': False,
                             'error': err,
+                            'traceback': traceback,
+                            'error_timestamp': err_time,
                             'path': s
                         }
                         rq.put(res)
@@ -1472,9 +1542,13 @@ class SwiftService(object):
                 'response_dict': create_response
             })
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res.update({
                 'success': False,
                 'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time,
                 'response_dict': create_response
             })
         return res
@@ -1513,9 +1587,14 @@ class SwiftService(object):
                     return res
             except ClientException as err:
                 if err.http_status != 404:
+                    traceback, err_time = report_traceback()
+                    logger.exception(err)
                     res.update({
                         'success': False,
-                        'error': err})
+                        'error': err,
+                        'traceback': traceback,
+                        'error_timestamp': err_time
+                    })
                     return res
         try:
             conn.put_object(container, obj, '', content_length=0,
@@ -1527,9 +1606,13 @@ class SwiftService(object):
                 'response_dict': results_dict})
             return res
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res.update({
                 'success': False,
                 'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time,
                 'response_dict': results_dict})
             return res
 
@@ -1582,9 +1665,13 @@ class SwiftService(object):
             return res
 
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res.update({
                 'success': False,
                 'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time,
                 'response_dict': results_dict,
                 'attempts': conn.attempts
             })
@@ -1713,9 +1800,13 @@ class SwiftService(object):
                                 old_slo_manifest_paths.append(seg_path)
                 except ClientException as err:
                     if err.http_status != 404:
+                        traceback, err_time = report_traceback()
+                        logger.exception(err)
                         res.update({
                             'success': False,
-                            'error': err
+                            'error': err,
+                            'traceback': traceback,
+                            'error_timestamp': err_time
                         })
                         return res
 
@@ -1770,9 +1861,11 @@ class SwiftService(object):
                         if not r['success']:
                             errors = True
                         segment_results.append(r)
-                    except Exception as e:
+                    except Exception as err:
+                        traceback, err_time = report_traceback()
+                        logger.exception(err)
                         errors = True
-                        exceptions.append(e)
+                        exceptions.append((err, traceback, err_time))
                 if errors:
                     err = ClientException(
                         'Aborting manifest creation '
@@ -1901,16 +1994,26 @@ class SwiftService(object):
             return res
 
         except OSError as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             if err.errno == ENOENT:
-                err = SwiftError('Local file %r not found' % path)
+                error = SwiftError('Local file %r not found' % path, exc=err)
+            else:
+                error = err
             res.update({
                 'success': False,
-                'error': err
+                'error': error,
+                'traceback': traceback,
+                'error_timestamp': err_time
             })
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             res.update({
                 'success': False,
-                'error': err
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
             })
         return res
 
@@ -2009,8 +2112,15 @@ class SwiftService(object):
         try:
             conn.delete_object(container, obj, response_dict=results_dict)
             res = {'success': True}
-        except Exception as e:
-            res = {'success': False, 'error': e}
+        except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
+            res = {
+                'success': False,
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
+            }
 
         res.update({
             'action': 'delete_segment',
@@ -2026,12 +2136,12 @@ class SwiftService(object):
 
     def _delete_object(self, conn, container, obj, options,
                        results_queue=None):
+        res = {
+            'action': 'delete_object',
+            'container': container,
+            'object': obj
+        }
         try:
-            res = {
-                'action': 'delete_object',
-                'container': container,
-                'object': obj
-            }
             old_manifest = None
             query_string = None
 
@@ -2086,8 +2196,14 @@ class SwiftService(object):
             })
 
         except Exception as err:
-            res['success'] = False
-            res['error'] = err
+            traceback, err_time = report_traceback()
+            logger.exception(err)
+            res.update({
+                'success': False,
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
+            })
             return res
 
         return res
@@ -2098,8 +2214,15 @@ class SwiftService(object):
         try:
             conn.delete_container(container, response_dict=results_dict)
             res = {'success': True}
-        except Exception as e:
-            res = {'success': False, 'error': e}
+        except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
+            res = {
+                'success': False,
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
+            }
 
         res.update({
             'action': 'delete_container',
@@ -2130,12 +2253,16 @@ class SwiftService(object):
             con_del_res = get_future_result(con_del)
 
         except Exception as err:
+            traceback, err_time = report_traceback()
+            logger.exception(err)
             con_del_res = {
                 'action': 'delete_container',
                 'container': container,
                 'object': None,
                 'success': False,
-                'error': err
+                'error': err,
+                'traceback': traceback,
+                'error_timestamp': err_time
             }
 
         yield con_del_res
@@ -2173,7 +2300,7 @@ class SwiftService(object):
         except ClientException as err:
             if err.http_status != 404:
                 raise err
-            raise SwiftError('Account not found')
+            raise SwiftError('Account not found', exc=err)
 
         return res
 
@@ -2208,10 +2335,16 @@ class SwiftService(object):
                 res['status'] = 'cancelled'
                 result_queue.put(res)
             except Exception as err:
+                traceback, err_time = report_traceback()
+                logger.exception(err)
                 details = futures[f]
                 res = details
-                res['success'] = False
-                res['error'] = err
+                res.update({
+                    'success': False,
+                    'error': err,
+                    'traceback': traceback,
+                    'error_timestamp': err_time
+                })
                 result_queue.put(res)
 
         result_queue.put(None)
