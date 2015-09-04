@@ -104,12 +104,14 @@ is not provided the storage-url retrieved after authentication is used as
 proxy-url.
 .RE
 
-\fBtempurl\fR method seconds path key
+\fBtempurl\fR \fImethod\fR \fIseconds\fR \fIpath\fR \fIkey\fR [\fI--absolute\fR]
 .RS 4
-Generates a temporary URL allowing unauthenticated access to the Swift object at
-the given path, using the given HTTP method, for the given number of seconds,
-using the given TempURL key. \fBExample\fR: tempurl GET 86400
-/v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key
+Generates a temporary URL allowing unauthenticated access to the Swift object
+at the given path, using the given HTTP method, for the given number of
+seconds, using the given TempURL key. If optional --absolute argument is
+provided, seconds is instead interpreted as a Unix timestamp at which the URL
+should expire. \fBExample\fR: tempurl GET $(date -d "Jan 1 2016" +%s)
+/v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key --absolute
 .RE
 
 .SH OPTIONS

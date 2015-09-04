@@ -922,15 +922,21 @@ class TestShell(unittest.TestCase):
             self.assertTrue(output.err != '')
             self.assertTrue(output.err.startswith('Usage'))
 
-    @mock.patch('swiftclient.shell.generate_temp_url')
+    @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url(self, temp_url):
         argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/o",
-                "secret_key"
-                ]
-        temp_url.return_value = ""
+                "secret_key"]
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
-            '/v1/AUTH_account/c/o', 60, 'secret_key', 'GET')
+            '/v1/AUTH_account/c/o', 60, 'secret_key', 'GET', absolute=False)
+
+    @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
+    def test_absolute_expiry_temp_url(self, temp_url):
+        argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/o",
+                "secret_key", "--absolute"]
+        swiftclient.shell.main(argv)
+        temp_url.assert_called_with(
+            '/v1/AUTH_account/c/o', 60, 'secret_key', 'GET', absolute=True)
 
     @mock.patch('swiftclient.service.Connection')
     def test_capabilities(self, connection):

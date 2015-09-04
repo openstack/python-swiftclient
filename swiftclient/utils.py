@@ -65,8 +65,8 @@ def prt_bytes(bytes, human_flag):
     return bytes
 
 
-def generate_temp_url(path, seconds, key, method):
-    """ Generates a temporary URL that gives unauthenticated access to the
+def generate_temp_url(path, seconds, key, method, absolute=False):
+    """Generates a temporary URL that gives unauthenticated access to the
     Swift object.
 
     :param path: The full path to the Swift object. Example:
@@ -85,7 +85,10 @@ def generate_temp_url(path, seconds, key, method):
     if seconds < 0:
         raise ValueError('seconds must be a positive integer')
     try:
-        expiration = int(time.time() + seconds)
+        if not absolute:
+            expiration = int(time.time() + seconds)
+        else:
+            expiration = int(seconds)
     except TypeError:
         raise TypeError('seconds must be an integer')
 
