@@ -1013,17 +1013,30 @@ Generates a temporary URL for a Swift object.
 Positional arguments:
   <method>              An HTTP method to allow for this temporary URL.
                         Usually 'GET' or 'PUT'.
-  <seconds>             The amount of time in seconds the temporary URL will
-                        be valid for.
+  <seconds>             The amount of time in seconds the temporary URL will be
+                        valid for; or, if --absolute is passed, the Unix
+                        timestamp when the temporary URL will expire.
   <path>                The full path to the Swift object. Example:
                         /v1/AUTH_account/c/o.
   <key>                 The secret temporary URL key set on the Swift cluster.
                         To set a key, run \'swift post -m
                         "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"\'
+
+Optional arguments:
+  --absolute            Interpet the <seconds> positional argument as a Unix
+                        timestamp rather than a number of seconds in the
+                        future.
 '''.strip('\n')
 
 
 def st_tempurl(parser, args, thread_manager):
+    parser.add_option(
+        '--absolute', action='store_true',
+        dest='absolute_expiry', default=False,
+        help=("If present, seconds argument will be interpreted as a Unix "
+              "timestamp representing when the tempURL should expire, rather "
+              "than an offset from the current time")
+    )
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if len(args) < 4:
@@ -1040,7 +1053,8 @@ def st_tempurl(parser, args, thread_manager):
         thread_manager.print_msg('WARNING: Non default HTTP method %s for '
                                  'tempurl specified, possibly an error' %
                                  method.upper())
-    url = generate_temp_url(path, seconds, key, method)
+    url = generate_temp_url(path, seconds, key, method,
+                            absolute=options.absolute_expiry)
     thread_manager.print_msg(url)
 
 

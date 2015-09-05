@@ -132,17 +132,24 @@ class TestTempURL(testtools.TestCase):
         self.key = 'correcthorsebatterystaple'
         self.method = 'GET'
 
-    @mock.patch('hmac.HMAC.hexdigest')
-    @mock.patch('time.time')
+    @mock.patch('hmac.HMAC.hexdigest', return_value='temp_url_signature')
+    @mock.patch('time.time', return_value=1400000000)
     def test_generate_temp_url(self, time_mock, hmac_mock):
-        time_mock.return_value = 1400000000
-        hmac_mock.return_value = 'temp_url_signature'
         expected_url = (
             '/v1/AUTH_account/c/o?'
             'temp_url_sig=temp_url_signature&'
             'temp_url_expires=1400003600')
         url = u.generate_temp_url(self.url, self.seconds, self.key,
                                   self.method)
+        self.assertEqual(url, expected_url)
+
+    @mock.patch('hmac.HMAC.hexdigest', return_value="temp_url_signature")
+    def test_generate_absolute_expiry_temp_url(self, hmac_mock):
+        expected_url = ('/v1/AUTH_account/c/o?'
+                        'temp_url_sig=temp_url_signature&'
+                        'temp_url_expires=2146636800')
+        url = u.generate_temp_url(self.url, 2146636800, self.key, self.method,
+                                  absolute=True)
         self.assertEqual(url, expected_url)
 
     def test_generate_temp_url_bad_seconds(self):
