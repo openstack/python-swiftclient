@@ -1,8 +1,14 @@
-2.5.1
+2.6.0
 -----
 
 * Several CLI options have learned short options. The usage strings have
   been updated to reflect this.
+
+* Added --no-shuffle option to the CLI download command.
+
+* Added --absolute option for CLI TempURL generation and the corresponding
+  parameter to utils.generate_temp_url(). This allows for an exact, specific
+  time to be used for the TempURL expiry time.
 
 * CLI arguments are now always decoded as UTF-8.
 
@@ -10,14 +16,13 @@
 
 * Reduce memory usage for download/delete.
 
-* Added --no-shuffle option to the CLI download command.
-
 * The swift service API now logs and reports the traceback
   on failed operations.
 
-* Increase httplib._MAXHEADERS to 256.
+* Increase httplib._MAXHEADERS to 256 to work around header limits in recent
+  Python releases.
 
-* Add minimal working service token support to client.py.
+* Added minimal working service token support to client.py.
 
 * Various other minor bug fixes and improvements.
 
