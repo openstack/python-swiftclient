@@ -538,6 +538,9 @@ class TestShell(unittest.TestCase):
             b' {"name": "container2/old_seg2"}]'
         )
         connection.return_value.put_object.return_value = EMPTY_ETAG
+        # create the delete_object child mock here in attempt to fix
+        # https://bugs.launchpad.net/python-swiftclient/+bug/1480223
+        connection.return_value.delete_object.return_value = None
         swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
             'container',
@@ -604,9 +607,11 @@ class TestShell(unittest.TestCase):
                      'last_modified': '123T456'}]],
             [None, []]
         ]
-        connection.return_value.put_object.return_value = (
-            'd41d8cd98f00b204e9800998ecf8427e')
+        connection.return_value.put_object.return_value = EMPTY_ETAG
         swiftclient.shell.main(argv)
+        # create the delete_object child mock here in attempt to fix
+        # https://bugs.launchpad.net/python-swiftclient/+bug/1480223
+        connection.return_value.delete_object.return_value = None
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
