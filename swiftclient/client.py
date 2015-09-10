@@ -1400,7 +1400,7 @@ class Connection(object):
                 self.http_conn = None
             except ClientException as err:
                 self._add_response_dict(caller_response_dict, kwargs)
-                if self.attempts > self.retries:
+                if self.attempts > self.retries or err.http_status is None:
                     logger.exception(err)
                     raise
                 if err.http_status == 401:
