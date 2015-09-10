@@ -46,6 +46,7 @@ USER_METADATA_TYPE = tuple('x-%s-meta-' % type_ for type_ in
 try:
     from logging import NullHandler
 except ImportError:
+    # Added in Python 2.7
     class NullHandler(logging.Handler):
         def handle(self, record):
             pass
@@ -110,11 +111,7 @@ def quote(value, safe='/'):
     """
     if six.PY3:
         return _quote(value, safe=safe)
-    value = encode_utf8(value)
-    if isinstance(value, bytes):
-        return _quote(value, safe)
-    else:
-        return value
+    return _quote(encode_utf8(value), safe)
 
 
 def encode_utf8(value):

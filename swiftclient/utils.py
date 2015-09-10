@@ -35,34 +35,30 @@ def config_true_value(value):
         (isinstance(value, six.string_types) and value.lower() in TRUE_VALUES)
 
 
-def prt_bytes(bytes, human_flag):
+def prt_bytes(num_bytes, human_flag):
     """
     convert a number > 1024 to printable format, either in 4 char -h format as
     with ls -lh or return as 12 char right justified string
     """
 
-    if human_flag:
-        suffix = ''
-        mods = list('KMGTPEZY')
-        temp = float(bytes)
-        if temp > 0:
-            while temp > 1023:
-                try:
-                    suffix = mods.pop(0)
-                except IndexError:
-                    break
-                temp /= 1024.0
-            if suffix != '':
-                if temp >= 10:
-                    bytes = '%3d%s' % (temp, suffix)
-                else:
-                    bytes = '%.1f%s' % (temp, suffix)
-        if suffix == '':    # must be < 1024
-            bytes = '%4s' % bytes
-    else:
-        bytes = '%12s' % bytes
+    if not human_flag:
+        return '%12s' % num_bytes
 
-    return bytes
+    num = float(num_bytes)
+    suffixes = [None] + list('KMGTPEZY')
+    for suffix in suffixes[:-1]:
+        if num <= 1023:
+            break
+        num /= 1024.0
+    else:
+        suffix = suffixes[-1]
+
+    if not suffix:  # num_bytes must be < 1024
+        return '%4s' % num_bytes
+    elif num >= 10:
+        return '%3d%s' % (num, suffix)
+    else:
+        return '%.1f%s' % (num, suffix)
 
 
 def generate_temp_url(path, seconds, key, method, absolute=False):

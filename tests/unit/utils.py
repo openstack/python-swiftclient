@@ -263,9 +263,8 @@ class MockHttpTest(testtools.TestCase):
                         conn.resp.status = status
                     if auth_token:
                         headers = args[1]
-                        self.assertTrue('X-Auth-Token' in headers)
-                        actual_token = headers.get('X-Auth-Token')
-                        self.assertEqual(auth_token, actual_token)
+                        self.assertEqual(auth_token,
+                                         headers.get('X-Auth-Token'))
                     if query_string:
                         self.assertTrue(url.endswith('?' + query_string))
                     if url.endswith('invalid_cert') and not insecure:

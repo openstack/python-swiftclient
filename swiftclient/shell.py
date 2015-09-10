@@ -51,7 +51,7 @@ def immediate_exit(signum, frame):
     stderr.write(" Aborted\n")
     os_exit(2)
 
-st_delete_options = '''[-all] [--leave-segments]
+st_delete_options = '''[--all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]
                     <container> [object]
@@ -1151,7 +1151,7 @@ def main(arguments=None):
     version = client_version
     parser = OptionParser(version='python-swiftclient %s' % version,
                           usage='''
-usage: %%prog [--version] [--help] [--os-help] [--snet] [--verbose]
+usage: %prog [--version] [--help] [--os-help] [--snet] [--verbose]
              [--debug] [--info] [--quiet] [--auth <auth_url>]
              [--auth-version <auth_version>] [--user <username>]
              [--key <api_key>] [--retries <num_retries>]
@@ -1191,29 +1191,29 @@ Positional arguments:
     auth                 Display auth related environment variables.
 
 Examples:
-  %%prog download --help
+  %prog download --help
 
-  %%prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K api_key stat -v
+  %prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K api_key stat -v
 
-  %%prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
+  %prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
       --os-username user --os-password password list
 
-  %%prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
+  %prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
       --os-project-name project1 --os-project-domain-name domain1 \\
       --os-username user --os-user-domain-name domain1 \\
       --os-password password list
 
-  %%prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
+  %prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
       --os-project-id 0123456789abcdef0123456789abcdef \\
       --os-user-id abcdef0123456789abcdef0123456789 \\
       --os-password password list
 
-  %%prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
+  %prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
       --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
       list
 
-  %%prog list --lh
-'''.strip('\n') % globals())
+  %prog list --lh
+'''.strip('\n'))
     parser.add_option('--os-help', action='store_true', dest='os_help',
                       help='Show OpenStack authentication options.')
     parser.add_option('--os_help', action='store_true', help=SUPPRESS_HELP)

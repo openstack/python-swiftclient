@@ -82,14 +82,13 @@ class TestConnectionThreadPoolExecutor(ThreadTestCase):
             )
 
             # Now a job that fails
-            went_boom = False
             try:
                 f = pool.submit(self._func, "go boom")
                 f.result()
             except Exception as e:
-                went_boom = True
                 self.assertEqual('I went boom!', str(e))
-            self.assertTrue(went_boom)
+            else:
+                self.fail('I never went boom!')
 
             # Has the connection been returned to the pool?
             f = pool.submit(self._func, "succeed")
@@ -106,24 +105,22 @@ class TestConnectionThreadPoolExecutor(ThreadTestCase):
         ctpe = mt.ConnectionThreadPoolExecutor(self._create_conn_fail, 1)
         with ctpe as pool:
             # Now a connection that fails
-            connection_failed = False
             try:
                 f = pool.submit(self._func, "succeed")
                 f.result()
             except Exception as e:
-                connection_failed = True
                 self.assertEqual('This is a failed connection', str(e))
-            self.assertTrue(connection_failed)
+            else:
+                self.fail('The connection did not fail')
 
             # Make sure we don't lock up on failed connections
-            connection_failed = False
             try:
                 f = pool.submit(self._func, "go boom")
                 f.result()
             except Exception as e:
-                connection_failed = True
                 self.assertEqual('This is a failed connection', str(e))
-            self.assertTrue(connection_failed)
+            else:
+                self.fail('The connection did not fail')
 
     def test_lazy_connections(self):
         ctpe = mt.ConnectionThreadPoolExecutor(self._create_conn, 10)

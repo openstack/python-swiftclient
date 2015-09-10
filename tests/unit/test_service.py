@@ -83,7 +83,7 @@ class TestSwiftReader(testtools.TestCase):
         self.assertEqual(sr._expected_etag, None)
 
         self.assertNotEqual(sr._actual_md5, None)
-        self.assertTrue(isinstance(sr._actual_md5, self.md5_type))
+        self.assertIs(type(sr._actual_md5), self.md5_type)
 
     def test_create_with_large_object_headers(self):
         # md5 should not be initialized if large object headers are present
@@ -110,7 +110,7 @@ class TestSwiftReader(testtools.TestCase):
         self.assertEqual(sr._expected_etag, None)
 
         self.assertNotEqual(sr._actual_md5, None)
-        self.assertTrue(isinstance(sr._actual_md5, self.md5_type))
+        self.assertIs(type(sr._actual_md5), self.md5_type)
 
         # Check Contentlength raises error if it isnt an integer
         self.assertRaises(SwiftError, self.sr, 'path', 'body',
@@ -160,10 +160,10 @@ class _TestServiceBase(testtools.TestCase):
         if hasattr(self, 'assertDictEqual'):
             self.assertDictEqual(a, b, m)
         else:
-            self.assertTrue(isinstance(a, dict),
-                            'First argument is not a dictionary')
-            self.assertTrue(isinstance(b, dict),
-                            'Second argument is not a dictionary')
+            self.assertIsInstance(a, dict,
+                                  'First argument is not a dictionary')
+            self.assertIsInstance(b, dict,
+                                  'Second argument is not a dictionary')
             self.assertEqual(len(a), len(b), m)
             for k, v in a.items():
                 self.assertIn(k, b, m)
@@ -248,7 +248,7 @@ class TestServiceDelete(_TestServiceBase):
         self._assertDictEqual(expected_r, self._get_queue(mock_q))
         self.assertGreaterEqual(r['error_timestamp'], before)
         self.assertLessEqual(r['error_timestamp'], after)
-        self.assertTrue('Traceback' in r['traceback'])
+        self.assertIn('Traceback', r['traceback'])
 
     def test_delete_object(self):
         mock_q = Queue()
@@ -295,7 +295,7 @@ class TestServiceDelete(_TestServiceBase):
         self._assertDictEqual(expected_r, r)
         self.assertGreaterEqual(r['error_timestamp'], before)
         self.assertLessEqual(r['error_timestamp'], after)
-        self.assertTrue('Traceback' in r['traceback'])
+        self.assertIn('Traceback', r['traceback'])
 
     def test_delete_object_slo_support(self):
         # If SLO headers are present the delete call should include an
@@ -395,14 +395,14 @@ class TestServiceDelete(_TestServiceBase):
         self._assertDictEqual(expected_r, r)
         self.assertGreaterEqual(r['error_timestamp'], before)
         self.assertLessEqual(r['error_timestamp'], after)
-        self.assertTrue('Traceback' in r['traceback'])
+        self.assertIn('Traceback', r['traceback'])
 
 
 class TestSwiftError(testtools.TestCase):
 
     def test_is_exception(self):
         se = SwiftError(5)
-        self.assertTrue(isinstance(se, Exception))
+        self.assertIsInstance(se, Exception)
 
     def test_empty_swifterror_creation(self):
         se = SwiftError(5)
@@ -444,7 +444,7 @@ class TestServiceUtils(testtools.TestCase):
 
         swiftclient.service.process_options(opt_c)
 
-        self.assertTrue('os_options' in opt_c)
+        self.assertIn('os_options', opt_c)
         del opt_c['os_options']
         self.assertEqual(opt_c['auth_version'], '2.0')
         opt_c['auth_version'] = '1.0'
@@ -838,7 +838,8 @@ class TestService(testtools.TestCase):
                     'c', [SwiftUploadObject(obj['path'])])
                 responses = [x for x in resp_iter]
                 for resp in responses:
-                    self.assertTrue(resp['success'])
+                    self.assertIsNone(resp.get('error'))
+                    self.assertIs(True, resp['success'])
                 self.assertEqual(2, len(responses))
                 create_container_resp, upload_obj_resp = responses
                 self.assertEqual(create_container_resp['action'],
@@ -934,7 +935,7 @@ class TestServiceUpload(_TestServiceBase):
                                       options={'segment_container': None,
                                                'checksum': False})
 
-            self.assertNotIn('error', r)
+            self.assertIsNone(r.get('error'))
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c_segments',
                                                     'test_s_1',
@@ -973,8 +974,7 @@ class TestServiceUpload(_TestServiceBase):
                                       options={'segment_container': None,
                                                'checksum': True})
 
-            self.assertIn('error', r)
-            self.assertIn('md5 mismatch', str(r['error']))
+            self.assertIn('md5 mismatch', str(r.get('error')))
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c_segments',
@@ -1128,9 +1128,8 @@ class TestServiceUpload(_TestServiceBase):
                                               'segment_size': 0,
                                               'checksum': True})
 
-            self.assertEqual(r['success'], False)
-            self.assertIn('error', r)
-            self.assertIn('md5 mismatch', str(r['error']))
+            self.assertIs(r['success'], False)
+            self.assertIn('md5 mismatch', str(r.get('error')))
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
             expected_headers = {'x-object-meta-mtime': mock.ANY}
@@ -1165,9 +1164,9 @@ class TestServiceUpload(_TestServiceBase):
                                               'header': '',
                                               'segment_size': 0})
 
-            self.assertTrue(r['success'])
-            self.assertIn('status', r)
-            self.assertEqual(r['status'], 'skipped-identical')
+            self.assertIsNone(r.get('error'))
+            self.assertIs(True, r['success'])
+            self.assertEqual(r.get('status'), 'skipped-identical')
             self.assertEqual(mock_conn.put_object.call_count, 0)
             self.assertEqual(mock_conn.head_object.call_count, 1)
             mock_conn.head_object.assert_called_with('test_c', 'test_o')
@@ -1208,7 +1207,7 @@ class TestServiceUpload(_TestServiceBase):
                                               'segment_size': 10})
 
             self.assertIsNone(r.get('error'))
-            self.assertTrue(r['success'])
+            self.assertIs(True, r['success'])
             self.assertEqual('skipped-identical', r.get('status'))
             self.assertEqual(0, mock_conn.put_object.call_count)
             self.assertEqual([mock.call('test_c', 'test_o')],
@@ -1255,7 +1254,7 @@ class TestServiceUpload(_TestServiceBase):
                                                   'segment_size': 10})
 
             self.assertIsNone(r.get('error'))
-            self.assertTrue(r['success'])
+            self.assertIs(True, r['success'])
             self.assertEqual('skipped-identical', r.get('status'))
             self.assertEqual(0, mock_conn.put_object.call_count)
             self.assertEqual(1, mock_conn.head_object.call_count)
@@ -1498,7 +1497,8 @@ class TestServiceDownload(_TestServiceBase):
                                                 'test',
                                                 self.opts)
 
-        self.assertTrue(resp['success'])
+        self.assertIsNone(resp.get('error'))
+        self.assertIs(True, resp['success'])
         self.assertEqual(resp['action'], 'download_object')
         self.assertEqual(resp['object'], 'test')
         self.assertEqual(resp['path'], 'test')
@@ -1517,7 +1517,8 @@ class TestServiceDownload(_TestServiceBase):
                                                 'example/test',
                                                 options)
 
-        self.assertTrue(resp['success'])
+        self.assertIsNone(resp.get('error'))
+        self.assertIs(True, resp['success'])
         self.assertEqual(resp['action'], 'download_object')
         self.assertEqual(resp['object'], 'example/test')
         self.assertEqual(resp['path'], 'temp_dir/example/test')
@@ -1537,7 +1538,8 @@ class TestServiceDownload(_TestServiceBase):
                                                 'example/test',
                                                 options)
 
-        self.assertTrue(resp['success'])
+        self.assertIsNone(resp.get('error'))
+        self.assertIs(True, resp['success'])
         self.assertEqual(resp['action'], 'download_object')
         self.assertEqual(resp['object'], 'example/test')
         self.assertEqual(resp['path'], 'test')
@@ -1557,7 +1559,8 @@ class TestServiceDownload(_TestServiceBase):
                                                 'example/test',
                                                 options)
 
-        self.assertTrue(resp['success'])
+        self.assertIsNone(resp.get('error'))
+        self.assertIs(True, resp['success'])
         self.assertEqual(resp['action'], 'download_object')
         self.assertEqual(resp['object'], 'example/test')
         self.assertEqual(resp['path'], 'test')
@@ -1578,7 +1581,8 @@ class TestServiceDownload(_TestServiceBase):
                                                 'example/test',
                                                 options)
 
-        self.assertTrue(resp['success'])
+        self.assertIsNone(resp.get('error'))
+        self.assertIs(True, resp['success'])
         self.assertEqual(resp['action'], 'download_object')
         self.assertEqual(resp['object'], 'example/test')
         self.assertEqual(resp['path'], 'new/dir/test')

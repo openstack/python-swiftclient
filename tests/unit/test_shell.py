@@ -19,7 +19,7 @@ import hashlib
 import mock
 import os
 import tempfile
-import unittest
+import testtools
 import textwrap
 from testtools import ExpectedException
 
@@ -32,10 +32,9 @@ import swiftclient.shell
 import swiftclient.utils
 
 from os.path import basename, dirname
-from tests.unit.test_swiftclient import MockHttpTest
-from tests.unit.utils import (
+from .utils import (
     CaptureOutput, fake_get_auth_keystone, _make_fake_import_keystone_client,
-    FakeKeystone, StubResponse)
+    FakeKeystone, StubResponse, MockHttpTest)
 from swiftclient.utils import EMPTY_ETAG
 
 
@@ -49,12 +48,6 @@ mocked_os_environ = {
     'ST_USER': 'test:tester',
     'ST_KEY': 'testing'
 }
-clean_os_environ = {}
-environ_prefixes = ('ST_', 'OS_')
-for key in os.environ:
-    if any(key.startswith(m) for m in environ_prefixes):
-        clean_os_environ[key] = ''
-
 clean_os_environ = {}
 environ_prefixes = ('ST_', 'OS_')
 for key in os.environ:
@@ -112,9 +105,9 @@ def _make_cmd(cmd, opts, os_opts, use_env=False, flags=None, cmd_args=None):
 
 
 @mock.patch.dict(os.environ, mocked_os_environ)
-class TestShell(unittest.TestCase):
-    def __init__(self, *args, **kwargs):
-        super(TestShell, self).__init__(*args, **kwargs)
+class TestShell(testtools.TestCase):
+    def setUp(self):
+        super(TestShell, self).setUp()
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
         self.tmpfile = tmpfile.name
 
@@ -123,6 +116,7 @@ class TestShell(unittest.TestCase):
             os.remove(self.tmpfile)
         except OSError:
             pass
+        super(TestShell, self).tearDown()
 
     @mock.patch('swiftclient.service.Connection')
     def test_stat_account(self, connection):
@@ -1024,12 +1018,12 @@ class TestShell(unittest.TestCase):
             output.clear()
 
 
-class TestSubcommandHelp(unittest.TestCase):
+class TestSubcommandHelp(testtools.TestCase):
 
     def test_subcommand_help(self):
         for command in swiftclient.shell.commands:
             help_var = 'st_%s_help' % command
-            self.assertTrue(help_var in vars(swiftclient.shell))
+            self.assertTrue(hasattr(swiftclient.shell, help_var))
             with CaptureOutput() as out:
                 argv = ['', command, '--help']
                 self.assertRaises(SystemExit, swiftclient.shell.main, argv)
@@ -1044,7 +1038,7 @@ class TestSubcommandHelp(unittest.TestCase):
         self.assertEqual(out.strip('\n'), expected)
 
 
-class TestBase(unittest.TestCase):
+class TestBase(testtools.TestCase):
     """
     Provide some common methods to subclasses
     """
@@ -1106,7 +1100,7 @@ class TestParsing(TestBase):
                                  'service_type', 'project_id', 'auth_token',
                                  'project_domain_name']
         for key in expected_os_opts_keys:
-            self.assertTrue(key in actual_os_opts_dict)
+            self.assertIn(key, actual_os_opts_dict)
             cli_key = key
             if key == 'object_storage_url':
                 # exceptions to the pattern...
@@ -1119,7 +1113,7 @@ class TestParsing(TestBase):
             self.assertEqual(expect, actual, 'Expected %s for %s, got %s'
                              % (expect, key, actual))
         for key in actual_os_opts_dict:
-            self.assertTrue(key in expected_os_opts_keys)
+            self.assertIn(key, expected_os_opts_keys)
 
         # check that equivalent keys have equal values
         equivalents = [('os_username', 'user'),
@@ -1446,9 +1440,7 @@ class TestKeystoneOptions(MockHttpTest):
         for key in self.all_os_opts.keys():
             expected = os_opts.get(key, self.defaults.get(key))
             key = key.replace('-', '_')
-            self.assertTrue(key in actual_args,
-                            'Expected key %s not found in args %s'
-                            % (key, actual_args))
+            self.assertIn(key, actual_args)
             self.assertEqual(expected, actual_args[key],
                              'Expected %s for key %s, found %s'
                              % (expected, key, actual_args[key]))
@@ -1464,16 +1456,12 @@ class TestKeystoneOptions(MockHttpTest):
             key = key.replace('-', '_')
             if key == 'region_name':
                 key = 'filter_value'
-            self.assertTrue(key in actual_args,
-                            'Expected key %s not found in args %s'
-                            % (key, actual_args))
+            self.assertIn(key, actual_args)
             self.assertEqual(expected, actual_args[key],
                              'Expected %s for key %s, found %s'
                              % (expected, key, actual_args[key]))
         key, v = 'attr', 'region'
-        self.assertTrue(key in actual_args,
-                        'Expected key %s not found in args %s'
-                        % (key, actual_args))
+        self.assertIn(key, actual_args)
         self.assertEqual(v, actual_args[key],
                          'Expected %s for key %s, found %s'
                          % (v, key, actual_args[key]))
