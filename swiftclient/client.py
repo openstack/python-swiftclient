@@ -1011,7 +1011,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                       container name is expected to be part of the url
     :param name: object name to put; if None, the object name is expected to be
                  part of the url
-    :param contents: a string, a file like object or an iterable
+    :param contents: a string, a file-like object or an iterable
                      to read object data from;
                      if None, a zero-byte put will be done
     :param content_length: value to send as content-length header; also limits

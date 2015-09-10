@@ -24,3 +24,8 @@ swiftclient.multithreading
 ==========================
 
 .. automodule:: swiftclient.multithreading
+
+swiftclient.utils
+=================
+
+.. automodule:: swiftclient.utils
