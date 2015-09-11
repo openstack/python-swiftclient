@@ -1414,6 +1414,7 @@ Examples:
         logging.getLogger("swiftclient")
         if options.debug:
             logging.basicConfig(level=logging.DEBUG)
+            logging.getLogger('iso8601').setLevel(logging.WARNING)
         elif options.info:
             logging.basicConfig(level=logging.INFO)
 
