@@ -4,4 +4,4 @@ source = swiftclient
 omit = swiftclient/openstack/common/*
 
 [report]
-ignore-errors = True
+ignore_errors = True
