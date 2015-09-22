@@ -638,7 +638,7 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
 def get_container(url, token, container, marker=None, limit=None,
                   prefix=None, delimiter=None, end_marker=None,
                   path=None, http_conn=None,
-                  full_listing=False, service_token=None):
+                  full_listing=False, service_token=None, headers=None):
     """
     Get a listing of objects for the container.
 
@@ -662,10 +662,15 @@ def get_container(url, token, container, marker=None, limit=None,
     """
     if not http_conn:
         http_conn = http_connection(url)
+    if headers:
+        headers = dict(headers)
+    else:
+        headers = {}
+    headers['X-Auth-Token'] = token
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
                            delimiter, end_marker, path, http_conn,
-                           service_token)
+                           service_token, headers=headers)
         listing = rv[1]
         while listing:
             if not delimiter:
@@ -674,7 +679,8 @@ def get_container(url, token, container, marker=None, limit=None,
                 marker = listing[-1].get('name', listing[-1].get('subdir'))
             listing = get_container(url, token, container, marker, limit,
                                     prefix, delimiter, end_marker, path,
-                                    http_conn, service_token)[1]
+                                    http_conn, service_token,
+                                    headers=headers)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
@@ -693,7 +699,6 @@ def get_container(url, token, container, marker=None, limit=None,
         qs += '&end_marker=%s' % quote(end_marker)
     if path:
         qs += '&path=%s' % quote(path)
-    headers = {'X-Auth-Token': token}
     if service_token:
         headers['X-Service-Token'] = service_token
     method = 'GET'
@@ -958,7 +963,7 @@ def get_object(url, token, container, name, http_conn=None,
 
 
 def head_object(url, token, container, name, http_conn=None,
-                service_token=None):
+                service_token=None, headers=None):
     """
     Get object info
 
@@ -978,8 +983,12 @@ def head_object(url, token, container, name, http_conn=None,
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
+    if headers:
+        headers = dict(headers)
+    else:
+        headers = {}
+    headers['X-Auth-Token'] = token
     method = 'HEAD'
-    headers = {'X-Auth-Token': token}
     if service_token:
         headers['X-Service-Token'] = service_token
     conn.request(method, path, '', headers)
@@ -1450,7 +1459,7 @@ class Connection(object):
 
     def get_container(self, container, marker=None, limit=None, prefix=None,
                       delimiter=None, end_marker=None, path=None,
-                      full_listing=False):
+                      full_listing=False, headers=None):
         """Wrapper for :func:`get_container`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
@@ -1458,7 +1467,7 @@ class Connection(object):
         return self._retry(None, get_container, container, marker=marker,
                            limit=limit, prefix=prefix, delimiter=delimiter,
                            end_marker=end_marker, path=path,
-                           full_listing=full_listing)
+                           full_listing=full_listing, headers=headers)
 
     def put_container(self, container, headers=None, response_dict=None):
         """Wrapper for :func:`put_container`"""

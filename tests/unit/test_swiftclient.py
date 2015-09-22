@@ -600,6 +600,20 @@ class TestGetContainer(MockHttpTest):
         c.get_container('http://www.test.com', 'asdf', 'asdf',
                         path='asdf')
 
+    def test_request_headers(self):
+        c.http_connection = self.fake_http_connection(
+            204, query_string="format=json")
+        conn = c.http_connection('http://www.test.com')
+        headers = {'x-client-key': 'client key'}
+        c.get_container('url_is_irrelevant', 'TOKEN', 'container',
+                        http_conn=conn, headers=headers)
+        self.assertRequests([
+            ('GET', '/container?format=json', '', {
+                'x-auth-token': 'TOKEN',
+                'x-client-key': 'client key',
+            }),
+        ])
+
 
 class TestHeadContainer(MockHttpTest):
 
@@ -728,6 +742,19 @@ class TestHeadObject(MockHttpTest):
         c.http_connection = self.fake_http_connection(500)
         self.assertRaises(c.ClientException, c.head_object,
                           'http://www.test.com', 'asdf', 'asdf', 'asdf')
+
+    def test_request_headers(self):
+        c.http_connection = self.fake_http_connection(204)
+        conn = c.http_connection('http://www.test.com')
+        headers = {'x-client-key': 'client key'}
+        c.head_object('url_is_irrelevant', 'TOKEN', 'container',
+                      'asdf', http_conn=conn, headers=headers)
+        self.assertRequests([
+            ('HEAD', '/container/asdf', '', {
+                'x-auth-token': 'TOKEN',
+                'x-client-key': 'client key',
+            }),
+        ])
 
 
 class TestPutObject(MockHttpTest):
