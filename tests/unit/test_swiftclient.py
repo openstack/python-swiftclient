@@ -499,32 +499,53 @@ class TestGetAccount(MockHttpTest):
 
     def test_no_content(self):
         c.http_connection = self.fake_http_connection(204)
-        value = c.get_account('http://www.test.com', 'asdf')[1]
+        value = c.get_account('http://www.test.com/v1/acct', 'asdf')[1]
         self.assertEqual(value, [])
+        self.assertRequests([
+            ('GET', '/v1/acct?format=json', '', {
+                'x-auth-token': 'asdf'}),
+        ])
 
     def test_param_marker(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&marker=marker")
-        c.get_account('http://www.test.com', 'asdf', marker='marker')
+        c.get_account('http://www.test.com/v1/acct', 'asdf', marker='marker')
+        self.assertRequests([
+            ('GET', '/v1/acct?format=json&marker=marker', '', {
+                'x-auth-token': 'asdf'}),
+        ])
 
     def test_param_limit(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&limit=10")
-        c.get_account('http://www.test.com', 'asdf', limit=10)
+        c.get_account('http://www.test.com/v1/acct', 'asdf', limit=10)
+        self.assertRequests([
+            ('GET', '/v1/acct?format=json&limit=10', '', {
+                'x-auth-token': 'asdf'}),
+        ])
 
     def test_param_prefix(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&prefix=asdf/")
-        c.get_account('http://www.test.com', 'asdf', prefix='asdf/')
+        c.get_account('http://www.test.com/v1/acct', 'asdf', prefix='asdf/')
+        self.assertRequests([
+            ('GET', '/v1/acct?format=json&prefix=asdf/', '', {
+                'x-auth-token': 'asdf'}),
+        ])
 
     def test_param_end_marker(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&end_marker=end_marker")
-        c.get_account('http://www.test.com', 'asdf', end_marker='end_marker')
+        c.get_account('http://www.test.com/v1/acct', 'asdf',
+                      end_marker='end_marker')
+        self.assertRequests([
+            ('GET', '/v1/acct?format=json&end_marker=end_marker', '', {
+                'x-auth-token': 'asdf'}),
+        ])
 
 
 class TestHeadAccount(MockHttpTest):
@@ -559,46 +580,79 @@ class TestGetContainer(MockHttpTest):
 
     def test_no_content(self):
         c.http_connection = self.fake_http_connection(204)
-        value = c.get_container('http://www.test.com', 'asdf', 'asdf')[1]
+        value = c.get_container('http://www.test.com/v1/acct', 'token',
+                                'container')[1]
         self.assertEqual(value, [])
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json', '', {
+                'x-auth-token': 'token'}),
+        ])
 
     def test_param_marker(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&marker=marker")
-        c.get_container('http://www.test.com', 'asdf', 'asdf', marker='marker')
+        c.get_container('http://www.test.com/v1/acct', 'token', 'container',
+                        marker='marker')
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json&marker=marker', '', {
+                'x-auth-token': 'token'}),
+        ])
 
     def test_param_limit(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&limit=10")
-        c.get_container('http://www.test.com', 'asdf', 'asdf', limit=10)
+        c.get_container('http://www.test.com/v1/acct', 'token', 'container',
+                        limit=10)
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json&limit=10', '', {
+                'x-auth-token': 'token'}),
+        ])
 
     def test_param_prefix(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&prefix=asdf/")
-        c.get_container('http://www.test.com', 'asdf', 'asdf', prefix='asdf/')
+        c.get_container('http://www.test.com/v1/acct', 'token', 'container',
+                        prefix='asdf/')
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json&prefix=asdf/', '', {
+                'x-auth-token': 'token'}),
+        ])
 
     def test_param_delimiter(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&delimiter=/")
-        c.get_container('http://www.test.com', 'asdf', 'asdf', delimiter='/')
+        c.get_container('http://www.test.com/v1/acct', 'token', 'container',
+                        delimiter='/')
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json&delimiter=/', '', {
+                'x-auth-token': 'token'}),
+        ])
 
     def test_param_end_marker(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&end_marker=end_marker")
-        c.get_container('http://www.test.com', 'asdf', 'asdf',
+        c.get_container('http://www.test.com/v1/acct', 'token', 'container',
                         end_marker='end_marker')
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json&end_marker=end_marker',
+             '', {'x-auth-token': 'token'}),
+        ])
 
     def test_param_path(self):
         c.http_connection = self.fake_http_connection(
             204,
             query_string="format=json&path=asdf")
-        c.get_container('http://www.test.com', 'asdf', 'asdf',
+        c.get_container('http://www.test.com/v1/acct', 'token', 'container',
                         path='asdf')
+        self.assertRequests([
+            ('GET', '/v1/acct/container?format=json&path=asdf', '', {
+                'x-auth-token': 'token'}),
+        ])
 
     def test_request_headers(self):
         c.http_connection = self.fake_http_connection(
@@ -656,7 +710,9 @@ class TestPutContainer(MockHttpTest):
                               'http://www.test.com', 'token', 'container')
         self.assertEqual(e.http_response_content, body)
         self.assertRequests([
-            ('PUT', '/container', '', {'x-auth-token': 'token'}),
+            ('PUT', '/container', '', {
+                'x-auth-token': 'token',
+                'content-length': '0'}),
         ])
 
 
@@ -680,12 +736,10 @@ class TestGetObject(MockHttpTest):
                                                       query_string="hello=20")
         c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
                      query_string="hello=20")
-        for req in self.iter_request_log():
-            self.assertEqual(req['method'], 'GET')
-            self.assertEqual(req['parsed_path'].path, '/asdf/asdf')
-            self.assertEqual(req['parsed_path'].query, 'hello=20')
-            self.assertEqual(req['body'], '')
-            self.assertEqual(req['headers']['x-auth-token'], 'asdf')
+        self.assertRequests([
+            ('GET', '/asdf/asdf?hello=20', '', {
+                'x-auth-token': 'asdf'}),
+        ])
 
     def test_request_headers(self):
         c.http_connection = self.fake_http_connection(200)
@@ -816,7 +870,8 @@ class TestPutObject(MockHttpTest):
         self.assertEqual(e.http_response_content, body)
         self.assertEqual(e.http_status, 500)
         self.assertRequests([
-            ('PUT', '/asdf/asdf', 'asdf', {'x-auth-token': 'asdf'}),
+            ('PUT', '/asdf/asdf', 'asdf', {
+                'x-auth-token': 'asdf', 'content-type': ''}),
         ])
 
     def test_query_string(self):
@@ -1022,7 +1077,7 @@ class TestGetCapabilities(MockHttpTest):
         http_conn = conn('http://www.test.com/info')
         info = c.get_capabilities(http_conn)
         self.assertRequests([
-            ('GET', '/info'),
+            ('GET', '/info', '', {}),
         ])
         self.assertEqual(info, {})
         self.assertTrue(http_conn[1].resp.has_been_read)
@@ -1049,8 +1104,10 @@ class TestGetCapabilities(MockHttpTest):
             info = conn.get_capabilities()
         self.assertEqual(info, stub_info)
         self.assertRequests([
-            ('GET', '/auth/v1.0'),
-            ('GET', 'http://storage.example.com/info'),
+            ('GET', '/auth/v1.0', '', {
+                'x-auth-user': 'user',
+                'x-auth-key': 'key'}),
+            ('GET', 'http://storage.example.com/info', '', {}),
         ])
 
     def test_conn_get_capabilities_with_os_auth(self):

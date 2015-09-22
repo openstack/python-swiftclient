@@ -325,7 +325,7 @@ class MockHttpTest(testtools.TestCase):
             self.orig_assertEqual(body, real_request['body'], err_msg)
 
         if len(expected) > 3:
-            headers = expected[3]
+            headers = CaseInsensitiveDict(expected[3])
             for key, value in headers.items():
                 real_request['key'] = key
                 real_request['expected_value'] = value
@@ -336,16 +336,30 @@ class MockHttpTest(testtools.TestCase):
                     'for %(method)s %(path)s %(headers)r' % real_request)
                 self.orig_assertEqual(value, real_request['value'],
                                       err_msg)
+            real_request['extra_headers'] = dict(
+                (key, value) for key, value in real_request['headers'].items()
+                if key not in headers)
+            if real_request['extra_headers']:
+                self.fail('Received unexpected headers for %(method)s '
+                          '%(path)s, got %(extra_headers)r' % real_request)
 
     def assertRequests(self, expected_requests):
         """
         Make sure some requests were made like you expected, provide a list of
         expected requests, typically in the form of [(method, path), ...]
+        or [(method, path, body, headers), ...]
         """
         real_requests = self.iter_request_log()
         for expected in expected_requests:
             real_request = next(real_requests)
             self.assert_request_equal(expected, real_request)
+        try:
+            real_request = next(real_requests)
+        except StopIteration:
+            pass
+        else:
+            self.fail('At least one extra request received: %r' %
+                      real_request)
 
     def assert_request(self, expected_request):
         """
