@@ -700,8 +700,13 @@ class TestPutContainer(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        value = c.put_container('http://www.test.com', 'asdf', 'asdf')
+        value = c.put_container('http://www.test.com', 'token', 'container')
         self.assertEqual(value, None)
+        self.assertRequests([
+            ('PUT', '/container', '', {
+                'x-auth-token': 'token',
+                'content-length': '0'}),
+        ])
 
     def test_server_error(self):
         body = 'c' * 60
@@ -720,8 +725,12 @@ class TestDeleteContainer(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        value = c.delete_container('http://www.test.com', 'asdf', 'asdf')
+        value = c.delete_container('http://www.test.com', 'token', 'container')
         self.assertEqual(value, None)
+        self.assertRequests([
+            ('DELETE', '/container', '', {
+                'x-auth-token': 'token'}),
+        ])
 
 
 class TestGetObject(MockHttpTest):
@@ -815,9 +824,17 @@ class TestPutObject(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
+        args = ('http://www.test.com', 'TOKEN', 'container', 'obj', 'body', 4)
         value = c.put_object(*args)
         self.assertTrue(isinstance(value, six.string_types))
+        self.assertEqual(value, EMPTY_ETAG)
+        self.assertRequests([
+            ('PUT', '/container/obj', 'body', {
+                'x-auth-token': 'TOKEN',
+                'content-length': '4',
+                'content-type': ''
+            }),
+        ])
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
@@ -1008,8 +1025,14 @@ class TestPostObject(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', {})
+        args = ('http://www.test.com', 'token', 'container', 'obj',
+                {'X-Object-Meta-Test': 'mymeta'})
         c.post_object(*args)
+        self.assertRequests([
+            ('POST', '/container/obj', '', {
+                'x-auth-token': 'token',
+                'X-Object-Meta-Test': 'mymeta'}),
+        ])
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
@@ -1056,7 +1079,12 @@ class TestDeleteObject(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        c.delete_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+        c.delete_object('http://www.test.com', 'token', 'container', 'obj')
+        self.assertRequests([
+            ('DELETE', 'http://www.test.com/container/obj', '', {
+                'x-auth-token': 'token',
+            }),
+        ])
 
     def test_server_error(self):
         c.http_connection = self.fake_http_connection(500)
@@ -1066,8 +1094,13 @@ class TestDeleteObject(MockHttpTest):
     def test_query_string(self):
         c.http_connection = self.fake_http_connection(200,
                                                       query_string="hello=20")
-        c.delete_object('http://www.test.com', 'asdf', 'asdf', 'asdf',
+        c.delete_object('http://www.test.com', 'token', 'container', 'obj',
                         query_string="hello=20")
+        self.assertRequests([
+            ('DELETE', 'http://www.test.com/container/obj?hello=20', '', {
+                'x-auth-token': 'token',
+            }),
+        ])
 
 
 class TestGetCapabilities(MockHttpTest):
