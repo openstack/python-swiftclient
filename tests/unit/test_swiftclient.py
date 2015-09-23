@@ -17,6 +17,7 @@ import logging
 import mock
 import six
 import socket
+import string
 import testtools
 import warnings
 import tempfile
@@ -1774,23 +1775,24 @@ class TestConnection(MockHttpTest):
         class LocalContents(object):
 
             def __init__(self, tell_value=0):
-                self.already_read = False
+                self.data = six.BytesIO(string.ascii_letters.encode() * 10)
+                self.data.seek(tell_value)
+                self.reads = []
                 self.seeks = []
-                self.tell_value = tell_value
+                self.tells = []
 
             def tell(self):
-                return self.tell_value
+                self.tells.append(self.data.tell())
+                return self.tells[-1]
 
-            def seek(self, position):
-                self.seeks.append(position)
-                self.already_read = False
+            def seek(self, position, mode=0):
+                self.seeks.append((position, mode))
+                self.data.seek(position, mode)
 
             def read(self, size=-1):
-                if self.already_read:
-                    return ''
-                else:
-                    self.already_read = True
-                    return 'abcdef'
+                read_data = self.data.read(size)
+                self.reads.append((size, read_data))
+                return read_data
 
         class LocalConnection(object):
 
@@ -1801,7 +1803,7 @@ class TestConnection(MockHttpTest):
                     self.port = parsed_url.netloc
 
             def putrequest(self, *args, **kwargs):
-                self.send()
+                self.send('PUT', *args, **kwargs)
 
             def putheader(self, *args, **kwargs):
                 return
@@ -1810,6 +1812,13 @@ class TestConnection(MockHttpTest):
                 return
 
             def send(self, *args, **kwargs):
+                data = kwargs.get('data')
+                if data is not None:
+                    if hasattr(data, 'read'):
+                        data.read()
+                    else:
+                        for datum in data:
+                            pass
                 raise socket.error('oops')
 
             def request(self, *args, **kwargs):
@@ -1844,7 +1853,12 @@ class TestConnection(MockHttpTest):
                 conn.put_object('c', 'o', contents)
             except socket.error as err:
                 exc = err
-            self.assertEqual(contents.seeks, [0])
+            self.assertEqual(contents.tells, [0])
+            self.assertEqual(contents.seeks, [(0, 0)])
+            # four reads: two in the initial pass, two in the retry
+            self.assertEqual(4, len(contents.reads))
+            self.assertEqual((65536, b''), contents.reads[1])
+            self.assertEqual((65536, b''), contents.reads[3])
             self.assertEqual(str(exc), 'oops')
 
             contents = LocalContents(tell_value=123)
@@ -1853,8 +1867,28 @@ class TestConnection(MockHttpTest):
                 conn.put_object('c', 'o', contents)
             except socket.error as err:
                 exc = err
-            self.assertEqual(contents.seeks, [123])
+            self.assertEqual(contents.tells, [123])
+            self.assertEqual(contents.seeks, [(123, 0)])
+            # four reads: two in the initial pass, two in the retry
+            self.assertEqual(4, len(contents.reads))
+            self.assertEqual((65536, b''), contents.reads[1])
+            self.assertEqual((65536, b''), contents.reads[3])
             self.assertEqual(str(exc), 'oops')
+
+            contents = LocalContents(tell_value=123)
+            wrapped_contents = swiftclient.utils.LengthWrapper(
+                contents, 6, md5=True)
+            exc = None
+            try:
+                conn.put_object('c', 'o', wrapped_contents)
+            except socket.error as err:
+                exc = err
+            self.assertEqual(contents.tells, [123])
+            self.assertEqual(contents.seeks, [(123, 0)])
+            self.assertEqual(contents.reads, [(6, b'tuvwxy')] * 2)
+            self.assertEqual(str(exc), 'oops')
+            self.assertEqual(md5(b'tuvwxy').hexdigest(),
+                             wrapped_contents.get_md5sum())
 
             contents = LocalContents()
             contents.tell = None

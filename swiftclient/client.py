@@ -1546,10 +1546,12 @@ class Connection(object):
             if self.retries > 0:
                 tell = getattr(contents, 'tell', None)
                 seek = getattr(contents, 'seek', None)
+                reset = getattr(contents, 'reset', None)
                 if tell and seek:
                     orig_pos = tell()
                     reset_func = lambda *a, **k: seek(orig_pos)
-
+                elif reset:
+                    reset_func = reset
         return self._retry(reset_func, put_object, container, obj, contents,
                            content_length=content_length, etag=etag,
                            chunk_size=chunk_size, content_type=content_type,
