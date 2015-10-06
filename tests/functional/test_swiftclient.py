@@ -217,6 +217,40 @@ class TestFunctional(testtools.TestCase):
         self.assertEqual('application/octet-stream',
                          hdrs.get('content-type'))
 
+        # Same but with content_type
+        self.conn.put_object(
+            self.containername, self.objectname,
+            content_type='text/plain', contents=self.test_data)
+        hdrs = self.conn.head_object(self.containername, self.objectname)
+        self.assertEqual(str(len(self.test_data)),
+                         hdrs.get('content-length'))
+        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual('text/plain',
+                         hdrs.get('content-type'))
+
+        # Same but with content-type in headers
+        self.conn.put_object(
+            self.containername, self.objectname,
+            headers={'Content-Type': 'text/plain'}, contents=self.test_data)
+        hdrs = self.conn.head_object(self.containername, self.objectname)
+        self.assertEqual(str(len(self.test_data)),
+                         hdrs.get('content-length'))
+        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual('text/plain',
+                         hdrs.get('content-type'))
+
+        # content_type rewrites content-type in headers
+        self.conn.put_object(
+            self.containername, self.objectname,
+            content_type='image/jpeg',
+            headers={'Content-Type': 'text/plain'}, contents=self.test_data)
+        hdrs = self.conn.head_object(self.containername, self.objectname)
+        self.assertEqual(str(len(self.test_data)),
+                         hdrs.get('content-length'))
+        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual('image/jpeg',
+                         hdrs.get('content-type'))
+
         # Same but with content-length
         self.conn.put_object(
             self.containername, self.objectname,

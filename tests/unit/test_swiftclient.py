@@ -1013,6 +1013,24 @@ class TestPutObject(MockHttpTest):
         request_header = resp.requests_params['headers']
         self.assertEqual(request_header['content-type'], b'')
 
+    def test_content_type_in_headers(self):
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+
+        # title-case header
+        hdrs = {'Content-Type': 'text/Plain'}
+        c.put_object(url='http://www.test.com', http_conn=conn, headers=hdrs)
+        request_header = resp.requests_params['headers']
+        self.assertEqual(request_header['content-type'], b'text/Plain')
+
+        # method param overrides headers
+        c.put_object(url='http://www.test.com', http_conn=conn, headers=hdrs,
+                     content_type='image/jpeg')
+        request_header = resp.requests_params['headers']
+        self.assertEqual(request_header['content-type'], b'image/jpeg')
+
 
 class TestPostObject(MockHttpTest):
 
