@@ -66,14 +66,14 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
     Swift object.
 
     :param path: The full path to the Swift object. Example:
-    /v1/AUTH_account/c/o.
+        /v1/AUTH_account/c/o.
     :param seconds: The amount of time in seconds the temporary URL will
-    be valid for.
-    :param key: The secret temporary URL key set on the Swift cluster.
-    To set a key, run 'swift post -m
-    "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"'
-    :param method: A HTTP method, typically either GET or PUT, to allow for
-    this temporary URL.
+        be valid for.
+    :param key: The secret temporary URL key set on the Swift
+        cluster. To set a key, run 'swift post -m
+        "Temp-URL-Key: <substitute tempurl key here>"'
+    :param method: A HTTP method, typically either GET or PUT, to allow
+        for this temporary URL.
     :raises: ValueError if seconds is not a positive integer
     :raises: TypeError if seconds is not an integer
     :return: the path portion of a temporary URL
@@ -148,7 +148,7 @@ class ReadableToIterable(object):
     Wrap a filelike object and act as an iterator.
 
     It is recommended to use this class only on files opened in binary mode.
-    Due to the Unicode changes in python 3 files are now opened using an
+    Due to the Unicode changes in Python 3, files are now opened using an
     encoding not suitable for use with the md5 class and because of this
     hit the exception on every call to next. This could cause problems,
     especially with large files and small chunk sizes.
@@ -196,7 +196,7 @@ class LengthWrapper(object):
     """
     Wrap a filelike object with a maximum length.
 
-    Fix for https://github.com/kennethreitz/requests/issues/1648
+    Fix for https://github.com/kennethreitz/requests/issues/1648.
     It is recommended to use this class only on files opened in binary mode.
     """
     def __init__(self, readable, length, md5=False):

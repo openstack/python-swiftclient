@@ -1298,10 +1298,10 @@ class SwiftService(object):
 
                         The SwiftUploadObject source may be one of:
 
-                            file - A file like object (with a read method)
-                            path - A string containing the path to a local file
-                                   or directory
-                            None - Indicates that we want an empty object
+                            * A file-like object (with a read method)
+                            * A string containing the path to a local
+                              file or directory
+                            * None, to indicate that we want an empty object
 
         :param options: A dictionary containing options to override the global
                         options specified during the service object creation.
