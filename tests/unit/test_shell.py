@@ -293,6 +293,7 @@ class TestShell(testtools.TestCase):
         # Test container listing with --long
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object_a', 'bytes': 0,
+                     'content_type': 'type/content',
                      'last_modified': '123T456'}]],
             [None, []],
         ]
@@ -306,7 +307,8 @@ class TestShell(testtools.TestCase):
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out,
-                             '           0        123      456 object_a\n'
+                             '           0        123      456'
+                             '             type/content object_a\n'
                              '           0\n')
 
     @mock.patch('swiftclient.service.makedirs')

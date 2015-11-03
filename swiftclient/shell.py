@@ -424,6 +424,7 @@ def st_list(parser, args, output_manager):
                             datestamp, item_name)
                 else:    # list container contents
                     subdir = item.get('subdir')
+                    content_type = item.get('content_type')
                     if subdir is None:
                         item_bytes = item.get('bytes')
                         byte_str = prt_bytes(item_bytes, options.human)
@@ -436,7 +437,8 @@ def st_list(parser, args, output_manager):
                         item_name = subdir
                     if not options.totals:
                         output_manager.print_msg(
-                            "%s %10s %8s %s", byte_str, date, xtime, item_name)
+                            "%s %10s %8s %24s %s",
+                            byte_str, date, xtime, content_type, item_name)
                 total_bytes += item_bytes
 
         # report totals
