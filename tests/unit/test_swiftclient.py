@@ -1804,6 +1804,59 @@ class TestConnection(MockHttpTest):
             self.assertEqual(str(exc), "put_object('c', 'o', ...) failure "
                              "and no ability to reset contents for reupload.")
 
+    def test_get_container(self):
+        headers = {'X-Favourite-Pet': 'Aardvark'}
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200, body=b'{}')):
+            with mock.patch('swiftclient.client.get_auth',
+                            lambda *a, **k: ('http://url:8080/v1/a', 'token')):
+                conn = c.Connection()
+                conn.get_container('c1', prefix='p', limit=5,
+                                   headers=headers)
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        self.assertRequests([
+            ('GET', '/v1/a/c1?format=json&limit=5&prefix=p', '', {
+                'x-auth-token': 'token',
+                'X-Favourite-Pet': 'Aardvark',
+            }),
+        ])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_head_container(self):
+        headers = {'X-Favourite-Pet': 'Aardvark'}
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200, body=b'{}')):
+            with mock.patch('swiftclient.client.get_auth',
+                            lambda *a, **k: ('http://url:8080/v1/a', 'token')):
+                conn = c.Connection()
+                conn.head_container('c1', headers=headers)
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        self.assertRequests([
+            ('HEAD', '/v1/a/c1', '', {
+                'x-auth-token': 'token',
+                'X-Favourite-Pet': 'Aardvark',
+            }),
+        ])
+        self.assertEqual(conn.attempts, 1)
+
+    def test_head_object(self):
+        headers = {'X-Favourite-Pet': 'Aardvark'}
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200)):
+            with mock.patch('swiftclient.client.get_auth',
+                            lambda *a, **k: ('http://url:8080/v1/a', 'token')):
+                conn = c.Connection()
+                conn.head_object('c1', 'o1',
+                                 headers=headers)
+        self.assertEqual(1, len(self.request_log), self.request_log)
+        self.assertRequests([
+            ('HEAD', '/v1/a/c1/o1', '', {
+                'x-auth-token': 'token',
+                'X-Favourite-Pet': 'Aardvark',
+            }),
+        ])
+        self.assertEqual(conn.attempts, 1)
+
 
 class TestResponseDict(MockHttpTest):
     """

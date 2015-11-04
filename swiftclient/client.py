@@ -653,6 +653,7 @@ def get_container(url, token, container, marker=None, limit=None,
     :param full_listing: if True, return a full listing, else returns a max
                          of 10000 listings
     :param service_token: service auth token
+    :param headers: additional headers to include in the request
     :returns: a tuple of (response headers, a list of objects) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -732,6 +733,7 @@ def head_container(url, token, container, http_conn=None, headers=None,
     :param container: container name to get stats for
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
+    :param headers: additional headers to include in the request
     :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
@@ -971,6 +973,7 @@ def head_object(url, token, container, name, http_conn=None,
     :param http_conn: HTTP connection object (If None, it will create the
                       conn object)
     :param service_token: service auth token
+    :param headers: additional headers to include in the request
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
@@ -1454,9 +1457,9 @@ class Connection(object):
         return self._retry(None, post_account, headers,
                            response_dict=response_dict)
 
-    def head_container(self, container):
+    def head_container(self, container, headers=None):
         """Wrapper for :func:`head_container`"""
-        return self._retry(None, head_container, container)
+        return self._retry(None, head_container, container, headers=headers)
 
     def get_container(self, container, marker=None, limit=None, prefix=None,
                       delimiter=None, end_marker=None, path=None,
@@ -1485,9 +1488,9 @@ class Connection(object):
         return self._retry(None, delete_container, container,
                            response_dict=response_dict)
 
-    def head_object(self, container, obj):
+    def head_object(self, container, obj, headers=None):
         """Wrapper for :func:`head_object`"""
-        return self._retry(None, head_object, container, obj)
+        return self._retry(None, head_object, container, obj, headers=headers)
 
     def get_object(self, container, obj, resp_chunk_size=None,
                    query_string=None, response_dict=None, headers=None):
