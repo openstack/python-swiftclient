@@ -126,6 +126,31 @@ class TestHttpHelpers(MockHttpTest):
         value = u'unicode:\xe9\u20ac'
         self.assertEqual('unicode%3A%C3%A9%E2%82%AC', c.quote(value))
 
+    def test_parse_header_string(self):
+        value = b'bytes'
+        self.assertEqual(u'bytes', c.parse_header_string(value))
+        value = u'unicode:\xe9\u20ac'
+        self.assertEqual(u'unicode:\xe9\u20ac', c.parse_header_string(value))
+        value = 'native%20string'
+        self.assertEqual(u'native string', c.parse_header_string(value))
+
+        value = b'encoded%20bytes%E2%82%AC'
+        self.assertEqual(u'encoded bytes\u20ac', c.parse_header_string(value))
+        value = 'encoded%20unicode%E2%82%AC'
+        self.assertEqual(u'encoded unicode\u20ac',
+                         c.parse_header_string(value))
+
+        value = b'bad%20bytes%ff%E2%82%AC'
+        self.assertEqual(u'bad%20bytes%ff%E2%82%AC',
+                         c.parse_header_string(value))
+        value = u'bad%20unicode%ff\u20ac'
+        self.assertEqual(u'bad%20unicode%ff\u20ac',
+                         c.parse_header_string(value))
+
+        value = b'really%20bad\xffbytes'
+        self.assertEqual(u'really%2520bad%FFbytes',
+                         c.parse_header_string(value))
+
     def test_http_connection(self):
         url = 'http://www.test.com'
         _junk, conn = c.http_connection(url)
@@ -756,6 +781,18 @@ class TestGetObject(MockHttpTest):
                 'range': 'bytes=1-2',
             }),
         ])
+
+    def test_response_headers(self):
+        c.http_connection = self.fake_http_connection(
+            200, headers={'X-Utf-8-Header': b't%c3%a9st',
+                          'X-Non-Utf-8-Header': b'%ff',
+                          'X-Binary-Header': b'\xff'})
+        conn = c.http_connection('http://www.test.com')
+        headers, data = c.get_object('url_is_irrelevant', 'TOKEN',
+                                     'container', 'object', http_conn=conn)
+        self.assertEqual(u't\xe9st', headers.get('x-utf-8-header', ''))
+        self.assertEqual(u'%ff', headers.get('x-non-utf-8-header', ''))
+        self.assertEqual(u'%FF', headers.get('x-binary-header', ''))
 
     def test_chunk_size_read_method(self):
         conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
