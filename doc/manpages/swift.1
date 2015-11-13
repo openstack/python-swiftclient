@@ -36,25 +36,25 @@ several types of operations.
 .SH COMMANDS
 .PP
 
-\fBstat\fR [\fIcontainer\fR] [\fIobject\fR]
+\fBstat\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR]
 .RS 4
 Displays information for the account, container, or object depending on the args given (if any).
 In verbose mode, the Storage URL and the authentication token are displayed
-as well.
+as well. Option \-\-lh reports sizes in human readable format similar to ls \-lh.
 .RE
 
 \fBlist\fR [\fIcommand-options\fR] [\fIcontainer\fR]
 .RS 4
 Lists the containers for the account or the objects for a container.
-The \-p or \-\-prefix is an option that will only list items beginning
-with that prefix. The \-d or \-\-delimiter is option (for container listings only)
-that will roll up items with the given delimiter (see OpenStack Swift general
-documentation for what this means).
+The \-p <prefix> or \-\-prefix <prefix> is an option that will only list items beginning
+with that prefix. The \-d <delim> or \-\-delimiter <delim> is option
+(for container listings only) that will roll up items with the given
+delimiter (see OpenStack Swift general documentation for what this means).
 
-The \-l and \-\-lh options provide more detail, similar to ls \-l and ls \-lh, the latter
+The \-l or \-\-long and \-\-lh options provide more detail, similar to ls \-l and ls \-lh, the latter
 providing sizes in human readable format (eg 3K, 12M, etc). These latter 2 switches
 use more overhead to get those details, which is directly proportional to the number
-of container or objects being listed.
+of container or objects being listed. With the \-t or \-\-total option they only report totals.
 .RE
 
 \fBupload\fR [\fIcommand-options\fR] container file_or_directory [\fIfile_or_directory\fR] [...]
@@ -64,7 +64,7 @@ remaining args. The \-c or \-\-changed is an option that will only upload files
 that have changed since the last upload. The \-\-object-name <object\-name> is
 an option that will upload file and name object to <object-name> or upload dir
 and use <object\-name> as object prefix. The \-S <size> or \-\-segment\-size <size>
-and \-\-leave\-segments are options as well (see \-\-help for more).
+and \-\-leave\-segments and others are options as well (see swift upload \-\-help for more).
 .RE
 
 \fBpost\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR]
@@ -75,6 +75,7 @@ automatically; but this is not true for accounts and objects. Containers
 also allow the \-r (or \-\-read\-acl) and \-w (or \-\-write\-acl) options. The \-m
 or \-\-meta option is allowed on all and used to define the user meta data
 items to set in the form Name:Value. This option can be repeated.
+For more details and options see swift post \-\-help.
 \fBExample\fR: post \-m Color:Blue \-m Size:Large
 .RE
 
@@ -83,9 +84,10 @@ items to set in the form Name:Value. This option can be repeated.
 Downloads everything in the account (with \-\-all), or everything in a
 container, or a list of objects depending on the args given. For a single
 object download, you may use the \-o [\-\-output] <filename> option to
-redirect the output to a specific file or if "-" then just redirect to stdout.
+redirect the output to a specific file or if "-" then just redirect to stdout or
+with \-\-no-download actually not to write anything to disk.
 You can specify optional headers with the repeatable cURL-like option
-\-H [\-\-header].
+\-H [\-\-header]. For more details and options see swift download \-\-help.
 .RE
 
 \fBdelete\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
@@ -93,6 +95,7 @@ You can specify optional headers with the repeatable cURL-like option
 Deletes everything in the account (with \-\-all), or everything in a container,
 or a list of objects depending on the args given. Segments of manifest objects
 will be deleted as well, unless you specify the \-\-leave\-segments option.
+For more details and options see swift delete \-\-help.
 .RE
 
 \fBcapabilities\fR [\fIproxy-url\fR]
@@ -104,7 +107,7 @@ is not provided the storage-url retrieved after authentication is used as
 proxy-url.
 .RE
 
-\fBtempurl\fR \fImethod\fR \fIseconds\fR \fIpath\fR \fIkey\fR [\fI--absolute\fR]
+\fBtempurl\fR [\fIcommand-option\fR] \fImethod\fR \fIseconds\fR \fIpath\fR \fIkey\fR
 .RS 4
 Generates a temporary URL allowing unauthenticated access to the Swift object
 at the given path, using the given HTTP method, for the given number of
@@ -114,20 +117,29 @@ should expire. \fBExample\fR: tempurl GET $(date -d "Jan 1 2016" +%s)
 /v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key --absolute
 .RE
 
+\fBauth\fR
+.RS 4
+Display auth related authentication variables in shell friendly format.
+For examples see swift auth \-\-help.
+.RE
+
 .SH OPTIONS
 .PD 0
 .IP "--version              Show program's version number and exit"
-.IP "-h, --help             Show this (or any subcommand) help message and exit"
+.IP "-h, --help             Show this (or any subcommand if after command) help message and exit"
 .IP "-s, --snet             Use SERVICENET internal network"
 .IP "-v, --verbose          Print more info"
 .IP "-q, --quiet            Suppress status output"
 .IP "-A AUTH, --auth=AUTH   URL for obtaining an auth token "
 .IP "-U USER, --user=USER   User name for obtaining an auth token"
-.IP "-V 1|2                 Authentication protocol version"
+.IP "-V 1|2, --auth-version=VERSION  Authentication protocol version"
 .IP "-K KEY, --key=KEY      Key for obtaining an auth token"
 .IP "--os-storage-url=URL   Use this instead of URL returned from auth"
-
+.IP "--os-help              Show all OpenStack authentication options"
 .PD
+.RS 4
+For more options see swift \-\-help and swift \-\-os-help.
+.RE
 
 
 .SH EXAMPLE

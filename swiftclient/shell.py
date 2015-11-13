@@ -54,15 +54,15 @@ def immediate_exit(signum, frame):
 st_delete_options = '''[--all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]
-                    <container> [object]
+                    [<container>] [<object>] [...]
 '''
 
 st_delete_help = '''
 Delete a container or objects within a container.
 
 Positional arguments:
-  <container>           Name of container to delete from.
-  [object]              Name of object to delete. Specify multiple times
+  [<container>]         Name of container to delete from.
+  [<object>]            Name of object to delete. Specify multiple times
                         for multiple objects.
 
 Optional arguments:
@@ -156,7 +156,7 @@ st_download_options = '''[--all] [--marker] [--prefix <prefix>]
                       [--object-threads <threads>]
                       [--container-threads <threads>] [--no-download]
                       [--skip-identical] [--remove-prefix]
-                      [--header <header:value>]
+                      [--header <header:value>] [--no-shuffle]
                       <container> <object>
 '''
 
@@ -376,7 +376,7 @@ def st_download(parser, args, output_manager):
 
 
 st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
-                  [--delimiter <delimiter>]
+                  [--delimiter <delimiter>] [container]
 '''
 
 st_list_help = '''
@@ -390,8 +390,10 @@ Optional arguments:
   --lh                  Report sizes in human readable format similar to
                         ls -lh.
   -t, --totals          Used with -l or --lh, only report totals.
-  -p, --prefix          Only list items beginning with the prefix.
-  -d, --delimiter       Roll up items with the given delimiter. For containers
+  -p <prefix>, --prefix <prefix>
+                        Only list items beginning with the prefix.
+  -d <delim>, --delimiter <delim>
+                        Roll up items with the given delimiter. For containers
                         only. See OpenStack Swift API documentation for what
                         this means.
 '''.strip('\n')
@@ -690,7 +692,7 @@ st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--object-threads <thread>] [--segment-threads <threads>]
                     [--header <header>] [--use-slo] [--ignore-checksum]
                     [--object-name <object-name>]
-                    <container> <file_or_directory>
+                    <container> <file_or_directory> [<file_or_directory>] [...]
 '''
 
 st_upload_help = ''' Uploads specified files and directories to the given container.
@@ -1006,7 +1008,8 @@ def st_auth(parser, args, thread_manager):
         print('export OS_AUTH_TOKEN=%s' % sh_quote(token))
 
 
-st_tempurl_options = '<method> <seconds> <path> <key>'
+st_tempurl_options = '''[--absolute]
+                     <method> <seconds> <path> <key>'''
 
 
 st_tempurl_help = '''
