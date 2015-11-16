@@ -388,7 +388,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     insecure = kwargs.get('insecure', False)
     timeout = kwargs.get('timeout', None)
     auth_version = kwargs.get('auth_version', '2.0')
-    debug = logger.isEnabledFor(logging.DEBUG) and True or False
+    debug = logger.isEnabledFor(logging.DEBUG)
 
     ksclient, exceptions = _import_keystone_client(auth_version)
 
@@ -419,11 +419,14 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     service_type = os_options.get('service_type') or 'object-store'
     endpoint_type = os_options.get('endpoint_type') or 'publicURL'
     try:
+        filter_kwargs = {}
+        if os_options.get('region_name'):
+            filter_kwargs['attr'] = 'region'
+            filter_kwargs['filter_value'] = os_options['region_name']
         endpoint = _ksclient.service_catalog.url_for(
-            attr='region',
-            filter_value=os_options.get('region_name'),
             service_type=service_type,
-            endpoint_type=endpoint_type)
+            endpoint_type=endpoint_type,
+            **filter_kwargs)
     except exceptions.EndpointNotFound:
         raise ClientException('Endpoint for %s not found - '
                               'have you specified a region?' % service_type)
