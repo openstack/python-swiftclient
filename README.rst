@@ -1,6 +1,14 @@
 Python bindings to the OpenStack Object Storage API
 ===================================================
 
+.. image:: https://img.shields.io/pypi/v/python-swiftclient.svg
+    :target: https://pypi.python.org/pypi/python-swiftclient/
+    :alt: Latest Version
+
+.. image:: https://img.shields.io/pypi/dm/python-swiftclient.svg
+    :target: https://pypi.python.org/pypi/python-swiftclient/
+    :alt: Downloads
+
 This is a python client for the Swift API. There's a Python API (the
 ``swiftclient`` module), and a command-line script (``swift``).
 
@@ -16,9 +24,24 @@ Apache License like the rest of OpenStack.
 __ http://github.com/openstack/swift
 
 * Free software: Apache license
-* Documentation: http://docs.openstack.org/developer/python-swiftclient/
-* Source: http://git.openstack.org/cgit/openstack/python-swiftclient/
-* Bugs: http://bugs.launchpad.net/python-swiftclient
+* `PyPI`_ - package installation
+* `Online Documentation`_
+* `Launchpad project`_ - release management
+* `Blueprints`_ - feature specifications
+* `Bugs`_ - issue tracking
+* `Source`_
+* `Specs`_
+* `How to Contribute`_
+
+.. _PyPI: https://pypi.python.org/pypi/python-swiftclient
+.. _Online Documentation: http://docs.openstack.org/developer/python-swiftclient
+.. _Launchpad project: https://launchpad.net/python-swiftclient
+.. _Blueprints: https://blueprints.launchpad.net/python-swiftclient
+.. _Bugs: https://bugs.launchpad.net/python-swiftclient
+.. _Source: https://git.openstack.org/cgit/openstack/python-swiftclient
+.. _How to Contribute: http://docs.openstack.org/infra/manual/developers.html
+.. _Specs: http://specs.openstack.org/openstack/swift-specs/
+
 
 .. contents:: Contents:
    :local:
