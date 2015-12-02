@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 from genericpath import getmtime
 
 import hashlib
+import logging
 import mock
 import os
 import tempfile
@@ -1038,6 +1039,20 @@ class TestSubcommandHelp(testtools.TestCase):
             self.assertRaises(SystemExit, swiftclient.shell.main, argv)
         expected = 'no help for bad_command'
         self.assertEqual(out.strip('\n'), expected)
+
+
+@mock.patch.dict(os.environ, mocked_os_environ)
+class TestOptionAfterPosArg(testtools.TestCase):
+    @mock.patch('logging.basicConfig')
+    @mock.patch('swiftclient.service.Connection')
+    def test_option_after_posarg(self, connection, mock_logging):
+        argv = ["", "stat", "--info"]
+        swiftclient.shell.main(argv)
+        mock_logging.assert_called_with(level=logging.INFO)
+
+        argv = ["", "stat", "--debug"]
+        swiftclient.shell.main(argv)
+        mock_logging.assert_called_with(level=logging.DEBUG)
 
 
 class TestBase(testtools.TestCase):
