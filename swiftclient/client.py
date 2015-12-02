@@ -1091,7 +1091,6 @@ def put_object(url, token=None, container=None, name=None, contents=None,
 
     resp = conn.getresponse()
     body = resp.read()
-    headers = {'X-Auth-Token': token}
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'PUT',),
              {'headers': headers}, resp, body)
 
