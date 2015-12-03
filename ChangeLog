@@ -1,3 +1,22 @@
+2.6.1
+-----
+
+* This is the very last release to support Python 2.6
+
+* Added content type to CLI object list long-form output
+
+* client.get_container() and client.head_object now accept a headers parameter
+
+* Fixed bug when setting Content-Type on upload from CLI
+
+* Fixed bug when deleting DLOs with unicode characters
+
+* Updated man pages and docstrings
+
+* Suppress iso8601 logging in --debug output
+
+* Various other minor bug fixes and improvements.
+
 2.6.0
 -----
 
