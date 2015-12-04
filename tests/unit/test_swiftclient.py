@@ -18,7 +18,7 @@ import mock
 import six
 import socket
 import string
-import testtools
+import unittest
 import warnings
 import tempfile
 from hashlib import md5
@@ -34,7 +34,7 @@ import swiftclient.utils
 import swiftclient
 
 
-class TestClientException(testtools.TestCase):
+class TestClientException(unittest.TestCase):
 
     def test_is_exception(self):
         self.assertTrue(issubclass(c.ClientException, Exception))
@@ -251,12 +251,12 @@ class TestGetAuth(MockHttpTest):
         self.assertEqual(url, 'storageURL')
         self.assertEqual(token, 'someauthtoken')
 
-        e = self.assertRaises(c.ClientException, c.get_auth,
-                              'http://www.test.com/invalid_cert',
-                              'asdf', 'asdf', auth_version='1.0')
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.get_auth('http://www.test.com/invalid_cert',
+                       'asdf', 'asdf', auth_version='1.0')
         # TODO: this test is really on validating the mock and not the
         # the full plumbing into the requests's 'verify' option
-        self.assertIn('invalid_certificate', str(e))
+        self.assertIn('invalid_certificate', str(exc_context.exception))
 
     def test_auth_v1_timeout(self):
         # this test has some overlap with
@@ -583,8 +583,9 @@ class TestHeadAccount(MockHttpTest):
     def test_server_error(self):
         body = 'c' * 65
         c.http_connection = self.fake_http_connection(500, body=body)
-        e = self.assertRaises(c.ClientException, c.head_account,
-                              'http://www.tests.com', 'asdf')
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.head_account('http://www.tests.com', 'asdf')
+        e = exc_context.exception
         self.assertEqual(e.http_response_content, body)
         self.assertEqual(e.http_status, 500)
         self.assertRequests([
@@ -617,17 +618,17 @@ class TestPostAccount(MockHttpTest):
     def test_server_error(self):
         body = 'c' * 65
         c.http_connection = self.fake_http_connection(500, body=body)
-        e = self.assertRaises(c.ClientException, c.post_account,
-                              'http://www.tests.com', 'asdf', {})
-        self.assertEqual(e.http_response_content, body)
-        self.assertEqual(e.http_status, 500)
+        with self.assertRaises(c.ClientException) as exc_mgr:
+            c.post_account('http://www.tests.com', 'asdf', {})
+        self.assertEqual(exc_mgr.exception.http_response_content, body)
+        self.assertEqual(exc_mgr.exception.http_status, 500)
         self.assertRequests([
             ('POST', 'http://www.tests.com', None, {'x-auth-token': 'asdf'})
         ])
         # TODO: this is a fairly brittle test of the __repr__ on the
         # ClientException which should probably be in a targeted test
         new_body = "[first 60 chars of response] " + body[0:60]
-        self.assertEqual(e.__str__()[-89:], new_body)
+        self.assertEqual(exc_mgr.exception.__str__()[-89:], new_body)
 
 
 class TestGetContainer(MockHttpTest):
@@ -741,8 +742,9 @@ class TestHeadContainer(MockHttpTest):
     def test_server_error(self):
         body = 'c' * 60
         c.http_connection = self.fake_http_connection(500, body=body)
-        e = self.assertRaises(c.ClientException, c.head_container,
-                              'http://www.test.com', 'asdf', 'container')
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.head_container('http://www.test.com', 'asdf', 'container')
+        e = exc_context.exception
         self.assertRequests([
             ('HEAD', '/container', '', {'x-auth-token': 'asdf'}),
         ])
@@ -765,9 +767,9 @@ class TestPutContainer(MockHttpTest):
     def test_server_error(self):
         body = 'c' * 60
         c.http_connection = self.fake_http_connection(500, body=body)
-        e = self.assertRaises(c.ClientException, c.put_container,
-                              'http://www.test.com', 'token', 'container')
-        self.assertEqual(e.http_response_content, body)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.put_container('http://www.test.com', 'token', 'container')
+        self.assertEqual(exc_context.exception.http_response_content, body)
         self.assertRequests([
             ('PUT', '/container', '', {
                 'x-auth-token': 'token',
@@ -972,7 +974,9 @@ class TestPutObject(MockHttpTest):
         body = 'c' * 60
         c.http_connection = self.fake_http_connection(500, body=body)
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
-        e = self.assertRaises(c.ClientException, c.put_object, *args)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.put_object(*args)
+        e = exc_context.exception
         self.assertEqual(e.http_response_content, body)
         self.assertEqual(e.http_status, 500)
         self.assertRequests([
@@ -1192,8 +1196,9 @@ class TestPostObject(MockHttpTest):
         body = 'c' * 60
         c.http_connection = self.fake_http_connection(500, body=body)
         args = ('http://www.test.com', 'token', 'container', 'obj', {})
-        e = self.assertRaises(c.ClientException, c.post_object, *args)
-        self.assertEqual(e.http_response_content, body)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.post_object(*args)
+        self.assertEqual(exc_context.exception.http_response_content, body)
         self.assertRequests([
             ('POST', 'http://www.test.com/container/obj', '', {
                 'x-auth-token': 'token',
@@ -1347,17 +1352,23 @@ class TestHTTPConnection(MockHttpTest):
 
     def test_bad_url_scheme(self):
         url = u'www.test.com'
-        exc = self.assertRaises(c.ClientException, c.http_connection, url)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.http_connection(url)
+        exc = exc_context.exception
         expected = u'Unsupported scheme "" in url "www.test.com"'
         self.assertEqual(expected, str(exc))
 
         url = u'://www.test.com'
-        exc = self.assertRaises(c.ClientException, c.http_connection, url)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.http_connection(url)
+        exc = exc_context.exception
         expected = u'Unsupported scheme "" in url "://www.test.com"'
         self.assertEqual(expected, str(exc))
 
         url = u'blah://www.test.com'
-        exc = self.assertRaises(c.ClientException, c.http_connection, url)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.http_connection(url)
+        exc = exc_context.exception
         expected = u'Unsupported scheme "blah" in url "blah://www.test.com"'
         self.assertEqual(expected, str(exc))
 
@@ -1524,8 +1535,9 @@ class TestConnection(MockHttpTest):
         }
         c.http_connection = self.fake_http_connection(
             *code_iter, headers=auth_resp_headers)
-        e = self.assertRaises(c.ClientException, conn.head_account)
-        self.assertIn('Account HEAD failed', str(e))
+        with self.assertRaises(c.ClientException) as exc_context:
+            conn.head_account()
+        self.assertIn('Account HEAD failed', str(exc_context.exception))
         self.assertEqual(conn.attempts, conn.retries + 1)
 
         # test default no-retry
@@ -1533,8 +1545,9 @@ class TestConnection(MockHttpTest):
             200, 498,
             headers=auth_resp_headers)
         conn = c.Connection('http://www.test.com/auth/v1.0', 'asdf', 'asdf')
-        e = self.assertRaises(c.ClientException, conn.head_account)
-        self.assertIn('Account HEAD failed', str(e))
+        with self.assertRaises(c.ClientException) as exc_context:
+            conn.head_account()
+        self.assertIn('Account HEAD failed', str(exc_context.exception))
         self.assertEqual(conn.attempts, 1)
 
     def test_resp_read_on_server_error(self):
@@ -2132,9 +2145,9 @@ class TestLogging(MockHttpTest):
 
     def test_get_error(self):
         c.http_connection = self.fake_http_connection(404)
-        e = self.assertRaises(c.ClientException, c.get_object,
-                              'http://www.test.com', 'asdf', 'asdf', 'asdf')
-        self.assertEqual(e.http_status, 404)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+        self.assertEqual(exc_context.exception.http_status, 404)
 
 
 class TestCloseConnection(MockHttpTest):

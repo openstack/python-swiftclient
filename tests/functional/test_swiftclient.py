@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import os
-import testtools
+import unittest
 import time
 from io import BytesIO
 
@@ -23,7 +23,7 @@ from six.moves import configparser
 import swiftclient
 
 
-class TestFunctional(testtools.TestCase):
+class TestFunctional(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(TestFunctional, self).__init__(*args, **kwargs)

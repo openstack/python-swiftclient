@@ -20,9 +20,8 @@ import logging
 import mock
 import os
 import tempfile
-import testtools
+import unittest
 import textwrap
-from testtools import ExpectedException
 
 
 import six
@@ -106,7 +105,7 @@ def _make_cmd(cmd, opts, os_opts, use_env=False, flags=None, cmd_args=None):
 
 
 @mock.patch.dict(os.environ, mocked_os_environ)
-class TestShell(testtools.TestCase):
+class TestShell(unittest.TestCase):
     def setUp(self):
         super(TestShell, self).setUp()
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
@@ -1076,7 +1075,7 @@ class TestShell(testtools.TestCase):
             swiftclient.ClientException('bad auth')
 
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
             self.assertEqual(output.err, 'bad auth\n')
@@ -1088,7 +1087,7 @@ class TestShell(testtools.TestCase):
             swiftclient.ClientException('test', http_status=404)
 
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
             self.assertEqual(output.err, 'Account not found\n')
@@ -1107,7 +1106,7 @@ class TestShell(testtools.TestCase):
             swiftclient.ClientException('bad auth')
 
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
             self.assertEqual(output.err, 'bad auth\n')
@@ -1125,7 +1124,7 @@ class TestShell(testtools.TestCase):
         argv = ["", "post", "conta/iner"]
 
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
             self.assertTrue(output.err != '')
             self.assertTrue(output.err.startswith('WARNING: / in'))
@@ -1165,7 +1164,7 @@ class TestShell(testtools.TestCase):
             swiftclient.ClientException("bad auth")
 
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
             self.assertEqual(output.err, 'bad auth\n')
@@ -1174,7 +1173,7 @@ class TestShell(testtools.TestCase):
         argv = ["", "post", "container", "object", "bad_arg"]
 
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
             self.assertTrue(output.err != '')
@@ -1235,49 +1234,49 @@ class TestShell(testtools.TestCase):
                 _check_expected(mock_swift, 12345)
 
             with CaptureOutput() as output:
-                with ExpectedException(SystemExit):
+                with self.assertRaises(SystemExit):
                     #  Test invalid states
                     argv = ["", "upload", "-S", "1234X", "container", "object"]
                     swiftclient.shell.main(argv)
                 self.assertEqual(output.err, "Invalid segment size\n")
                 output.clear()
 
-                with ExpectedException(SystemExit):
+                with self.assertRaises(SystemExit):
                     argv = ["", "upload", "-S", "K1234", "container", "object"]
                     swiftclient.shell.main(argv)
                 self.assertEqual(output.err, "Invalid segment size\n")
                 output.clear()
 
-                with ExpectedException(SystemExit):
+                with self.assertRaises(SystemExit):
                     argv = ["", "upload", "-S", "K", "container", "object"]
                     swiftclient.shell.main(argv)
                 self.assertEqual(output.err, "Invalid segment size\n")
 
     def test_negative_upload_segment_size(self):
         with CaptureOutput() as output:
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 argv = ["", "upload", "-S", "-40", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 argv = ["", "upload", "-S", "-40K", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 argv = ["", "upload", "-S", "-40M", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
-            with ExpectedException(SystemExit):
+            with self.assertRaises(SystemExit):
                 argv = ["", "upload", "-S", "-40G", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
 
 
-class TestSubcommandHelp(testtools.TestCase):
+class TestSubcommandHelp(unittest.TestCase):
 
     def test_subcommand_help(self):
         for command in swiftclient.shell.commands:
@@ -1298,7 +1297,7 @@ class TestSubcommandHelp(testtools.TestCase):
 
 
 @mock.patch.dict(os.environ, mocked_os_environ)
-class TestDebugAndInfoOptions(testtools.TestCase):
+class TestDebugAndInfoOptions(unittest.TestCase):
     @mock.patch('logging.basicConfig')
     @mock.patch('swiftclient.service.Connection')
     def test_option_after_posarg(self, connection, mock_logging):
@@ -1329,7 +1328,7 @@ class TestDebugAndInfoOptions(testtools.TestCase):
                           % (mock_logging.call_args_list, argv))
 
 
-class TestBase(testtools.TestCase):
+class TestBase(unittest.TestCase):
     """
     Provide some common methods to subclasses
     """

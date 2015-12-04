@@ -18,7 +18,7 @@ import mock
 import os
 import six
 import tempfile
-import testtools
+import unittest
 import time
 
 from concurrent.futures import Future
@@ -49,7 +49,7 @@ else:
     import builtins
 
 
-class TestSwiftPostObject(testtools.TestCase):
+class TestSwiftPostObject(unittest.TestCase):
 
     def setUp(self):
         super(TestSwiftPostObject, self).setUp()
@@ -69,7 +69,7 @@ class TestSwiftPostObject(testtools.TestCase):
         self.assertRaises(SwiftError, self.spo, 1)
 
 
-class TestSwiftReader(testtools.TestCase):
+class TestSwiftReader(unittest.TestCase):
 
     def setUp(self):
         super(TestSwiftReader, self).setUp()
@@ -152,25 +152,7 @@ class TestSwiftReader(testtools.TestCase):
                          '97ac82a5b825239e782d0339e2d7b910')
 
 
-class _TestServiceBase(testtools.TestCase):
-    def _assertDictEqual(self, a, b, m=None):
-        # assertDictEqual is not available in py2.6 so use a shallow check
-        # instead
-        if not m:
-            m = '{0} != {1}'.format(a, b)
-
-        if hasattr(self, 'assertDictEqual'):
-            self.assertDictEqual(a, b, m)
-        else:
-            self.assertIsInstance(a, dict,
-                                  'First argument is not a dictionary')
-            self.assertIsInstance(b, dict,
-                                  'Second argument is not a dictionary')
-            self.assertEqual(len(a), len(b), m)
-            for k, v in a.items():
-                self.assertIn(k, b, m)
-                self.assertEqual(b[k], v, m)
-
+class _TestServiceBase(unittest.TestCase):
     def _get_mock_connection(self, attempts=2):
         m = Mock(spec=Connection)
         type(m).attempts = PropertyMock(return_value=attempts)
@@ -223,8 +205,8 @@ class TestServiceDelete(_TestServiceBase):
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_s', response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
-        self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertEqual(expected_r, r)
+        self.assertEqual(expected_r, self._get_queue(mock_q))
 
     def test_delete_segment_exception(self):
         mock_q = Queue()
@@ -246,8 +228,8 @@ class TestServiceDelete(_TestServiceBase):
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_s', response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
-        self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertEqual(expected_r, r)
+        self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertGreaterEqual(r['error_timestamp'], before)
         self.assertLessEqual(r['error_timestamp'], after)
         self.assertIn('Traceback', r['traceback'])
@@ -268,7 +250,7 @@ class TestServiceDelete(_TestServiceBase):
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o', query_string=None, response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
+        self.assertEqual(expected_r, r)
 
     def test_delete_object_exception(self):
         mock_q = Queue()
@@ -294,7 +276,7 @@ class TestServiceDelete(_TestServiceBase):
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o', query_string=None, response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
+        self.assertEqual(expected_r, r)
         self.assertGreaterEqual(r['error_timestamp'], before)
         self.assertLessEqual(r['error_timestamp'], after)
         self.assertIn('Traceback', r['traceback'])
@@ -321,7 +303,7 @@ class TestServiceDelete(_TestServiceBase):
             query_string='multipart-manifest=delete',
             response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
+        self.assertEqual(expected_r, r)
 
     def test_delete_object_dlo_support(self):
         mock_q = Queue()
@@ -352,7 +334,7 @@ class TestServiceDelete(_TestServiceBase):
                 mock_conn, 'test_c', 'test_o', self.opts, mock_q
             )
 
-        self._assertDictEqual(expected_r, r)
+        self.assertEqual(expected_r, r)
         expected = [
             mock.call('test_c', 'test_o', query_string=None, response_dict={}),
             mock.call('manifest_c', 'test_seg_1', response_dict={}),
@@ -372,7 +354,7 @@ class TestServiceDelete(_TestServiceBase):
         mock_conn.delete_container.assert_called_once_with(
             'test_c', response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
+        self.assertEqual(expected_r, r)
 
     def test_delete_empty_container_exception(self):
         mock_conn = self._get_mock_connection()
@@ -394,13 +376,13 @@ class TestServiceDelete(_TestServiceBase):
         mock_conn.delete_container.assert_called_once_with(
             'test_c', response_dict={}
         )
-        self._assertDictEqual(expected_r, r)
+        self.assertEqual(expected_r, r)
         self.assertGreaterEqual(r['error_timestamp'], before)
         self.assertLessEqual(r['error_timestamp'], after)
         self.assertIn('Traceback', r['traceback'])
 
 
-class TestSwiftError(testtools.TestCase):
+class TestSwiftError(unittest.TestCase):
 
     def test_is_exception(self):
         se = SwiftError(5)
@@ -430,7 +412,7 @@ class TestSwiftError(testtools.TestCase):
         self.assertEqual(str(se), '5 container:con object:obj segment:seg')
 
 
-class TestServiceUtils(testtools.TestCase):
+class TestServiceUtils(unittest.TestCase):
 
     def setUp(self):
         super(TestServiceUtils, self).setUp()
@@ -525,7 +507,7 @@ class TestServiceUtils(testtools.TestCase):
                           mock_headers)
 
 
-class TestSwiftUploadObject(testtools.TestCase):
+class TestSwiftUploadObject(unittest.TestCase):
 
     def setUp(self):
         self.suo = swiftclient.service.SwiftUploadObject
@@ -614,7 +596,7 @@ class TestServiceList(_TestServiceBase):
         SwiftService._list_account_job(
             mock_conn, self.opts, mock_q
         )
-        self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
         long_opts = dict(self.opts, **{'long': True})
@@ -635,7 +617,7 @@ class TestServiceList(_TestServiceBase):
         SwiftService._list_account_job(
             mock_conn, long_opts, mock_q
         )
-        self._assertDictEqual(expected_r_long, self._get_queue(mock_q))
+        self.assertEqual(expected_r_long, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
     def test_list_account_exception(self):
@@ -657,7 +639,7 @@ class TestServiceList(_TestServiceBase):
         mock_conn.get_account.assert_called_once_with(
             marker='', prefix=None
         )
-        self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
     def test_list_container(self):
@@ -680,7 +662,7 @@ class TestServiceList(_TestServiceBase):
         SwiftService._list_container_job(
             mock_conn, 'test_c', self.opts, mock_q
         )
-        self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
         long_opts = dict(self.opts, **{'long': True})
@@ -702,7 +684,7 @@ class TestServiceList(_TestServiceBase):
         SwiftService._list_container_job(
             mock_conn, 'test_c', long_opts, mock_q
         )
-        self._assertDictEqual(expected_r_long, self._get_queue(mock_q))
+        self.assertEqual(expected_r_long, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
     def test_list_container_exception(self):
@@ -726,7 +708,7 @@ class TestServiceList(_TestServiceBase):
         mock_conn.get_container.assert_called_once_with(
             'test_c', marker='', delimiter='', prefix=None
         )
-        self._assertDictEqual(expected_r, self._get_queue(mock_q))
+        self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
     @mock.patch('swiftclient.service.get_conn')
@@ -805,7 +787,7 @@ class TestServiceList(_TestServiceBase):
         self.assertEqual(observed_listing, expected_listing)
 
 
-class TestService(testtools.TestCase):
+class TestService(unittest.TestCase):
 
     def test_upload_with_bad_segment_size(self):
         for bad in ('ten', '1234X', '100.3'):
@@ -913,7 +895,7 @@ class TestServiceUpload(_TestServiceBase):
             self.assertEqual(r['path'], f.name)
             del r['path']
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c', 'テスト/dummy.dat',
                                                     '',
@@ -960,7 +942,7 @@ class TestServiceUpload(_TestServiceBase):
                                       options={'segment_container': None,
                                                'checksum': True})
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c_segments',
@@ -1098,7 +1080,7 @@ class TestServiceUpload(_TestServiceBase):
             self.assertEqual(r['path'], f.name)
             del r['path']
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c', 'test_o',
                                                     mock.ANY,
@@ -1155,7 +1137,7 @@ class TestServiceUpload(_TestServiceBase):
             self.assertEqual(mtime, expected_mtime)
             del r['headers']['x-object-meta-mtime']
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
             self.assertEqual(mock_conn.put_object.call_count, 1)
             mock_conn.put_object.assert_called_with('test_c', 'test_o',
                                                     mock.ANY,
@@ -1559,7 +1541,7 @@ class TestServiceDownload(_TestServiceBase):
             'test_c', 'test_o', resp_chunk_size=65536, headers={},
             response_dict={}
         )
-        self._assertDictEqual(expected_r, actual_r)
+        self.assertEqual(expected_r, actual_r)
 
     def test_download_object_job_with_mtime(self):
         mock_conn = self._get_mock_connection()
@@ -1605,7 +1587,7 @@ class TestServiceDownload(_TestServiceBase):
             'test_c', 'test_o', resp_chunk_size=65536, headers={},
             response_dict={}
         )
-        self._assertDictEqual(expected_r, actual_r)
+        self.assertEqual(expected_r, actual_r)
 
     def test_download_object_job_bad_mtime(self):
         mock_conn = self._get_mock_connection()
@@ -1650,7 +1632,7 @@ class TestServiceDownload(_TestServiceBase):
             'test_c', 'test_o', resp_chunk_size=65536, headers={},
             response_dict={}
         )
-        self._assertDictEqual(expected_r, actual_r)
+        self.assertEqual(expected_r, actual_r)
 
     def test_download_object_job_exception(self):
         mock_conn = self._get_mock_connection()
@@ -1670,7 +1652,7 @@ class TestServiceDownload(_TestServiceBase):
             'test_c', 'test_o', resp_chunk_size=65536, headers={},
             response_dict={}
         )
-        self._assertDictEqual(expected_r, actual_r)
+        self.assertEqual(expected_r, actual_r)
 
     def test_download(self):
         service = SwiftService()
@@ -1814,7 +1796,7 @@ class TestServiceDownload(_TestServiceBase):
                                                 'header': {},
                                                 'yes_all': False,
                                                 'skip_identical': True})
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
 
             self.assertEqual(mock_conn.get_object.call_count, 1)
             mock_conn.get_object.assert_called_with(
@@ -1876,7 +1858,7 @@ class TestServiceDownload(_TestServiceBase):
             self.assertEqual("Large object is identical", err.msg)
             self.assertEqual(304, err.http_status)
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
 
             self.assertEqual(mock_conn.get_object.call_count, 1)
             mock_conn.get_object.assert_called_with(
@@ -1959,7 +1941,7 @@ class TestServiceDownload(_TestServiceBase):
             self.assertEqual("Large object is identical", err.msg)
             self.assertEqual(304, err.http_status)
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
             self.assertEqual(mock_conn.get_object.mock_calls, [
                 mock.call('test_c',
                           'test_o',
@@ -2025,7 +2007,7 @@ class TestServiceDownload(_TestServiceBase):
                         obj='test_o',
                         options=options)
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
 
             self.assertEqual(mock_conn.get_container.mock_calls, [
                 mock.call('test_c_segments',
@@ -2116,7 +2098,7 @@ class TestServiceDownload(_TestServiceBase):
                         obj='test_o',
                         options=options)
 
-            self._assertDictEqual(r, expected_r)
+            self.assertEqual(r, expected_r)
             self.assertEqual(mock_conn.get_object.mock_calls, [
                 mock.call('test_c',
                           'test_o',

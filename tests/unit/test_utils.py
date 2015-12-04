@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import testtools
+import unittest
 import mock
 import six
 import tempfile
@@ -22,7 +22,7 @@ from hashlib import md5
 from swiftclient import utils as u
 
 
-class TestConfigTrueValue(testtools.TestCase):
+class TestConfigTrueValue(unittest.TestCase):
 
     def test_TRUE_VALUES(self):
         for v in u.TRUE_VALUES:
@@ -37,7 +37,7 @@ class TestConfigTrueValue(testtools.TestCase):
         self.assertIs(u.config_true_value(False), False)
 
 
-class TestPrtBytes(testtools.TestCase):
+class TestPrtBytes(unittest.TestCase):
 
     def test_zero_bytes(self):
         bytes_ = 0
@@ -119,7 +119,7 @@ class TestPrtBytes(testtools.TestCase):
         self.assertEqual('1024Y', u.prt_bytes(bytes_, True).lstrip())
 
 
-class TestTempURL(testtools.TestCase):
+class TestTempURL(unittest.TestCase):
 
     def setUp(self):
         super(TestTempURL, self).setUp()
@@ -164,7 +164,7 @@ class TestTempURL(testtools.TestCase):
                           self.method)
 
 
-class TestReadableToIterable(testtools.TestCase):
+class TestReadableToIterable(unittest.TestCase):
 
     def test_iter(self):
         chunk_size = 4
@@ -216,7 +216,7 @@ class TestReadableToIterable(testtools.TestCase):
             self.assertEqual(actual_md5sum, data.get_md5sum())
 
 
-class TestLengthWrapper(testtools.TestCase):
+class TestLengthWrapper(unittest.TestCase):
 
     def test_stringio(self):
         contents = six.StringIO(u'a' * 50 + u'b' * 50)
@@ -292,7 +292,7 @@ class TestLengthWrapper(testtools.TestCase):
                 self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
 
 
-class TestGroupers(testtools.TestCase):
+class TestGroupers(unittest.TestCase):
     def test_n_at_a_time(self):
         result = list(u.n_at_a_time(range(100), 9))
         self.assertEqual([9] * 11 + [1], list(map(len, result)))
