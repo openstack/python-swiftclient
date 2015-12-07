@@ -1,7 +1,8 @@
-2.6.1
+2.7.0
 -----
 
-* This is the very last release to support Python 2.6
+* This is the very last release to support Python 2.6. Any further
+  development on the 2.7.x release series will only be for security bugfixes.
 
 * Added content type to CLI object list long-form output
 
