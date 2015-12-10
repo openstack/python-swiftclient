@@ -92,7 +92,7 @@ def process_options(options):
     # Use new-style args if old ones not present
     if not options['auth'] and options['os_auth_url']:
         options['auth'] = options['os_auth_url']
-    if not options['user']and options['os_username']:
+    if not options['user'] and options['os_username']:
         options['user'] = options['os_username']
     if not options['key'] and options['os_password']:
         options['key'] = options['os_password']
@@ -1628,6 +1628,7 @@ class SwiftService(object):
 
         res = {
             'action': 'upload_segment',
+            'for_container': container,
             'for_object': obj_name,
             'segment_index': segment_index,
             'segment_size': segment_size,

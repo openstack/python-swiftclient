@@ -868,6 +868,7 @@ class TestServiceUpload(_TestServiceBase):
             type(mock_conn).attempts = mock.PropertyMock(return_value=2)
             expected_r = {
                 'action': 'upload_segment',
+                'for_container': 'test_c',
                 'for_object': 'test_o',
                 'segment_index': 2,
                 'segment_size': 10,
