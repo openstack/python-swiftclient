@@ -769,6 +769,12 @@ class TestGetObject(MockHttpTest):
                 'x-auth-token': 'asdf'}),
         ])
 
+    def test_get_object_as_string(self):
+        c.http_connection = self.fake_http_connection(200, body='abcde')
+        __, resp = c.get_object('http://storage.example.com', 'TOKEN',
+                                'container_name', 'object_name')
+        self.assertEqual(resp, 'abcde')
+
     def test_request_headers(self):
         c.http_connection = self.fake_http_connection(200)
         conn = c.http_connection('http://www.test.com')
