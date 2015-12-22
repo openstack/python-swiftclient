@@ -1450,6 +1450,7 @@ class TestKeystoneOptions(MockHttpTest):
             self.assertTrue(flag in actual_args)
             self.assertTrue(actual_args[flag])
 
+        check_attr = True
         # check args passed to ServiceCatalog.url_for() method
         self.assertEqual(len(fake_ks.client.service_catalog.calls), 1)
         actual_args = fake_ks.client.service_catalog.calls[0]
@@ -1458,15 +1459,21 @@ class TestKeystoneOptions(MockHttpTest):
             key = key.replace('-', '_')
             if key == 'region_name':
                 key = 'filter_value'
+                if expected is None:
+                    check_attr = False
+                    self.assertNotIn(key, actual_args)
+                    self.assertNotIn('attr', actual_args)
+                    continue
             self.assertIn(key, actual_args)
             self.assertEqual(expected, actual_args[key],
                              'Expected %s for key %s, found %s'
                              % (expected, key, actual_args[key]))
-        key, v = 'attr', 'region'
-        self.assertIn(key, actual_args)
-        self.assertEqual(v, actual_args[key],
-                         'Expected %s for key %s, found %s'
-                         % (v, key, actual_args[key]))
+        if check_attr:
+            key, v = 'attr', 'region'
+            self.assertIn(key, actual_args)
+            self.assertEqual(v, actual_args[key],
+                             'Expected %s for key %s, found %s'
+                             % (v, key, actual_args[key]))
 
     def _test_options(self, opts, os_opts, flags=None, no_auth=False):
         # repeat test for different commands using env and command line options
