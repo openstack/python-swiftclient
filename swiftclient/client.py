@@ -442,7 +442,7 @@ def get_auth(auth_url, user, key, **kwargs):
 
     :returns: a tuple, (storage_url, token)
 
-    N.B. if the optional os_options paramater includes an non-empty
+    N.B. if the optional os_options paramater includes a non-empty
     'object_storage_url' key it will override the the default storage url
     returned by the auth service.
 
@@ -472,7 +472,7 @@ def get_auth(auth_url, user, key, **kwargs):
         if user and not kwargs.get('tenant_name') and ':' in user:
             os_options['tenant_name'], user = user.split(':')
 
-        # We are allowing to have an tenant_name argument in get_auth
+        # We are allowing to have a tenant_name argument in get_auth
         # directly without having os_options
         if kwargs.get('tenant_name'):
             os_options['tenant_name'] = kwargs['tenant_name']
