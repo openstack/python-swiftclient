@@ -156,7 +156,7 @@
 * Add context sensitive help
 * Relax requirement for tenant_name in get_auth()
 * replace string format arguments with function parameters
-* Removed now unnecesary workaround for PyPy
+* Removed now unnecessary workaround for PyPy
 * Use Emacs-friendly coding line
 * Remove extra double quote from docstring
 * Fix wrong assertions in unit tests
@@ -179,7 +179,7 @@
 * Make the function tests Python3-import friendly
 * Only encode metadata for user customed headers
 * Add functional tests for python-swiftclient
-* Removed a duplicate word in a dostring
+* Removed a duplicate word in a docstring
 * Mock auth_end_time in test_shell.test_download
 * Don't utf8 encode urls
 * Fixed several shell tests on Python3
@@ -285,7 +285,7 @@
 * Make pbr only a build-time dependency
 * Add verbose output to all stat commands
 * assertEquals is deprecated, use assertEqual (H602)
-* Skip sniffing and reseting if retry is disabled
+* Skip sniffing and resetting if retry is disabled
 * user defined headers added to swift post queries
 
 1.7.0

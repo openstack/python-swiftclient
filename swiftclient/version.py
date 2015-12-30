@@ -16,7 +16,7 @@ import pkg_resources
 
 try:
     # First, try to get our version out of PKG-INFO. If we're installed,
-    # this'll let us find our version without pulling in pbr. After all, if
+    # this will let us find our version without pulling in pbr. After all, if
     # we're installed on a system, we're not in a Git-managed source tree, so
     # pbr doesn't really buy us anything.
     version_string = pkg_resources.get_provider(

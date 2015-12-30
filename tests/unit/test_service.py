@@ -124,7 +124,7 @@ class TestSwiftReader(testtools.TestCase):
         sr = self.sr('path', BytesIO(b'body'), {})
         _consume(sr)
 
-        # Check error is raised if expected etag doesnt match calculated md5.
+        # Check error is raised if expected etag doesn't match calculated md5.
         # md5 for a SwiftReader that has done nothing is
         # d41d8cd98f00b204e9800998ecf8427e  i.e md5 of nothing
         sr = self.sr('path', BytesIO(b'body'), {'etag': 'doesntmatch'})
@@ -134,7 +134,7 @@ class TestSwiftReader(testtools.TestCase):
                      {'etag': '841a2d689ad86bd1611447453c22c6fc'})
         _consume(sr)
 
-        # Check error is raised if SwiftReader doesnt read the same length
+        # Check error is raised if SwiftReader doesn't read the same length
         # as the content length it is created with
         sr = self.sr('path', BytesIO(b'body'), {'content-length': 5})
         self.assertRaises(SwiftError, _consume, sr)
@@ -279,7 +279,7 @@ class TestServiceDelete(_TestServiceBase):
             'traceback': mock.ANY,
             'error_timestamp': mock.ANY
         })
-        # _delete_object doesnt populate attempts or response dict if it hits
+        # _delete_object doesn't populate attempts or response dict if it hits
         # an error. This may not be the correct behaviour.
         del expected_r['response_dict'], expected_r['attempts']
 
@@ -454,7 +454,7 @@ class TestServiceUtils(testtools.TestCase):
     def test_process_options_auth_version(self):
         # auth_version should be set to 2.0
         # if it isnt already set to 3.0
-        # and the v1 command line arguments arent present
+        # and the v1 command line arguments aren't present
         opt_c = self.opts.copy()
 
         # Check v3 isnt changed
@@ -473,7 +473,7 @@ class TestServiceUtils(testtools.TestCase):
 
     def test_process_options_new_style_args(self):
         # checks new style args are copied to old style
-        # when old style dont exist
+        # when old style don't exist
         opt_c = self.opts.copy()
 
         opt_c['auth'] = ''

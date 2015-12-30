@@ -34,7 +34,7 @@ from swiftclient.exceptions import ClientException
 from swiftclient.utils import (
     LengthWrapper, ReadableToIterable, parse_api_response)
 
-# Defautl is 100, increase to 256
+# Default is 100, increase to 256
 http_client._MAXHEADERS = 256
 
 AUTH_VERSIONS_V1 = ('1.0', '1', 1)
@@ -109,7 +109,7 @@ def parse_header_string(data):
         if isinstance(data, six.text_type):
             # Under Python2 requests only returns binary_type, but if we get
             # some stray text_type input, this should prevent unquote from
-            # interpretting %-encoded data as raw code-points.
+            # interpreting %-encoded data as raw code-points.
             data = data.encode('utf8')
         try:
             unquoted = unquote(data).decode('utf8')
@@ -438,11 +438,11 @@ def get_auth(auth_url, user, key, **kwargs):
     Get authentication/authorization credentials.
 
     :kwarg auth_version: the api version of the supplied auth params
-    :kwarg os_options: a dict, the openstack idenity service options
+    :kwarg os_options: a dict, the openstack identity service options
 
     :returns: a tuple, (storage_url, token)
 
-    N.B. if the optional os_options paramater includes a non-empty
+    N.B. if the optional os_options parameter includes a non-empty
     'object_storage_url' key it will override the the default storage url
     returned by the auth service.
 

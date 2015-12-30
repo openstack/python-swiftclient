@@ -1501,7 +1501,7 @@ class TestConnection(MockHttpTest):
 
         def get_auth(*args, **kwargs):
             # this mock, and by extension this test are not
-            # represenative of the unit under test.  The real get_auth
+            # representative of the unit under test.  The real get_auth
             # method will always return the os_option dict's
             # object_storage_url which will be overridden by the
             # preauthurl parameter to Connection if it is provided.
@@ -2075,7 +2075,7 @@ class TestServiceToken(MockHttpTest):
     def get_auth(self):
         # The real get_auth function will always return the os_option
         # dict's object_storage_url which will be overridden by the
-        # preauthurl paramater to Connection if it is provided.
+        # preauthurl parameter to Connection if it is provided.
         return self.os_options.get('object_storage_url'), 'token'
 
     def get_service_auth(self):

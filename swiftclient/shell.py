@@ -1028,7 +1028,7 @@ Positional arguments:
                         "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"\'
 
 Optional arguments:
-  --absolute            Interpet the <seconds> positional argument as a Unix
+  --absolute            Interpret the <seconds> positional argument as a Unix
                         timestamp rather than a number of seconds in the
                         future.
 '''.strip('\n')

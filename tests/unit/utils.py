@@ -213,7 +213,7 @@ class MockHttpTest(testtools.TestCase):
         self.fake_connect = None
         self.request_log = []
 
-        # Capture output, since the test-runner stdout/stderr moneky-patching
+        # Capture output, since the test-runner stdout/stderr monkey-patching
         # won't cover the references to sys.stdout/sys.stderr in
         # swiftclient.multithreading
         self.capture_output = CaptureOutput()
