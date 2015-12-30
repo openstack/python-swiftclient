@@ -226,8 +226,8 @@ class TestGetAuth(MockHttpTest):
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
         url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf')
-        self.assertEqual(url, None)
-        self.assertEqual(token, None)
+        self.assertIsNone(url)
+        self.assertIsNone(token)
 
     def test_invalid_auth(self):
         self.assertRaises(c.ClientException, c.get_auth,
@@ -720,7 +720,7 @@ class TestPutContainer(MockHttpTest):
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
         value = c.put_container('http://www.test.com', 'token', 'container')
-        self.assertEqual(value, None)
+        self.assertIsNone(value)
         self.assertRequests([
             ('PUT', '/container', '', {
                 'x-auth-token': 'token',
@@ -745,7 +745,7 @@ class TestDeleteContainer(MockHttpTest):
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
         value = c.delete_container('http://www.test.com', 'token', 'container')
-        self.assertEqual(value, None)
+        self.assertIsNone(value)
         self.assertRequests([
             ('DELETE', '/container', '', {
                 'x-auth-token': 'token'}),
@@ -2031,14 +2031,14 @@ class TestCloseConnection(MockHttpTest):
     def test_close_none(self):
         c.http_connection = self.fake_http_connection()
         conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
-        self.assertEqual(conn.http_conn, None)
+        self.assertIsNone(conn.http_conn)
         conn.close()
-        self.assertEqual(conn.http_conn, None)
+        self.assertIsNone(conn.http_conn)
 
     def test_close_ok(self):
         url = 'http://www.test.com'
         conn = c.Connection(url, 'asdf', 'asdf')
-        self.assertEqual(conn.http_conn, None)
+        self.assertIsNone(conn.http_conn)
         conn.http_conn = c.http_connection(url)
         self.assertEqual(type(conn.http_conn), tuple)
         self.assertEqual(len(conn.http_conn), 2)
@@ -2067,7 +2067,7 @@ class TestServiceToken(MockHttpTest):
         conn.get_service_auth = self.get_service_auth
 
         self.assertEqual(conn.attempts, 0)
-        self.assertEqual(conn.service_token, None)
+        self.assertIsNone(conn.service_token)
 
         self.assertIs(type(conn), c.Connection)
         return conn
