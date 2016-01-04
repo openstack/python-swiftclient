@@ -463,11 +463,29 @@ class TestShell(testtools.TestCase):
         swiftclient.shell.main(argv)
         connection.return_value.put_container.assert_called_once_with(
             'container',
-            {'X-Storage-Policy': mock.ANY},
+            {'X-Storage-Policy': 'one'},
             response_dict={})
 
         connection.return_value.put_object.assert_called_with(
             'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY,
+                     'X-Storage-Policy': 'one'},
+            response_dict={})
+
+        # upload to pseudo-folder (via <container> param)
+        argv = ["", "upload", "container/pseudo-folder/nested", self.tmpfile,
+                "-H", "X-Storage-Policy:one"]
+        swiftclient.shell.main(argv)
+        connection.return_value.put_container.assert_called_with(
+            'container',
+            {'X-Storage-Policy': 'one'},
+            response_dict={})
+
+        connection.return_value.put_object.assert_called_with(
+            'container/pseudo-folder/nested',
             self.tmpfile.lstrip('/'),
             mock.ANY,
             content_length=0,
