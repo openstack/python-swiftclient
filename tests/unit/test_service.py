@@ -112,7 +112,7 @@ class TestSwiftReader(testtools.TestCase):
         self.assertNotEqual(sr._actual_md5, None)
         self.assertIs(type(sr._actual_md5), self.md5_type)
 
-        # Check Contentlength raises error if it isnt an integer
+        # Check Contentlength raises error if it isn't an integer
         self.assertRaises(SwiftError, self.sr, 'path', 'body',
                           {'content-length': 'notanint'})
 
@@ -453,16 +453,16 @@ class TestServiceUtils(testtools.TestCase):
 
     def test_process_options_auth_version(self):
         # auth_version should be set to 2.0
-        # if it isnt already set to 3.0
+        # if it isn't already set to 3.0
         # and the v1 command line arguments aren't present
         opt_c = self.opts.copy()
 
-        # Check v3 isnt changed
+        # Check v3 isn't changed
         opt_c['auth_version'] = '3'
         swiftclient.service.process_options(opt_c)
         self.assertEqual(opt_c['auth_version'], '3')
 
-        # Check v1 isnt changed if user, key and auth are set
+        # Check v1 isn't changed if user, key and auth are set
         opt_c = self.opts.copy()
         opt_c['auth_version'] = '1'
         opt_c['auth'] = True
@@ -862,7 +862,7 @@ class TestServiceUpload(_TestServiceBase):
 
             # Mock the connection to return an empty etag. This
             # skips etag validation which would fail as the LengthWrapper
-            # isnt read from.
+            # isn't read from.
             mock_conn = mock.Mock()
             mock_conn.put_object.return_value = ''
             type(mock_conn).attempts = mock.PropertyMock(return_value=2)
