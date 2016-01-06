@@ -231,3 +231,12 @@ class LengthWrapper(object):
             self.md5sum.update(chunk.encode())
 
         return chunk
+
+
+def iter_wrapper(iterable):
+    for chunk in iterable:
+        if len(chunk) == 0:
+            # If we emit an empty chunk, requests will go ahead and send it,
+            # causing the server to close the connection
+            continue
+        yield chunk

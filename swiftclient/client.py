@@ -32,7 +32,7 @@ import six
 from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
 from swiftclient.utils import (
-    LengthWrapper, ReadableToIterable, parse_api_response)
+    iter_wrapper, LengthWrapper, ReadableToIterable, parse_api_response)
 
 # Default is 100, increase to 256
 http_client._MAXHEADERS = 256
@@ -1126,6 +1126,10 @@ def put_object(url, token=None, container=None, name=None, contents=None,
             warn_msg = ('%s object has no "read" method, ignoring chunk_size'
                         % type(contents).__name__)
             warnings.warn(warn_msg, stacklevel=2)
+        # Match requests's is_stream test
+        if hasattr(contents, '__iter__') and not isinstance(contents, (
+                six.text_type, six.binary_type, list, tuple, dict)):
+            contents = iter_wrapper(contents)
         conn.request('PUT', path, contents, headers)
 
     resp = conn.getresponse()

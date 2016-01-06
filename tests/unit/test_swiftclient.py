@@ -984,6 +984,26 @@ class TestPutObject(MockHttpTest):
                 data += chunk
             self.assertEqual(data, raw_data)
 
+    def test_iter_upload(self):
+        def data():
+            for chunk in ('foo', '', 'bar'):
+                yield chunk
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+
+        c.put_object(url='http://www.test.com', http_conn=conn,
+                     contents=data())
+        req_headers = resp.requests_params['headers']
+        self.assertNotIn('Content-Length', req_headers)
+        req_data = resp.requests_params['data']
+        self.assertTrue(hasattr(req_data, '__iter__'))
+        # If we emit an empty chunk, requests will go ahead and send it,
+        # causing the server to close the connection. So make sure we don't
+        # do that.
+        self.assertEqual(['foo', 'bar'], list(req_data))
+
     def test_md5_mismatch(self):
         conn = c.http_connection('http://www.test.com')
         resp = MockHttpResponse(status=200, verify=True,
