@@ -318,6 +318,21 @@ class TestFunctional(testtools.TestCase):
         downloaded_contents += body.read()
         self.assertEqual(self.test_data, downloaded_contents)
 
+    def test_put_object_using_generator(self):
+        # verify that put using a generator yielding empty strings does not
+        # cause connection to be closed
+        def data():
+            yield "should"
+            yield ""
+            yield " tolerate"
+            yield ""
+            yield " empty chunks"
+
+        self.conn.put_object(
+            self.containername, self.objectname, data())
+        hdrs, body = self.conn.get_object(self.containername, self.objectname)
+        self.assertEqual("should tolerate empty chunks", body)
+
     def test_post_account(self):
         self.conn.post_account({'x-account-meta-data': 'Something'})
         headers = self.conn.head_account()
