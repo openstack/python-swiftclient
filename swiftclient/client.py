@@ -202,15 +202,13 @@ class _RetryBody(_ObjectBody):
     (from offset) if the connection is dropped after partially
     downloading the object.
     """
-    def __init__(self, resp, expected_length, etag, connection, container, obj,
+    def __init__(self, resp, connection, container, obj,
                  resp_chunk_size=None, query_string=None, response_dict=None,
                  headers=None):
         """
         Wrap the underlying response
 
         :param resp: the response to wrap
-        :param expected_length: the object size in bytes
-        :param etag: the object's etag
         :param connection: Connection class instance
         :param container: the name of the container the object is in
         :param obj: the name of object we are downloading
@@ -222,8 +220,7 @@ class _RetryBody(_ObjectBody):
                          include in the request
         """
         super(_RetryBody, self).__init__(resp, resp_chunk_size)
-        self.expected_length = expected_length
-        self.expected_etag = etag
+        self.expected_length = int(self.resp.getheader('Content-Length'))
         self.conn = connection
         self.container = container
         self.obj = obj
@@ -244,7 +241,7 @@ class _RetryBody(_ObjectBody):
         if (not buf and self.bytes_read < self.expected_length and
                 self.conn.attempts <= self.conn.retries):
             self.headers['Range'] = 'bytes=%d-' % self.bytes_read
-            self.headers['If-Match'] = self.expected_etag
+            self.headers['If-Match'] = self.resp.getheader('ETag')
             hdrs, body = self.conn._retry(None, get_object,
                                           self.container, self.obj,
                                           resp_chunk_size=self.chunk_size,
@@ -252,7 +249,7 @@ class _RetryBody(_ObjectBody):
                                           response_dict=self.response_dict,
                                           headers=self.headers,
                                           attempts=self.conn.attempts)
-            self.resp = body
+            self.resp = body.resp
             buf = self.read(length)
         return buf
 
@@ -1593,11 +1590,10 @@ class Connection(object):
             not headers or 'range' not in (k.lower() for k in headers))
         retry_is_possible = (
             is_not_range_request and resp_chunk_size and
-            self.attempts <= self.retries)
+            self.attempts <= self.retries and
+            rheaders.get('transfer-encoding') is None)
         if retry_is_possible:
-            body = _RetryBody(body.resp, int(rheaders['content-length']),
-                              rheaders['etag'],
-                              self, container, obj,
+            body = _RetryBody(body.resp, self, container, obj,
                               resp_chunk_size=resp_chunk_size,
                               query_string=query_string,
                               response_dict=response_dict,
