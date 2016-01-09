@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (c) 2014 OpenStack Foundation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,7 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import unicode_literals
 import mock
 import os
 import six
@@ -852,6 +854,72 @@ class TestService(testtools.TestCase):
 
 
 class TestServiceUpload(_TestServiceBase):
+
+    def test_upload_object_job_file_with_unicode_path(self):
+        # Uploading a file results in the file object being wrapped in a
+        # LengthWrapper. This test sets the options in such a way that much
+        # of _upload_object_job is skipped bringing the critical path down
+        # to around 60 lines to ease testing.
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+            expected_r = {
+                'action': 'upload_object',
+                'attempts': 2,
+                'container': 'test_c',
+                'headers': {},
+                'large_object': True,
+                'object': 'テスト/dummy.dat',
+                'manifest_response_dict': {},
+                'segment_results': [{'action': 'upload_segment',
+                                    'success': True}] * 3,
+                'status': 'uploaded',
+                'success': True,
+            }
+            expected_mtime = float(os.path.getmtime(f.name))
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.return_value = ''
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            with mock.patch.object(s, '_upload_segment_job') as mock_job:
+                mock_job.return_value = {
+                    'action': 'upload_segment',
+                    'success': True}
+
+                r = s._upload_object_job(conn=mock_conn,
+                                         container='test_c',
+                                         source=f.name,
+                                         obj='テスト/dummy.dat',
+                                         options={'changed': False,
+                                                  'skip_identical': False,
+                                                  'leave_segments': True,
+                                                  'header': '',
+                                                  'segment_size': 10,
+                                                  'segment_container': None,
+                                                  'use_slo': False,
+                                                  'checksum': True})
+
+            mtime = float(r['headers']['x-object-meta-mtime'])
+            self.assertAlmostEqual(mtime, expected_mtime, delta=0.5)
+            del r['headers']['x-object-meta-mtime']
+
+            self.assertEqual(
+                'test_c_segments/%E3%83%86%E3%82%B9%E3%83%88/dummy.dat/' +
+                '%f/30/10/' % mtime, r['headers']['x-object-manifest'])
+            del r['headers']['x-object-manifest']
+
+            self.assertEqual(r['path'], f.name)
+            del r['path']
+
+            self._assertDictEqual(r, expected_r)
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with('test_c', 'テスト/dummy.dat',
+                                                    '',
+                                                    content_length=0,
+                                                    headers={},
+                                                    response_dict={})
 
     def test_upload_segment_job(self):
         with tempfile.NamedTemporaryFile() as f:
