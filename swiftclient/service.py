@@ -1338,6 +1338,12 @@ class SwiftService(object):
         except ValueError:
             raise SwiftError('Segment size should be an integer value')
 
+        # Incase we have a psudeo-folder path for <container> arg, derive
+        # the container name from the top path to ensure new folder creation
+        # and prevent spawning zero-byte objects shadowing pseudo-folders
+        # by name.
+        container_name = container.split('/', 1)[0]
+
         # Try to create the container, just in case it doesn't exist. If this
         # fails, it might just be because the user doesn't have container PUT
         # permissions, so we'll ignore any error. If there's really a problem,
@@ -1349,7 +1355,9 @@ class SwiftService(object):
                 _header[POLICY]
         create_containers = [
             self.thread_manager.container_pool.submit(
-                self._create_container_job, container, headers=policy_header
+                self._create_container_job,
+                container_name,
+                headers=policy_header
             )
         ]
 
