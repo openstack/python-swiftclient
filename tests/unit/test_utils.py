@@ -219,9 +219,10 @@ class TestReadableToIterable(testtools.TestCase):
 class TestLengthWrapper(testtools.TestCase):
 
     def test_stringio(self):
-        contents = six.StringIO(u'a' * 100)
+        contents = six.StringIO(u'a' * 50 + u'b' * 50)
+        contents.seek(22)
         data = u.LengthWrapper(contents, 42, True)
-        s = u'a' * 42
+        s = u'a' * 28 + u'b' * 14
         read_data = u''.join(iter(data.read, ''))
 
         self.assertEqual(42, len(data))
@@ -229,10 +230,19 @@ class TestLengthWrapper(testtools.TestCase):
         self.assertEqual(s, read_data)
         self.assertEqual(md5(s.encode()).hexdigest(), data.get_md5sum())
 
+        data.reset()
+        self.assertEqual(md5().hexdigest(), data.get_md5sum())
+
+        read_data = u''.join(iter(data.read, ''))
+        self.assertEqual(42, len(read_data))
+        self.assertEqual(s, read_data)
+        self.assertEqual(md5(s.encode()).hexdigest(), data.get_md5sum())
+
     def test_bytesio(self):
-        contents = six.BytesIO(b'a' * 100)
+        contents = six.BytesIO(b'a' * 50 + b'b' * 50)
+        contents.seek(22)
         data = u.LengthWrapper(contents, 42, True)
-        s = b'a' * 42
+        s = b'a' * 28 + b'b' * 14
         read_data = b''.join(iter(data.read, ''))
 
         self.assertEqual(42, len(data))
@@ -268,6 +278,14 @@ class TestLengthWrapper(testtools.TestCase):
                 read_data = b''.join(iter(data.read, ''))
                 s = (c * segment_length).encode()
 
+                self.assertEqual(segment_length, len(data))
+                self.assertEqual(segment_length, len(read_data))
+                self.assertEqual(s, read_data)
+                self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+
+                data.reset()
+                self.assertEqual(md5().hexdigest(), data.get_md5sum())
+                read_data = b''.join(iter(data.read, ''))
                 self.assertEqual(segment_length, len(data))
                 self.assertEqual(segment_length, len(read_data))
                 self.assertEqual(s, read_data)
