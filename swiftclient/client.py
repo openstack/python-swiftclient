@@ -249,6 +249,23 @@ class _RetryBody(_ObjectBody):
                                           response_dict=self.response_dict,
                                           headers=self.headers,
                                           attempts=self.conn.attempts)
+            expected_range = 'bytes %d-%d/%d' % (
+                self.bytes_read,
+                self.expected_length - 1,
+                self.expected_length)
+            if 'content-range' not in hdrs:
+                # Server didn't respond with partial content; manually seek
+                logger.warning('Received 200 while retrying %s/%s; seeking...',
+                               self.container, self.obj)
+                to_read = self.bytes_read
+                while to_read > 0:
+                    buf = body.resp.read(min(to_read, self.chunk_size))
+                    to_read -= len(buf)
+            elif hdrs['content-range'] != expected_range:
+                msg = ('Expected range "%s" while retrying %s/%s '
+                       'but got "%s"' % (expected_range, self.container,
+                                         self.obj, hdrs['content-range']))
+                raise ClientException(msg)
             self.resp = body.resp
             buf = self.read(length)
         return buf
