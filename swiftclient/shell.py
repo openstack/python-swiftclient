@@ -938,7 +938,7 @@ def st_upload(parser, args, output_manager):
                             msg = ': %s' % error
                         output_manager.warning(
                             'Warning: failed to create container '
-                            "'%s'%s", container, msg
+                            "'%s'%s", r['container'], msg
                         )
                     else:
                         output_manager.error("%s" % error)

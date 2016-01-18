@@ -581,6 +581,7 @@ class TestShell(testtools.TestCase):
         upload.return_value = [
             {"success": False,
              "headers": {},
+             "container": 'container',
              "action": 'create_container',
              "error": swiftclient.ClientException(
                  'Container PUT failed',
@@ -2154,6 +2155,53 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assertTrue(self.obj[1:] in out.out)
         expected_err = "Warning: failed to create container '%s': 403 Fake" \
                        % self.cont
+        self.assertEqual(expected_err, out.err.strip())
+
+    def test_segment_upload_with_write_only_access_segments_container(self):
+        fake_conn = self.fake_http_connection(
+            403,  # PUT c1
+            # HEAD c1 to get storage policy
+            StubResponse(200, headers={'X-Storage-Policy': 'foo'}),
+            403,  # PUT c1_segments
+            201,  # PUT c1_segments/...00
+            201,  # PUT c1_segments/...01
+            201,  # PUT c1/...
+        )
+
+        args, env = self._make_cmd('upload',
+                                   cmd_args=[self.cont, self.obj,
+                                             '--leave-segments',
+                                             '--segment-size=10'])
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        self.fake_ks_import):
+            with mock.patch('swiftclient.client.http_connection', fake_conn):
+                with mock.patch.dict(os.environ, env):
+                    with CaptureOutput() as out:
+                        try:
+                            swiftclient.shell.main(args)
+                        except SystemExit as e:
+                            self.fail('Unexpected SystemExit: %s' % e)
+
+        segment_time = getmtime(self.obj)
+        segment_path_0 = '%s_segments%s/%f/20/10/00000000' % (
+            self.cont_path, self.obj, segment_time)
+        segment_path_1 = '%s_segments%s/%f/20/10/00000001' % (
+            self.cont_path, self.obj, segment_time)
+        # Note that the order of segment PUTs cannot be asserted, so test for
+        # existence in request log individually
+        self.assert_request(('PUT', self.cont_path))
+        self.assert_request(('PUT', self.cont_path + '_segments', '', {
+            'X-Auth-Token': 'bob_token',
+            'X-Storage-Policy': 'foo',
+            'Content-Length': '0',
+        }))
+        self.assert_request(('PUT', segment_path_0))
+        self.assert_request(('PUT', segment_path_1))
+        self.assert_request(('PUT', self.obj_path))
+        self.assertTrue(self.obj[1:] in out.out)
+        expected_err = ("Warning: failed to create container '%s': 403 Fake\n"
+                        "Warning: failed to create container '%s': 403 Fake"
+                        ) % (self.cont, self.cont + '_segments')
         self.assertEqual(expected_err, out.err.strip())
 
     def test_upload_with_no_access(self):
