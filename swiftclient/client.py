@@ -463,9 +463,7 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
     # bad URL would get you that document page and a 200. We error out
     # if we don't have a x-storage-url header and if we get a body.
     if resp.status < 200 or resp.status >= 300 or (body and not url):
-        raise ClientException('Auth GET failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=parsed.path,
-                              http_status=resp.status, http_reason=resp.reason)
+        raise ClientException.from_response(resp, 'Auth GET failed', body)
     if snet:
         parsed = list(urlparse(url))
         # Second item in the list is the netloc
@@ -705,11 +703,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
 
     resp_headers = resp_header_dict(resp)
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Account GET failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=parsed.path,
-                              http_query=qs, http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Account GET failed', body)
     if resp.status == 204:
         return resp_headers, []
     return resp_headers, parse_api_response(resp_headers, body)
@@ -741,10 +735,7 @@ def head_account(url, token, http_conn=None, service_token=None):
     body = resp.read()
     http_log((url, method,), {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Account HEAD failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=parsed.path,
-                              http_status=resp.status, http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Account HEAD failed', body)
     resp_headers = resp_header_dict(resp)
     return resp_headers
 
@@ -786,13 +777,7 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     store_response(resp, response_dict)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Account POST failed',
-                              http_scheme=parsed.scheme,
-                              http_host=conn.host,
-                              http_path=parsed.path,
-                              http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Account POST failed', body)
     resp_headers = {}
     for header, value in resp.getheaders():
         resp_headers[header.lower()] = value
@@ -877,11 +862,7 @@ def get_container(url, token, container, marker=None, limit=None,
              {'headers': headers}, resp, body)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Container GET failed',
-                              http_scheme=parsed.scheme, http_host=conn.host,
-                              http_path=cont_path, http_query=qs,
-                              http_status=resp.status, http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Container GET failed', body)
     resp_headers = resp_header_dict(resp)
     if resp.status == 204:
         return resp_headers, []
@@ -922,11 +903,8 @@ def head_container(url, token, container, http_conn=None, headers=None,
              {'headers': req_headers}, resp, body)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Container HEAD failed',
-                              http_scheme=parsed.scheme, http_host=conn.host,
-                              http_path=path, http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(
+            resp, 'Container HEAD failed', body)
     resp_headers = resp_header_dict(resp)
     return resp_headers
 
@@ -969,11 +947,7 @@ def put_container(url, token, container, headers=None, http_conn=None,
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Container PUT failed',
-                              http_scheme=parsed.scheme, http_host=conn.host,
-                              http_path=path, http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Container PUT failed', body)
 
 
 def post_container(url, token, container, headers, http_conn=None,
@@ -1012,11 +986,8 @@ def post_container(url, token, container, headers, http_conn=None,
     store_response(resp, response_dict)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Container POST failed',
-                              http_scheme=parsed.scheme, http_host=conn.host,
-                              http_path=path, http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(
+            resp, 'Container POST failed', body)
 
 
 def delete_container(url, token, container, http_conn=None,
@@ -1052,11 +1023,8 @@ def delete_container(url, token, container, http_conn=None,
     store_response(resp, response_dict)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Container DELETE failed',
-                              http_scheme=parsed.scheme, http_host=conn.host,
-                              http_path=path, http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(
+            resp, 'Container DELETE failed', body)
 
 
 def get_object(url, token, container, name, http_conn=None,
@@ -1109,11 +1077,7 @@ def get_object(url, token, container, name, http_conn=None,
         body = resp.read()
         http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
                  {'headers': headers}, resp, body)
-        raise ClientException('Object GET failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=path,
-                              http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Object GET failed', body)
     if resp_chunk_size:
         object_body = _ObjectBody(resp, resp_chunk_size)
     else:
@@ -1160,10 +1124,7 @@ def head_object(url, token, container, name, http_conn=None,
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Object HEAD failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=path,
-                              http_status=resp.status, http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Object HEAD failed', body)
     resp_headers = resp_header_dict(resp)
     return resp_headers
 
@@ -1275,10 +1236,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     store_response(resp, response_dict)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Object PUT failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=path,
-                              http_status=resp.status, http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Object PUT failed', body)
 
     etag = resp.getheader('etag', '').strip('"')
     return etag
@@ -1318,10 +1276,7 @@ def post_object(url, token, container, name, headers, http_conn=None,
     store_response(resp, response_dict)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Object POST failed', http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=path,
-                              http_status=resp.status, http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Object POST failed', body)
 
 
 def delete_object(url, token=None, container=None, name=None, http_conn=None,
@@ -1375,11 +1330,7 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
     store_response(resp, response_dict)
 
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Object DELETE failed',
-                              http_scheme=parsed.scheme, http_host=conn.host,
-                              http_path=path, http_status=resp.status,
-                              http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(resp, 'Object DELETE failed', body)
 
 
 def get_capabilities(http_conn):
@@ -1396,11 +1347,8 @@ def get_capabilities(http_conn):
     body = resp.read()
     http_log((parsed.geturl(), 'GET',), {'headers': {}}, resp, body)
     if resp.status < 200 or resp.status >= 300:
-        raise ClientException('Capabilities GET failed',
-                              http_scheme=parsed.scheme,
-                              http_host=conn.host, http_path=parsed.path,
-                              http_status=resp.status, http_reason=resp.reason,
-                              http_response_content=body)
+        raise ClientException.from_response(
+            resp, 'Capabilities GET failed', body)
     resp_headers = resp_header_dict(resp)
     return parse_api_response(resp_headers, body)
 

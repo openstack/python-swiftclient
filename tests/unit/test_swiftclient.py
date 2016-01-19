@@ -51,6 +51,7 @@ class TestClientException(unittest.TestCase):
             'status',
             'reason',
             'device',
+            'response_content',
         )
         for value in test_kwargs:
             kwargs = {
@@ -58,6 +59,26 @@ class TestClientException(unittest.TestCase):
             }
             exc = c.ClientException('test', **kwargs)
             self.assertIn(value, str(exc))
+
+    def test_attrs(self):
+        test_kwargs = (
+            'scheme',
+            'host',
+            'port',
+            'path',
+            'query',
+            'status',
+            'reason',
+            'device',
+            'response_content',
+            'response_headers',
+        )
+        for value in test_kwargs:
+            key = 'http_%s' % value
+            kwargs = {key: value}
+            exc = c.ClientException('test', **kwargs)
+            self.assertIs(True, hasattr(exc, key))
+            self.assertEqual(getattr(exc, key), value)
 
 
 class MockHttpResponse(object):
@@ -582,7 +603,9 @@ class TestHeadAccount(MockHttpTest):
 
     def test_server_error(self):
         body = 'c' * 65
-        c.http_connection = self.fake_http_connection(500, body=body)
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
         with self.assertRaises(c.ClientException) as exc_context:
             c.head_account('http://www.tests.com', 'asdf')
         e = exc_context.exception
@@ -741,7 +764,9 @@ class TestHeadContainer(MockHttpTest):
 
     def test_server_error(self):
         body = 'c' * 60
-        c.http_connection = self.fake_http_connection(500, body=body)
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
         with self.assertRaises(c.ClientException) as exc_context:
             c.head_container('http://www.test.com', 'asdf', 'container')
         e = exc_context.exception
@@ -750,6 +775,7 @@ class TestHeadContainer(MockHttpTest):
         ])
         self.assertEqual(e.http_status, 500)
         self.assertEqual(e.http_response_content, body)
+        self.assertEqual(e.http_response_headers, headers)
 
 
 class TestPutContainer(MockHttpTest):
@@ -766,10 +792,13 @@ class TestPutContainer(MockHttpTest):
 
     def test_server_error(self):
         body = 'c' * 60
-        c.http_connection = self.fake_http_connection(500, body=body)
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
         with self.assertRaises(c.ClientException) as exc_context:
             c.put_container('http://www.test.com', 'token', 'container')
         self.assertEqual(exc_context.exception.http_response_content, body)
+        self.assertEqual(exc_context.exception.http_response_headers, headers)
         self.assertRequests([
             ('PUT', '/container', '', {
                 'x-auth-token': 'token',
@@ -792,9 +821,14 @@ class TestDeleteContainer(MockHttpTest):
 class TestGetObject(MockHttpTest):
 
     def test_server_error(self):
-        c.http_connection = self.fake_http_connection(500)
-        self.assertRaises(c.ClientException, c.get_object,
-                          'http://www.test.com', 'asdf', 'asdf', 'asdf')
+        body = 'c' * 60
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+        self.assertEqual(exc_context.exception.http_response_content, body)
+        self.assertEqual(exc_context.exception.http_response_headers, headers)
 
     def test_query_string(self):
         c.http_connection = self.fake_http_connection(200,
@@ -945,9 +979,14 @@ class TestGetObject(MockHttpTest):
 class TestHeadObject(MockHttpTest):
 
     def test_server_error(self):
-        c.http_connection = self.fake_http_connection(500)
-        self.assertRaises(c.ClientException, c.head_object,
-                          'http://www.test.com', 'asdf', 'asdf', 'asdf')
+        body = 'c' * 60
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.head_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+        self.assertEqual(exc_context.exception.http_response_content, body)
+        self.assertEqual(exc_context.exception.http_response_headers, headers)
 
     def test_request_headers(self):
         c.http_connection = self.fake_http_connection(204)
@@ -1024,12 +1063,15 @@ class TestPutObject(MockHttpTest):
 
     def test_server_error(self):
         body = 'c' * 60
-        c.http_connection = self.fake_http_connection(500, body=body)
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
         with self.assertRaises(c.ClientException) as exc_context:
             c.put_object(*args)
         e = exc_context.exception
         self.assertEqual(e.http_response_content, body)
+        self.assertEqual(e.http_response_headers, headers)
         self.assertEqual(e.http_status, 500)
         self.assertRequests([
             ('PUT', '/asdf/asdf', 'asdf', {
@@ -1249,11 +1291,14 @@ class TestPostObject(MockHttpTest):
 
     def test_server_error(self):
         body = 'c' * 60
-        c.http_connection = self.fake_http_connection(500, body=body)
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
         args = ('http://www.test.com', 'token', 'container', 'obj', {})
         with self.assertRaises(c.ClientException) as exc_context:
             c.post_object(*args)
         self.assertEqual(exc_context.exception.http_response_content, body)
+        self.assertEqual(exc_context.exception.http_response_headers, headers)
         self.assertRequests([
             ('POST', 'http://www.test.com/container/obj', '', {
                 'x-auth-token': 'token',
@@ -1273,9 +1318,14 @@ class TestDeleteObject(MockHttpTest):
         ])
 
     def test_server_error(self):
-        c.http_connection = self.fake_http_connection(500)
-        self.assertRaises(c.ClientException, c.delete_object,
-                          'http://www.test.com', 'asdf', 'asdf', 'asdf')
+        body = 'c' * 60
+        headers = {'foo': 'bar'}
+        c.http_connection = self.fake_http_connection(
+            StubResponse(500, body, headers))
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.delete_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+        self.assertEqual(exc_context.exception.http_response_content, body)
+        self.assertEqual(exc_context.exception.http_response_headers, headers)
 
     def test_query_string(self):
         c.http_connection = self.fake_http_connection(200,
@@ -1302,9 +1352,15 @@ class TestGetCapabilities(MockHttpTest):
         self.assertTrue(http_conn[1].resp.has_been_read)
 
     def test_server_error(self):
-        conn = self.fake_http_connection(500)
+        body = 'c' * 60
+        headers = {'foo': 'bar'}
+        conn = self.fake_http_connection(
+            StubResponse(500, body, headers))
         http_conn = conn('http://www.test.com/info')
-        self.assertRaises(c.ClientException, c.get_capabilities, http_conn)
+        with self.assertRaises(c.ClientException) as exc_context:
+            c.get_capabilities(http_conn)
+        self.assertEqual(exc_context.exception.http_response_content, body)
+        self.assertEqual(exc_context.exception.http_response_headers, headers)
 
     def test_conn_get_capabilities_with_auth(self):
         auth_headers = {

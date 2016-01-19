@@ -33,7 +33,8 @@ from swiftclient.utils import config_true_value, generate_temp_url, prt_bytes
 from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
-from swiftclient.client import logger_settings as client_logger_settings
+from swiftclient.client import logger_settings as client_logger_settings, \
+    parse_header_string
 from swiftclient.service import SwiftService, SwiftError, \
     SwiftUploadObject, get_conn
 from swiftclient.command_helpers import print_account_stats, \
@@ -1475,7 +1476,13 @@ Examples:
         parser.usage = globals()['st_%s_help' % args[0]]
         try:
             globals()['st_%s' % args[0]](parser, argv[1:], output)
-        except (ClientException, RequestException, socket.error) as err:
+        except ClientException as err:
+            output.error(str(err))
+            trans_id = (err.http_response_headers or {}).get('X-Trans-Id')
+            if trans_id:
+                output.error("Failed Transaction ID: %s",
+                             parse_header_string(trans_id))
+        except (RequestException, socket.error) as err:
             output.error(str(err))
 
     if output.get_error_count() > 0:
