@@ -100,26 +100,10 @@ def fake_http_connect(*code_iter, **kwargs):
             self._is_closed = True
             self.headers = headers or {}
 
-        def connect(self):
-            self._is_closed = False
-
-        def close(self):
-            self._is_closed = True
-
-        def isclosed(self):
-            return self._is_closed
-
         def getresponse(self):
             if kwargs.get('raise_exc'):
                 raise Exception('test')
             return self
-
-        def getexpect(self):
-            if self.status == -2:
-                raise RequestException()
-            if self.status == -3:
-                return FakeConn(507)
-            return FakeConn(100)
 
         def getheaders(self):
             if self.headers:
@@ -199,7 +183,6 @@ def fake_http_connect(*code_iter, **kwargs):
                                  timestamp=timestamp)
         if fake_conn.status <= 0:
             raise RequestException()
-        fake_conn.connect()
         return fake_conn
 
     connect.code_iter = code_iter
@@ -250,7 +233,6 @@ class MockHttpTest(testtools.TestCase):
                     self.request_log.append((parsed, method, url, args,
                                              kwargs, conn.resp))
                     conn.host = conn.resp.host
-                    conn.isclosed = conn.resp.isclosed
                     conn.resp.has_been_read = False
                     _orig_read = conn.resp.read
 
