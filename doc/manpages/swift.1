@@ -93,6 +93,7 @@ You can specify optional headers with the repeatable cURL-like option
 \fBdelete\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
 .RS 4
 Deletes everything in the account (with \-\-all), or everything in a container,
+or all objects in a container that start with a given string (given by \-\-prefix),
 or a list of objects depending on the args given. Segments of manifest objects
 will be deleted as well, unless you specify the \-\-leave\-segments option.
 For more details and options see swift delete \-\-help.

@@ -686,7 +686,7 @@ def head_account(url, token, http_conn=None, service_token=None):
 
 
 def post_account(url, token, headers, http_conn=None, response_dict=None,
-                 service_token=None):
+                 service_token=None, query_string=None, data=None):
     """
     Update an account's metadata.
 
@@ -698,17 +698,23 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
+    :param query_string: if set will be appended with '?' to generated path
+    :param data: an optional message body for the request
     :raises ClientException: HTTP POST request failed
+    :returns: resp_headers, body
     """
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
     method = 'POST'
+    path = parsed.path
+    if query_string:
+        path += '?' + query_string
     headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
-    conn.request(method, parsed.path, '', headers)
+    conn.request(method, path, data, headers)
     resp = conn.getresponse()
     body = resp.read()
     http_log((url, method,), {'headers': headers}, resp, body)
@@ -723,6 +729,10 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
                               http_status=resp.status,
                               http_reason=resp.reason,
                               http_response_content=body)
+    resp_headers = {}
+    for header, value in resp.getheaders():
+        resp_headers[header.lower()] = value
+    return resp_headers, body
 
 
 def get_container(url, token, container, marker=None, limit=None,
@@ -1540,9 +1550,11 @@ class Connection(object):
                            prefix=prefix, end_marker=end_marker,
                            full_listing=full_listing)
 
-    def post_account(self, headers, response_dict=None):
+    def post_account(self, headers, response_dict=None,
+                     query_string=None, data=None):
         """Wrapper for :func:`post_account`"""
         return self._retry(None, post_account, headers,
+                           query_string=query_string, data=data,
                            response_dict=response_dict)
 
     def head_container(self, container, headers=None):

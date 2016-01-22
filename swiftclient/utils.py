@@ -264,3 +264,13 @@ def iter_wrapper(iterable):
             # causing the server to close the connection
             continue
         yield chunk
+
+
+def n_at_a_time(seq, n):
+    for i in range(0, len(seq), n):
+        yield seq[i:i + n]
+
+
+def n_groups(seq, n):
+    items_per_group = ((len(seq) - 1) // n) + 1
+    return n_at_a_time(seq, items_per_group)

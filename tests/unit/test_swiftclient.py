@@ -596,6 +596,40 @@ class TestHeadAccount(MockHttpTest):
         self.assertEqual(e.__str__()[-89:], new_body)
 
 
+class TestPostAccount(MockHttpTest):
+
+    def test_ok(self):
+        c.http_connection = self.fake_http_connection(200, headers={
+            'X-Account-Meta-Color': 'blue',
+        }, body='foo')
+        resp_headers, body = c.post_account(
+            'http://www.tests.com/path/to/account', 'asdf',
+            {'x-account-meta-shape': 'square'}, query_string='bar=baz',
+            data='some data')
+        self.assertEqual('blue', resp_headers.get('x-account-meta-color'))
+        self.assertEqual('foo', body)
+        self.assertRequests([
+            ('POST', 'http://www.tests.com/path/to/account?bar=baz',
+             'some data', {'x-auth-token': 'asdf',
+                           'x-account-meta-shape': 'square'})
+        ])
+
+    def test_server_error(self):
+        body = 'c' * 65
+        c.http_connection = self.fake_http_connection(500, body=body)
+        e = self.assertRaises(c.ClientException, c.post_account,
+                              'http://www.tests.com', 'asdf', {})
+        self.assertEqual(e.http_response_content, body)
+        self.assertEqual(e.http_status, 500)
+        self.assertRequests([
+            ('POST', 'http://www.tests.com', None, {'x-auth-token': 'asdf'})
+        ])
+        # TODO: this is a fairly brittle test of the __repr__ on the
+        # ClientException which should probably be in a targeted test
+        new_body = "[first 60 chars of response] " + body[0:60]
+        self.assertEqual(e.__str__()[-89:], new_body)
+
+
 class TestGetContainer(MockHttpTest):
 
     def test_no_content(self):
@@ -1976,7 +2010,8 @@ class TestResponseDict(MockHttpTest):
     """
     Verify handling of optional response_dict argument.
     """
-    calls = [('post_container', 'c', {}),
+    calls = [('post_account', {}),
+             ('post_container', 'c', {}),
              ('put_container', 'c'),
              ('delete_container', 'c'),
              ('post_object', 'c', 'o', {}),

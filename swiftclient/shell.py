@@ -23,7 +23,8 @@ import socket
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
-from six import text_type
+from six import text_type, PY2
+from six.moves.urllib.parse import unquote
 from sys import argv as sys_argv, exit, stderr
 from time import gmtime, strftime
 
@@ -82,6 +83,9 @@ def st_delete(parser, args, output_manager):
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Delete all containers and objects.')
     parser.add_option(
+        '-p', '--prefix', dest='prefix',
+        help='Only delete items beginning with the <prefix>.')
+    parser.add_option(
         '', '--leave-segments', action='store_true',
         dest='leave_segments', default=False,
         help='Do not delete segments of manifest objects.')
@@ -128,25 +132,55 @@ def st_delete(parser, args, output_manager):
                 o = r.get('object', '')
                 a = r.get('attempts')
 
-                if r['success']:
-                    if options.verbose:
-                        a = ' [after {0} attempts]'.format(a) if a > 1 else ''
+                if r['action'] == 'bulk_delete':
+                    if r['success']:
+                        objs = r.get('objects', [])
+                        for o, err in r.get('result', {}).get('Errors', []):
+                            # o will be of the form quote("/<cont>/<obj>")
+                            o = unquote(o)
+                            if PY2:
+                                # In PY3, unquote(unicode) uses utf-8 like we
+                                # want, but PY2 uses latin-1
+                                o = o.encode('latin-1').decode('utf-8')
+                            output_manager.error('Error Deleting: {0}: {1}'
+                                                 .format(o[1:], err))
+                            try:
+                                objs.remove(o[len(c) + 2:])
+                            except ValueError:
+                                # shouldn't happen, but ignoring it won't hurt
+                                pass
 
-                        if r['action'] == 'delete_object':
+                        for o in objs:
                             if options.yes_all:
                                 p = '{0}/{1}'.format(c, o)
                             else:
                                 p = o
-                        elif r['action'] == 'delete_segment':
-                            p = '{0}/{1}'.format(c, o)
-                        elif r['action'] == 'delete_container':
-                            p = c
-
-                        output_manager.print_msg('{0}{1}'.format(p, a))
+                            output_manager.print_msg('{0}{1}'.format(p, a))
+                    else:
+                        for o in r.get('objects', []):
+                            output_manager.error('Error Deleting: {0}/{1}: {2}'
+                                                 .format(c, o, r['error']))
                 else:
-                    p = '{0}/{1}'.format(c, o) if o else c
-                    output_manager.error('Error Deleting: {0}: {1}'
-                                         .format(p, r['error']))
+                    if r['success']:
+                        if options.verbose:
+                            a = (' [after {0} attempts]'.format(a)
+                                 if a > 1 else '')
+
+                            if r['action'] == 'delete_object':
+                                if options.yes_all:
+                                    p = '{0}/{1}'.format(c, o)
+                                else:
+                                    p = o
+                            elif r['action'] == 'delete_segment':
+                                p = '{0}/{1}'.format(c, o)
+                            elif r['action'] == 'delete_container':
+                                p = c
+
+                            output_manager.print_msg('{0}{1}'.format(p, a))
+                    else:
+                        p = '{0}/{1}'.format(c, o) if o else c
+                        output_manager.error('Error Deleting: {0}: {1}'
+                                             .format(p, r['error']))
         except SwiftError as err:
             output_manager.error(err.value)
 
