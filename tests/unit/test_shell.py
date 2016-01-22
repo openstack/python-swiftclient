@@ -531,6 +531,27 @@ class TestShell(testtools.TestCase):
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
 
+    @mock.patch('swiftclient.service.SwiftService.upload')
+    def test_upload_object_with_account_readonly(self, upload):
+        argv = ["", "upload", "container", self.tmpfile]
+        upload.return_value = [
+            {"success": False,
+             "headers": {},
+             "action": 'create_container',
+             "error": swiftclient.ClientException(
+                 'Container PUT failed',
+                 http_status=403,
+                 http_reason='Forbidden',
+                 http_response_content=b'<html><h1>Forbidden</h1>')
+             }]
+
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            self.assertTrue(output.err != '')
+            warning_msg = "Warning: failed to create container 'container': " \
+                          "403 Forbidden"
+            self.assertTrue(output.err.startswith(warning_msg))
+
     @mock.patch('swiftclient.service.Connection')
     def test_upload_delete_slo_segments(self, connection):
         # Upload delete existing segments
