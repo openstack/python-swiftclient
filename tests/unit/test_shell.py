@@ -485,8 +485,8 @@ class TestShell(testtools.TestCase):
             response_dict={})
 
         connection.return_value.put_object.assert_called_with(
-            'container/pseudo-folder/nested',
-            self.tmpfile.lstrip('/'),
+            'container',
+            'pseudo-folder/nested' + self.tmpfile,
             mock.ANY,
             content_length=0,
             headers={'x-object-meta-mtime': mock.ANY,
@@ -529,6 +529,33 @@ class TestShell(testtools.TestCase):
             content_length=0,
             headers={'x-object-manifest': mock.ANY,
                      'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+
+        # upload in segments to pseudo-folder (via <container> param)
+        connection.reset_mock()
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        argv = ["", "upload", "container/pseudo-folder/nested",
+                self.tmpfile, "-S", "10", "--use-slo"]
+        with open(self.tmpfile, "wb") as fh:
+            fh.write(b'12345678901234567890')
+        swiftclient.shell.main(argv)
+        expected_calls = [mock.call('container',
+                                    {},
+                                    response_dict={}),
+                          mock.call('container_segments',
+                                    {'X-Storage-Policy': 'one'},
+                                    response_dict={})]
+        connection.return_value.put_container.assert_has_calls(expected_calls)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            'pseudo-folder/nested' + self.tmpfile,
+            mock.ANY,
+            headers={
+                'x-object-meta-mtime': mock.ANY,
+                'x-static-large-object': 'true'
+            },
+            query_string='multipart-manifest=put',
             response_dict={})
 
     @mock.patch('swiftclient.service.SwiftService.upload')

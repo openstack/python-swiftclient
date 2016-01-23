@@ -25,6 +25,7 @@ from os import environ, makedirs, stat, utime
 from os.path import (
     basename, dirname, getmtime, getsize, isdir, join, sep as os_path_sep
 )
+from posixpath import join as urljoin
 from random import shuffle
 from time import time
 from threading import Thread
@@ -288,6 +289,7 @@ class SwiftUploadObject(object):
         if not self.object_name:
             raise SwiftError('Object names must not be empty strings')
 
+        self.object_name = self.object_name.lstrip('/')
         self.options = options
         self.source = source
 
@@ -1284,7 +1286,8 @@ class SwiftService(object):
         """
         Upload a list of objects to a given container.
 
-        :param container: The container to put the uploads into.
+        :param container: The container (or pseudo-folder path) to put the
+                          uploads into.
         :param objects: A list of file/directory names (strings) or
                         SwiftUploadObject instances containing a source for the
                         created object, an object name, and an options dict
@@ -1342,10 +1345,9 @@ class SwiftService(object):
             raise SwiftError('Segment size should be an integer value')
 
         # Incase we have a psudeo-folder path for <container> arg, derive
-        # the container name from the top path to ensure new folder creation
-        # and prevent spawning zero-byte objects shadowing pseudo-folders
-        # by name.
-        container_name = container.split('/', 1)[0]
+        # the container name from the top path and prepend the rest to
+        # the object name. (same as passing --object-name).
+        container, _sep, pseudo_folder = container.partition('/')
 
         # Try to create the container, just in case it doesn't exist. If this
         # fails, it might just be because the user doesn't have container PUT
@@ -1358,10 +1360,7 @@ class SwiftService(object):
                 _header[POLICY]
         create_containers = [
             self.thread_manager.container_pool.submit(
-                self._create_container_job,
-                container_name,
-                headers=policy_header
-            )
+                self._create_container_job, container, headers=policy_header)
         ]
 
         # wait for first container job to complete before possibly attempting
@@ -1405,7 +1404,7 @@ class SwiftService(object):
         rq = Queue()
         file_jobs = {}
 
-        upload_objects = self._make_upload_objects(objects)
+        upload_objects = self._make_upload_objects(objects, pseudo_folder)
         for upload_object in upload_objects:
             s = upload_object.source
             o = upload_object.object_name
@@ -1496,14 +1495,16 @@ class SwiftService(object):
             res = get_from_queue(rq)
 
     @staticmethod
-    def _make_upload_objects(objects):
+    def _make_upload_objects(objects, pseudo_folder=''):
         upload_objects = []
 
         for o in objects:
             if isinstance(o, string_types):
-                obj = SwiftUploadObject(o)
+                obj = SwiftUploadObject(o, urljoin(pseudo_folder,
+                                                   o.lstrip('/')))
                 upload_objects.append(obj)
             elif isinstance(o, SwiftUploadObject):
+                o.object_name = urljoin(pseudo_folder, o.object_name)
                 upload_objects.append(o)
             else:
                 raise SwiftError(

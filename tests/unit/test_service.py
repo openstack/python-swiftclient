@@ -1271,6 +1271,15 @@ class TestServiceUpload(_TestServiceBase):
             ]
             mock_conn.get_container.assert_has_calls(expected)
 
+    def test_make_upload_objects(self):
+        # String list
+        filenames = ['/absolute/file/path', 'relative/file/path']
+        self.assertEqual(
+            [o.object_name for o in SwiftService._make_upload_objects(
+             filenames, 'pseudo/folder/path')],
+            ['pseudo/folder/path/absolute/file/path',
+             'pseudo/folder/path/relative/file/path'])
+
 
 class TestServiceDownload(_TestServiceBase):
 
