@@ -1920,7 +1920,8 @@ class SwiftService(object):
                     res['manifest_response_dict'] = mr
                 else:
                     new_object_manifest = '%s/%s/%s/%s/%s/' % (
-                        quote(seg_container), quote(obj),
+                        quote(seg_container.encode('utf8')),
+                        quote(obj.encode('utf8')),
                         put_headers['x-object-meta-mtime'], full_size,
                         options['segment_size'])
                     if old_manifest and old_manifest.rstrip('/') == \
