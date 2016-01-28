@@ -1114,7 +1114,8 @@ class TestServiceUpload(_TestServiceBase):
             self.assertEqual(contents.read(), b'a' * 30)
             self.assertEqual(contents.get_md5sum(), md5(b'a' * 30).hexdigest())
 
-    def test_upload_object_job_stream(self):
+    @mock.patch('swiftclient.service.time', return_value=1400000000)
+    def test_upload_object_job_stream(self, time_mock):
         # Streams are wrapped as ReadableToIterable
         with tempfile.TemporaryFile() as f:
             f.write(b'a' * 30)
@@ -1132,7 +1133,7 @@ class TestServiceUpload(_TestServiceBase):
                 'success': True,
                 'path': None,
             }
-            expected_mtime = float(time.time())
+            expected_mtime = 1400000000
 
             mock_conn = mock.Mock()
             mock_conn.put_object.return_value = ''
@@ -1151,7 +1152,7 @@ class TestServiceUpload(_TestServiceBase):
                                               'checksum': True})
 
             mtime = float(r['headers']['x-object-meta-mtime'])
-            self.assertAlmostEqual(mtime, expected_mtime, delta=0.5)
+            self.assertEqual(mtime, expected_mtime)
             del r['headers']['x-object-meta-mtime']
 
             self._assertDictEqual(r, expected_r)
