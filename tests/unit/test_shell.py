@@ -336,15 +336,17 @@ class TestShell(testtools.TestCase):
         with mock.patch(BUILTIN_OPEN) as mock_open:
             argv = ["", "download", "container"]
             swiftclient.shell.main(argv)
-            calls = [mock.call('container', 'object',
-                               headers={}, resp_chunk_size=65536,
-                               response_dict={}),
-                     mock.call('container', 'pseudo/',
-                               headers={}, resp_chunk_size=65536,
-                               response_dict={})]
-            connection.return_value.get_object.assert_has_calls(
-                calls, any_order=True)
-            mock_open.assert_called_once_with('object', 'wb')
+        calls = [mock.call('container', 'object',
+                           headers={}, resp_chunk_size=65536,
+                           response_dict={}),
+                 mock.call('container', 'pseudo/',
+                           headers={}, resp_chunk_size=65536,
+                           response_dict={})]
+        connection.return_value.get_object.assert_has_calls(
+            calls, any_order=True)
+        mock_open.assert_called_once_with('object', 'wb')
+        self.assertEqual([mock.call('pseudo')], makedirs.mock_calls)
+        makedirs.reset_mock()
 
         # Test downloading single object
         objcontent = six.BytesIO(b'objcontent')
@@ -356,10 +358,11 @@ class TestShell(testtools.TestCase):
         with mock.patch(BUILTIN_OPEN) as mock_open:
             argv = ["", "download", "container", "object"]
             swiftclient.shell.main(argv)
-            connection.return_value.get_object.assert_called_with(
-                'container', 'object', headers={}, resp_chunk_size=65536,
-                response_dict={})
-            mock_open.assert_called_with('object', 'wb')
+        connection.return_value.get_object.assert_called_with(
+            'container', 'object', headers={}, resp_chunk_size=65536,
+            response_dict={})
+        mock_open.assert_called_with('object', 'wb')
+        self.assertEqual([], makedirs.mock_calls)
 
         # Test downloading single object to stdout
         objcontent = six.BytesIO(b'objcontent')
@@ -396,13 +399,18 @@ class TestShell(testtools.TestCase):
         ]
 
         with mock.patch(BUILTIN_OPEN) as mock_open:
-            argv = ["", "download", "--all"]
-            swiftclient.shell.main(argv)
-            self.assertEqual(3, mock_shuffle.call_count)
-            mock_shuffle.assert_any_call(['container'])
-            mock_shuffle.assert_any_call(['object'])
-            mock_shuffle.assert_any_call(['pseudo/'])
-            mock_open.assert_called_once_with('container/object', 'wb')
+            with mock.patch('swiftclient.service.makedirs') as mock_mkdir:
+                argv = ["", "download", "--all"]
+                swiftclient.shell.main(argv)
+        self.assertEqual(3, mock_shuffle.call_count)
+        mock_shuffle.assert_any_call(['container'])
+        mock_shuffle.assert_any_call(['object'])
+        mock_shuffle.assert_any_call(['pseudo/'])
+        mock_open.assert_called_once_with('container/object', 'wb')
+        self.assertEqual([
+            mock.call('container'),
+            mock.call('container/pseudo'),
+        ], mock_mkdir.mock_calls)
 
         # Test that the container and object lists are not shuffled
         mock_shuffle.reset_mock()
@@ -418,10 +426,15 @@ class TestShell(testtools.TestCase):
         ]
 
         with mock.patch(BUILTIN_OPEN) as mock_open:
-            argv = ["", "download", "--all", "--no-shuffle"]
-            swiftclient.shell.main(argv)
-            self.assertEqual(0, mock_shuffle.call_count)
-            mock_open.assert_called_once_with('container/object', 'wb')
+            with mock.patch('swiftclient.service.makedirs') as mock_mkdir:
+                argv = ["", "download", "--all", "--no-shuffle"]
+                swiftclient.shell.main(argv)
+        self.assertEqual(0, mock_shuffle.call_count)
+        mock_open.assert_called_once_with('container/object', 'wb')
+        self.assertEqual([
+            mock.call('container'),
+            mock.call('container/pseudo'),
+        ], mock_mkdir.mock_calls)
 
     @mock.patch('swiftclient.service.Connection')
     def test_download_no_content_type(self, connection):
@@ -439,17 +452,21 @@ class TestShell(testtools.TestCase):
         connection.return_value.attempts = 0
 
         with mock.patch(BUILTIN_OPEN) as mock_open:
-            argv = ["", "download", "container"]
-            swiftclient.shell.main(argv)
-            calls = [mock.call('container', 'object',
-                               headers={}, resp_chunk_size=65536,
-                               response_dict={}),
-                     mock.call('container', 'pseudo/',
-                               headers={}, resp_chunk_size=65536,
-                               response_dict={})]
-            connection.return_value.get_object.assert_has_calls(
-                calls, any_order=True)
-            mock_open.assert_called_once_with('object', 'wb')
+            with mock.patch('swiftclient.service.makedirs') as mock_mkdir:
+                argv = ["", "download", "container"]
+                swiftclient.shell.main(argv)
+        calls = [mock.call('container', 'object',
+                           headers={}, resp_chunk_size=65536,
+                           response_dict={}),
+                 mock.call('container', 'pseudo/',
+                           headers={}, resp_chunk_size=65536,
+                           response_dict={})]
+        connection.return_value.get_object.assert_has_calls(
+            calls, any_order=True)
+        mock_open.assert_called_once_with('object', 'wb')
+        self.assertEqual([
+            mock.call('pseudo'),
+        ], mock_mkdir.mock_calls)
 
     @mock.patch('swiftclient.shell.walk')
     @mock.patch('swiftclient.service.Connection')
