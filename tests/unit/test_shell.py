@@ -734,14 +734,16 @@ class TestShell(testtools.TestCase):
         argv = ["", "delete", "--all"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
-        self.assertEqual(
-            connection.return_value.delete_object.mock_calls, [
-                mock.call('container', 'object', query_string=None,
-                          response_dict={}),
-                mock.call('container', 'obj\xe9ct2', query_string=None,
-                          response_dict={}),
-                mock.call('container2', 'object', query_string=None,
-                          response_dict={})])
+        connection.return_value.delete_object.assert_has_calls([
+            mock.call('container', 'object', query_string=None,
+                      response_dict={}),
+            mock.call('container', 'obj\xe9ct2', query_string=None,
+                      response_dict={}),
+            mock.call('container2', 'object', query_string=None,
+                      response_dict={})], any_order=True)
+        self.assertEqual(3, connection.return_value.delete_object.call_count,
+                         'Expected 3 calls but found\n%r'
+                         % connection.return_value.delete_object.mock_calls)
         self.assertEqual(
             connection.return_value.delete_container.mock_calls, [
                 mock.call('container', response_dict={}),
