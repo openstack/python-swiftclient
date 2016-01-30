@@ -1162,11 +1162,15 @@ class SwiftService(object):
                 if fp is not None:
                     fp.close()
                     if 'x-object-meta-mtime' in headers and not no_file:
-                        mtime = float(headers['x-object-meta-mtime'])
-                        if options['out_file']:
-                            utime(options['out_file'], (mtime, mtime))
+                        try:
+                            mtime = float(headers['x-object-meta-mtime'])
+                        except ValueError:
+                            pass  # no real harm; couldn't trust it anyway
                         else:
-                            utime(path, (mtime, mtime))
+                            if options['out_file']:
+                                utime(options['out_file'], (mtime, mtime))
+                            else:
+                                utime(path, (mtime, mtime))
 
             res = {
                 'action': 'download_object',
