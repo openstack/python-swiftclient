@@ -876,7 +876,7 @@ class TestServiceUpload(_TestServiceBase):
                 'status': 'uploaded',
                 'success': True,
             }
-            expected_mtime = float(os.path.getmtime(f.name))
+            expected_mtime = '%f' % os.path.getmtime(f.name)
 
             mock_conn = mock.Mock()
             mock_conn.put_object.return_value = ''
@@ -901,13 +901,13 @@ class TestServiceUpload(_TestServiceBase):
                                                   'use_slo': False,
                                                   'checksum': True})
 
-            mtime = float(r['headers']['x-object-meta-mtime'])
-            self.assertAlmostEqual(mtime, expected_mtime, delta=0.5)
+            mtime = r['headers']['x-object-meta-mtime']
+            self.assertEqual(expected_mtime, mtime)
             del r['headers']['x-object-meta-mtime']
 
             self.assertEqual(
                 'test_c_segments/%E3%83%86%E3%82%B9%E3%83%88/dummy.dat/' +
-                '%f/30/10/' % mtime, r['headers']['x-object-manifest'])
+                '%s/30/10/' % mtime, r['headers']['x-object-manifest'])
             del r['headers']['x-object-manifest']
 
             self.assertEqual(r['path'], f.name)
@@ -1073,7 +1073,7 @@ class TestServiceUpload(_TestServiceBase):
                 'status': 'uploaded',
                 'success': True,
             }
-            expected_mtime = float(os.path.getmtime(f.name))
+            expected_mtime = '%f' % os.path.getmtime(f.name)
 
             mock_conn = mock.Mock()
             mock_conn.put_object.return_value = ''
@@ -1091,8 +1091,8 @@ class TestServiceUpload(_TestServiceBase):
                                               'segment_size': 0,
                                               'checksum': True})
 
-            mtime = float(r['headers']['x-object-meta-mtime'])
-            self.assertAlmostEqual(mtime, expected_mtime, delta=0.5)
+            mtime = r['headers']['x-object-meta-mtime']
+            self.assertEqual(expected_mtime, mtime)
             del r['headers']['x-object-meta-mtime']
 
             self.assertEqual(r['path'], f.name)
