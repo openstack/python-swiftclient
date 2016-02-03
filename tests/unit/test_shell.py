@@ -1291,22 +1291,25 @@ class TestParsing(TestBase):
             result[0], result[1] = swiftclient.shell.parse_args(parser, args)
         return fake_command
 
-    def _verify_opts(self, actual_opts, opts, os_opts={}, os_opts_dict={}):
+    def _verify_opts(self, actual_opts, expected_opts, expected_os_opts=None,
+                     expected_os_opts_dict=None):
         """
         Check parsed options are correct.
 
-        :param opts: v1 style options.
-        :param os_opts: openstack style options.
-        :param os_opts_dict: openstack options that should be found in the
-                             os_options dict.
+        :param expected_opts: v1 style options.
+        :param expected_os_opts: openstack style options.
+        :param expected_os_opts_dict: openstack options that should be found in
+                                      the os_options dict.
         """
+        expected_os_opts = expected_os_opts or {}
+        expected_os_opts_dict = expected_os_opts_dict or {}
         # check the expected opts are set
-        for key, v in opts.items():
+        for key, v in expected_opts.items():
             actual = getattr(actual_opts, key)
             self.assertEqual(v, actual, 'Expected %s for key %s, found %s' %
                              (v, key, actual))
 
-        for key, v in os_opts.items():
+        for key, v in expected_os_opts.items():
             actual = getattr(actual_opts, "os_" + key)
             self.assertEqual(v, actual, 'Expected %s for key %s, found %s' %
                              (v, key, actual))
@@ -1327,8 +1330,8 @@ class TestParsing(TestBase):
             if key == 'object_storage_url':
                 # exceptions to the pattern...
                 cli_key = 'storage_url'
-            if cli_key in os_opts_dict:
-                expect = os_opts_dict[cli_key]
+            if cli_key in expected_os_opts_dict:
+                expect = expected_os_opts_dict[cli_key]
             else:
                 expect = None
             actual = actual_os_opts_dict[key]
@@ -1385,6 +1388,89 @@ class TestParsing(TestBase):
         with mock.patch('swiftclient.shell.st_stat', fake_command):
             swiftclient.shell.main(args)
         self._verify_opts(result[0], opts, os_opts, os_opts_dict)
+
+    def test_os_identity_api_version(self):
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3",
+                   "identity-api-version": "3"}
+
+        # check os_identity_api_version is sufficient in place of auth_version
+        args = _make_args("stat", {}, os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, {}):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        expected_opts = {'auth_version': '3'}
+        expected_os_opts = {"password": "secret",
+                            "username": "user",
+                            "auth_url": "http://example.com:5000/v3"}
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        # check again using environment variables
+        args = _make_args("stat", {}, {})
+        env = _make_env({}, os_opts)
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        # check that last of auth-version, os-identity-api-version is preferred
+        args = _make_args("stat", {}, os_opts, '-') + ['--auth-version', '2.0']
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, {}):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        expected_opts = {'auth_version': '2.0'}
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        # now put auth_version ahead of os-identity-api-version
+        args = _make_args("stat", {"auth_version": "2.0"}, os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, {}):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        expected_opts = {'auth_version': '3'}
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        # check that OS_AUTH_VERSION overrides OS_IDENTITY_API_VERSION
+        args = _make_args("stat", {}, {})
+        env = _make_env({}, os_opts)
+        env.update({'OS_AUTH_VERSION': '2.0'})
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        expected_opts = {'auth_version': '2.0'}
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        # check that ST_AUTH_VERSION overrides OS_IDENTITY_API_VERSION
+        args = _make_args("stat", {}, {})
+        env = _make_env({}, os_opts)
+        env.update({'ST_AUTH_VERSION': '2.0'})
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        # check that ST_AUTH_VERSION overrides OS_AUTH_VERSION
+        args = _make_args("stat", {}, {})
+        env = _make_env({}, os_opts)
+        env.update({'ST_AUTH_VERSION': '2.0', 'OS_AUTH_VERSION': '3'})
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
 
     def test_args_v3(self):
         opts = {"auth_version": "3"}

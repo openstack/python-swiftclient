@@ -1193,7 +1193,9 @@ def main(arguments=None):
                           usage='''
 usage: %prog [--version] [--help] [--os-help] [--snet] [--verbose]
              [--debug] [--info] [--quiet] [--auth <auth_url>]
-             [--auth-version <auth_version>] [--user <username>]
+             [--auth-version <auth_version> |
+                 --os-identity-api-version <auth_version> ]
+             [--user <username>]
              [--key <api_key>] [--retries <num_retries>]
              [--os-username <auth-user-name>] [--os-password <auth-password>]
              [--os-user-id <auth-user-id>]
@@ -1254,6 +1256,15 @@ Examples:
 
   %prog list --lh
 '''.strip('\n'))
+
+    default_auth_version = '1.0'
+    for k in ('ST_AUTH_VERSION', 'OS_AUTH_VERSION', 'OS_IDENTITY_API_VERSION'):
+        try:
+            default_auth_version = environ[k]
+            break
+        except KeyError:
+            pass
+
     parser.add_option('--os-help', action='store_true', dest='os_help',
                       help='Show OpenStack authentication options.')
     parser.add_option('--os_help', action='store_true', help=SUPPRESS_HELP)
@@ -1272,14 +1283,14 @@ Examples:
     parser.add_option('-A', '--auth', dest='auth',
                       default=environ.get('ST_AUTH'),
                       help='URL for obtaining an auth token.')
-    parser.add_option('-V', '--auth-version',
+    parser.add_option('-V', '--auth-version', '--os-identity-api-version',
                       dest='auth_version',
-                      default=environ.get('ST_AUTH_VERSION',
-                                          (environ.get('OS_AUTH_VERSION',
-                                                       '1.0'))),
+                      default=default_auth_version,
                       type=str,
                       help='Specify a version for authentication. '
-                           'Defaults to 1.0.')
+                           'Defaults to env[ST_AUTH_VERSION], '
+                           'env[OS_AUTH_VERSION], env[OS_IDENTITY_API_VERSION]'
+                           ' or 1.0.')
     parser.add_option('-U', '--user', dest='user',
                       default=environ.get('ST_USER'),
                       help='User name for obtaining an auth token.')
