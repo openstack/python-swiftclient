@@ -17,6 +17,7 @@
 from __future__ import print_function, unicode_literals
 
 import argparse
+import json
 import logging
 import signal
 import socket
@@ -248,7 +249,7 @@ Optional arguments:
   -H, --header <header:value>
                         Adds a customized request header to the query, like
                         "Range" or "If-Match". This option may be repeated.
-                        Example --header "content-type:text/plain"
+                        Example: --header "content-type:text/plain"
   --skip-identical      Skip downloading files that are identical on both
                         sides.
   --ignore-checksum     Turn off checksum validation for downloads.
@@ -789,7 +790,7 @@ Optional arguments:
                         Default is 10.
   -H, --header <header:value>
                         Adds a customized request header. This option may be
-                        repeated. Example -H "content-type:text/plain"
+                        repeated. Example: -H "content-type:text/plain"
                          -H "Content-Length: 4000".
   --use-slo             When used in conjunction with --segment-size it will
                         create a Static Large Object instead of the default
@@ -840,7 +841,7 @@ def st_upload(parser, args, output_manager):
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[], help='Set request headers with the syntax header:value. '
-        ' This option may be repeated. Example -H "content-type:text/plain" '
+        ' This option may be repeated. Example: -H "content-type:text/plain" '
         '-H "Content-Length: 4000"')
     parser.add_argument(
         '--use-slo', action='store_true', default=False,
@@ -995,13 +996,16 @@ def st_upload(parser, args, output_manager):
             output_manager.error(e.value)
 
 
-st_capabilities_options = "[<proxy_url>]"
+st_capabilities_options = "[--json] [<proxy_url>]"
 st_info_options = st_capabilities_options
 st_capabilities_help = '''
 Retrieve capability of the proxy.
 
 Optional positional arguments:
   <proxy_url>           Proxy URL of the cluster to retrieve capabilities.
+
+Optional arguments:
+  --json                Print the cluster capabilities in JSON format.
 '''.strip('\n')
 st_info_help = st_capabilities_help
 
@@ -1017,6 +1021,8 @@ def st_capabilities(parser, args, output_manager):
                                          key=lambda x: x[0]):
                     output_manager.print_msg("  %s: %s" % (key, value))
 
+    parser.add_argument('--json', action='store_true',
+                        help='print capability information in json')
     (options, args) = parse_args(parser, args)
     if args and len(args) > 2:
         output_manager.error('Usage: %s capabilities %s\n%s',
@@ -1034,9 +1040,14 @@ def st_capabilities(parser, args, output_manager):
                 capabilities_result = swift.capabilities()
                 capabilities = capabilities_result['capabilities']
 
-            _print_compo_cap('Core', {'swift': capabilities['swift']})
-            del capabilities['swift']
-            _print_compo_cap('Additional middleware', capabilities)
+            if options['json']:
+                output_manager.print_msg(
+                    json.dumps(capabilities, sort_keys=True, indent=2))
+            else:
+                capabilities = dict(capabilities)
+                _print_compo_cap('Core', {'swift': capabilities['swift']})
+                del capabilities['swift']
+                _print_compo_cap('Additional middleware', capabilities)
         except SwiftError as e:
             output_manager.error(e.value)
 
