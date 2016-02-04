@@ -791,22 +791,31 @@ class TestShell(testtools.TestCase):
             b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
         swiftclient.shell.main(argv)
         self.assertEqual(
-            connection.return_value.post_account.mock_calls, [
-                mock.call(query_string='bulk-delete',
-                          data=b'/container/object\n/container/obj%C3%A9ct2\n',
-                          headers={'Content-Type': 'text/plain',
-                                   'Accept': 'application/json'},
-                          response_dict={}),
-                mock.call(query_string='bulk-delete',
-                          data=b'/container/object3\n',
-                          headers={'Content-Type': 'text/plain',
-                                   'Accept': 'application/json'},
-                          response_dict={}),
-                mock.call(query_string='bulk-delete',
-                          data=b'/container2/object\n',
-                          headers={'Content-Type': 'text/plain',
-                                   'Accept': 'application/json'},
-                          response_dict={})])
+            3, len(connection.return_value.post_account.mock_calls),
+            'Expected 3 calls but found\n%r'
+            % connection.return_value.post_account.mock_calls)
+        # POSTs for same container are made in parallel so expect any order
+        for expected in [
+            mock.call(query_string='bulk-delete',
+                      data=b'/container/object\n/container/obj%C3%A9ct2\n',
+                      headers={'Content-Type': 'text/plain',
+                               'Accept': 'application/json'},
+                      response_dict={}),
+            mock.call(query_string='bulk-delete',
+                      data=b'/container/object3\n',
+                      headers={'Content-Type': 'text/plain',
+                               'Accept': 'application/json'},
+                      response_dict={})]:
+            self.assertIn(expected,
+                          connection.return_value.post_account.mock_calls[:2])
+        # POSTs for different containers are made sequentially so expect order
+        self.assertEqual(
+            mock.call(query_string='bulk-delete',
+                      data=b'/container2/object\n',
+                      headers={'Content-Type': 'text/plain',
+                               'Accept': 'application/json'},
+                      response_dict={}),
+            connection.return_value.post_account.mock_calls[2])
         self.assertEqual(
             connection.return_value.delete_container.mock_calls, [
                 mock.call('container', response_dict={}),
