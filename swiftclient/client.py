@@ -457,6 +457,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
         _ksclient = ksclient.Client(
             username=user,
             password=key,
+            token=os_options.get('auth_token'),
             tenant_name=os_options.get('tenant_name'),
             tenant_id=os_options.get('tenant_id'),
             user_id=os_options.get('user_id'),
