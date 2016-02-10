@@ -1341,13 +1341,30 @@ class TestServiceUpload(_TestServiceBase):
             mock_conn.get_container.assert_has_calls(expected)
 
     def test_make_upload_objects(self):
-        # String list
-        filenames = ['/absolute/file/path', 'relative/file/path']
-        self.assertEqual(
-            [o.object_name for o in SwiftService._make_upload_objects(
-             filenames, 'pseudo/folder/path')],
-            ['pseudo/folder/path/absolute/file/path',
-             'pseudo/folder/path/relative/file/path'])
+        check_names_pseudo_to_expected = {
+            (('/absolute/file/path',), ''): ['absolute/file/path'],
+            (('relative/file/path',), ''): ['relative/file/path'],
+            (('/absolute/file/path',), '/absolute/pseudo/dir'): [
+                'absolute/pseudo/dir/absolute/file/path'],
+            (('/absolute/file/path',), 'relative/pseudo/dir'): [
+                'relative/pseudo/dir/absolute/file/path'],
+            (('relative/file/path',), '/absolute/pseudo/dir'): [
+                'absolute/pseudo/dir/relative/file/path'],
+            (('relative/file/path',), 'relative/pseudo/dir'): [
+                'relative/pseudo/dir/relative/file/path'],
+        }
+        errors = []
+        for (filenames, pseudo_folder), expected in \
+                check_names_pseudo_to_expected.items():
+            actual = SwiftService._make_upload_objects(
+                filenames, pseudo_folder=pseudo_folder)
+            try:
+                self.assertEqual(expected, [o.object_name for o in actual])
+            except AssertionError as e:
+                msg = 'given (%r, %r) expected %r, got %s' % (
+                    filenames, pseudo_folder, expected, e)
+                errors.append(msg)
+        self.assertFalse(errors, "\nERRORS:\n%s" % '\n'.join(errors))
 
 
 class TestServiceDownload(_TestServiceBase):
