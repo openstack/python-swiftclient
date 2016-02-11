@@ -1298,7 +1298,7 @@ class TestSubcommandHelp(testtools.TestCase):
 
 
 @mock.patch.dict(os.environ, mocked_os_environ)
-class TestOptionAfterPosArg(testtools.TestCase):
+class TestDebugAndInfoOptions(testtools.TestCase):
     @mock.patch('logging.basicConfig')
     @mock.patch('swiftclient.service.Connection')
     def test_option_after_posarg(self, connection, mock_logging):
@@ -1309,6 +1309,24 @@ class TestOptionAfterPosArg(testtools.TestCase):
         argv = ["", "stat", "--debug"]
         swiftclient.shell.main(argv)
         mock_logging.assert_called_with(level=logging.DEBUG)
+
+    @mock.patch('logging.basicConfig')
+    @mock.patch('swiftclient.service.Connection')
+    def test_debug_trumps_info(self, connection, mock_logging):
+        argv_scenarios = (["", "stat", "--info", "--debug"],
+                          ["", "stat", "--debug", "--info"],
+                          ["", "--info", "stat", "--debug"],
+                          ["", "--debug", "stat", "--info"],
+                          ["", "--info", "--debug", "stat"],
+                          ["", "--debug", "--info", "stat"])
+        for argv in argv_scenarios:
+            mock_logging.reset_mock()
+            swiftclient.shell.main(argv)
+            try:
+                mock_logging.assert_called_once_with(level=logging.DEBUG)
+            except AssertionError:
+                self.fail('Unexpected call(s) %r for args %r'
+                          % (mock_logging.call_args_list, argv))
 
 
 class TestBase(testtools.TestCase):
