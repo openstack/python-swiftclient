@@ -1102,6 +1102,13 @@ def parse_args(parser, args, enforce_requires=True):
     if not args:
         args = ['-h']
     (options, args) = parser.parse_args(args)
+    if enforce_requires and (options.debug or options.info):
+        logging.getLogger("swiftclient")
+        if options.debug:
+            logging.basicConfig(level=logging.DEBUG)
+            logging.getLogger('iso8601').setLevel(logging.WARNING)
+        elif options.info:
+            logging.basicConfig(level=logging.INFO)
 
     if len(args) > 1 and args[1] == '--help':
         _help = globals().get('st_%s_help' % args[0],
@@ -1460,14 +1467,6 @@ Examples:
         exit()
 
     signal.signal(signal.SIGINT, immediate_exit)
-
-    if options.debug or options.info:
-        logging.getLogger("swiftclient")
-        if options.debug:
-            logging.basicConfig(level=logging.DEBUG)
-            logging.getLogger('iso8601').setLevel(logging.WARNING)
-        elif options.info:
-            logging.basicConfig(level=logging.INFO)
 
     with OutputManager() as output:
 
