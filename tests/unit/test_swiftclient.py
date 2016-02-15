@@ -1398,6 +1398,109 @@ class TestPostObject(MockHttpTest):
         ])
 
 
+class TestCopyObject(MockHttpTest):
+
+    def test_server_error(self):
+        c.http_connection = self.fake_http_connection(500)
+        self.assertRaises(
+            c.ClientException, c.copy_object,
+            'http://www.test.com/v1/AUTH', 'asdf', 'asdf', 'asdf')
+
+    def test_ok(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object(
+            'http://www.test.com/v1/AUTH', 'token', 'container', 'obj',
+            destination='/container2/obj')
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'X-Auth-Token': 'token',
+                'Destination': '/container2/obj',
+            }),
+        ])
+
+    def test_service_token(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object('http://www.test.com/v1/AUTH', None, 'container',
+                      'obj', destination='/container2/obj',
+                      service_token="TOKEN")
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'X-Service-Token': 'TOKEN',
+                'Destination': '/container2/obj',
+
+            }),
+        ])
+
+    def test_headers(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object(
+            'http://www.test.com/v1/AUTH', 'token', 'container', 'obj',
+            destination='/container2/obj',
+            headers={'some-hdr': 'a', 'other-hdr': 'b'})
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'X-Auth-Token': 'token',
+                'Destination': '/container2/obj',
+                'some-hdr': 'a',
+                'other-hdr': 'b',
+            }),
+        ])
+
+    def test_fresh_metadata_default(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object(
+            'http://www.test.com/v1/AUTH', 'token', 'container', 'obj',
+            '/container2/obj', {'x-fresh-metadata': 'hdr-value'})
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'X-Auth-Token': 'token',
+                'Destination': '/container2/obj',
+                'X-Fresh-Metadata': 'hdr-value',
+            }),
+        ])
+
+    def test_fresh_metadata_true(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object(
+            'http://www.test.com/v1/AUTH', 'token', 'container', 'obj',
+            destination='/container2/obj',
+            headers={'x-fresh-metadata': 'hdr-value'},
+            fresh_metadata=True)
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'X-Auth-Token': 'token',
+                'Destination': '/container2/obj',
+                'X-Fresh-Metadata': 'true',
+            }),
+        ])
+
+    def test_fresh_metadata_false(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object(
+            'http://www.test.com/v1/AUTH', 'token', 'container', 'obj',
+            destination='/container2/obj',
+            headers={'x-fresh-metadata': 'hdr-value'},
+            fresh_metadata=False)
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'x-auth-token': 'token',
+                'Destination': '/container2/obj',
+                'X-Fresh-Metadata': 'false',
+            }),
+        ])
+
+    def test_no_destination(self):
+        c.http_connection = self.fake_http_connection(200)
+        c.copy_object(
+            'http://www.test.com/v1/AUTH', 'token', 'container', 'obj')
+        self.assertRequests([
+            ('COPY', 'http://www.test.com/v1/AUTH/container/obj', '', {
+                'x-auth-token': 'token',
+                'Destination': '/container/obj',
+            }),
+        ])
+
+
 class TestDeleteObject(MockHttpTest):
 
     def test_ok(self):
@@ -2246,6 +2349,7 @@ class TestResponseDict(MockHttpTest):
              ('delete_container', 'c'),
              ('post_object', 'c', 'o', {}),
              ('put_object', 'c', 'o', 'body'),
+             ('copy_object', 'c', 'o'),
              ('delete_object', 'c', 'o')]
 
     def fake_get_auth(*args, **kwargs):

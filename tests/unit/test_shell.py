@@ -1244,6 +1244,139 @@ class TestShell(unittest.TestCase):
             self.assertTrue(output.err != '')
             self.assertTrue(output.err.startswith('Usage'))
 
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_object_no_destination(self, connection):
+        argv = ["", "copy", "container", "object",
+                "--meta", "Color:Blue",
+                "--header", "content-type:text/plain"
+                ]
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            connection.return_value.copy_object.assert_called_with(
+                'container', 'object', destination=None, fresh_metadata=False,
+                headers={
+                    'Content-Type': 'text/plain',
+                    'X-Object-Meta-Color': 'Blue'}, response_dict={})
+        self.assertEqual(output.out, 'container/object copied to <self>\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_object(self, connection):
+        argv = ["", "copy", "container", "object",
+                "--meta", "Color:Blue",
+                "--header", "content-type:text/plain",
+                "--destination", "/c/o"
+                ]
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            connection.return_value.copy_object.assert_called_with(
+                'container', 'object', destination="/c/o",
+                fresh_metadata=False,
+                headers={
+                    'Content-Type': 'text/plain',
+                    'X-Object-Meta-Color': 'Blue'}, response_dict={})
+        self.assertEqual(
+            output.out,
+            'created container c\ncontainer/object copied to /c/o\n'
+        )
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_object_fresh_metadata(self, connection):
+        argv = ["", "copy", "container", "object",
+                "--meta", "Color:Blue", "--fresh-metadata",
+                "--header", "content-type:text/plain",
+                "--destination", "/c/o"
+                ]
+        swiftclient.shell.main(argv)
+        connection.return_value.copy_object.assert_called_with(
+            'container', 'object', destination="/c/o", fresh_metadata=True,
+            headers={
+                'Content-Type': 'text/plain',
+                'X-Object-Meta-Color': 'Blue'}, response_dict={})
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_two_objects(self, connection):
+        argv = ["", "copy", "container", "object", "object2",
+                "--meta", "Color:Blue"]
+        connection.return_value.copy_object.return_value = None
+        swiftclient.shell.main(argv)
+        calls = [
+            mock.call(
+                'container', 'object', destination=None,
+                fresh_metadata=False, headers={'X-Object-Meta-Color': 'Blue'},
+                response_dict={}),
+            mock.call(
+                'container', 'object2', destination=None,
+                fresh_metadata=False, headers={'X-Object-Meta-Color': 'Blue'},
+                response_dict={})
+        ]
+        for call in calls:
+            self.assertIn(call, connection.return_value.copy_object.mock_calls)
+        self.assertEqual(len(connection.return_value.copy_object.mock_calls),
+                         len(calls))
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_two_objects_destination(self, connection):
+        argv = ["", "copy", "container", "object", "object2",
+                "--meta", "Color:Blue", "--destination", "/c"]
+        swiftclient.shell.main(argv)
+        calls = [
+            mock.call(
+                'container', 'object', destination="/c/object",
+                fresh_metadata=False, headers={'X-Object-Meta-Color': 'Blue'},
+                response_dict={}),
+            mock.call(
+                'container', 'object2', destination="/c/object2",
+                fresh_metadata=False, headers={'X-Object-Meta-Color': 'Blue'},
+                response_dict={})
+        ]
+        connection.return_value.copy_object.assert_has_calls(calls)
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_two_objects_bad_destination(self, connection):
+        argv = ["", "copy", "container", "object", "object2",
+                "--meta", "Color:Blue", "--destination", "/c/o"]
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEqual(
+                output.err,
+                'Combination of multiple objects and destination '
+                'including object is invalid\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_copy_object_bad_auth(self, connection):
+        argv = ["", "copy", "container", "object"]
+        connection.return_value.copy_object.side_effect = \
+            swiftclient.ClientException("bad auth")
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEqual(output.err, 'bad auth\n')
+
+    def test_copy_object_not_enough_args(self):
+        argv = ["", "copy", "container"]
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertTrue(output.err != '')
+            self.assertTrue(output.err.startswith('Usage'))
+
+    def test_copy_bad_container(self):
+        argv = ["", "copy", "cont/ainer", "object"]
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertTrue(output.err != '')
+            self.assertTrue(output.err.startswith('WARN'))
+
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url(self, temp_url):
         argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/o",

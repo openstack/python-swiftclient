@@ -46,7 +46,7 @@ except ImportError:
     from pipes import quote as sh_quote
 
 BASENAME = 'swift'
-commands = ('delete', 'download', 'list', 'post', 'stat', 'upload',
+commands = ('delete', 'download', 'list', 'post', 'copy', 'stat', 'upload',
             'capabilities', 'info', 'tempurl', 'auth')
 
 
@@ -746,6 +746,105 @@ def st_post(parser, args, output_manager):
             output_manager.error(e.value)
 
 
+st_copy_options = '''[--destination </container/object>] [--fresh-metadata]
+                  [--meta <name:value>] [--header <header>] container object
+'''
+
+st_copy_help = '''
+Copies object to new destination, optionally updates objects metadata.
+If destination is not set, will update metadata of object
+
+Positional arguments:
+  container             Name of container to copy from.
+  object                Name of object to copy. Specify multiple times
+                        for multiple objects
+
+Optional arguments:
+  -d, --destination </container[/object]>
+                        The container and name of the destination object. Name
+                        of destination object can be ommited, then will be
+                        same as name of source object. Supplying multiple
+                        objects and destination with object name is invalid.
+  -M, --fresh-metadata  Copy the object without any existing metadata,
+                        If not set, metadata will be preserved or appended
+  -m, --meta <name:value>
+                        Sets a meta data item. This option may be repeated.
+                        Example: -m Color:Blue -m Size:Large
+  -H, --header <header:value>
+                        Adds a customized request header.
+                        This option may be repeated. Example
+                        -H "content-type:text/plain" -H "Content-Length: 4000"
+'''.strip('\n')
+
+
+def st_copy(parser, args, output_manager):
+    parser.add_argument(
+        '-d', '--destination', help='The container and name of the '
+        'destination object')
+    parser.add_argument(
+        '-M', '--fresh-metadata', action='store_true',
+        help='Copy the object without any existing metadata', default=False)
+    parser.add_argument(
+        '-m', '--meta', action='append', dest='meta', default=[],
+        help='Sets a meta data item. This option may be repeated. '
+        'Example: -m Color:Blue -m Size:Large')
+    parser.add_argument(
+        '-H', '--header', action='append', dest='header',
+        default=[], help='Adds a customized request header. '
+        'This option may be repeated. '
+        'Example: -H "content-type:text/plain" '
+        '-H "Content-Length: 4000"')
+    (options, args) = parse_args(parser, args)
+    args = args[1:]
+
+    with SwiftService(options=options) as swift:
+        try:
+            if len(args) >= 2:
+                container = args[0]
+                if '/' in container:
+                    output_manager.error(
+                        'WARNING: / in container name; you might have '
+                        "meant '%s' instead of '%s'." %
+                        (args[0].replace('/', ' ', 1), args[0]))
+                    return
+                objects = [arg for arg in args[1:]]
+
+                for r in swift.copy(
+                        container=container, objects=objects,
+                        options=options):
+                    if r['success']:
+                        if options['verbose']:
+                            if r['action'] == 'copy_object':
+                                output_manager.print_msg(
+                                    '%s/%s copied to %s' % (
+                                        r['container'],
+                                        r['object'],
+                                        r['destination'] or '<self>'))
+                            if r['action'] == 'create_container':
+                                output_manager.print_msg(
+                                    'created container %s' % r['container']
+                                )
+                    else:
+                        error = r['error']
+                        if 'action' in r and r['action'] == 'create_container':
+                            # it is not an error to be unable to create the
+                            # container so print a warning and carry on
+                            output_manager.warning(
+                                'Warning: failed to create container '
+                                "'%s': %s", container, error
+                            )
+                        else:
+                            output_manager.error("%s" % error)
+            else:
+                output_manager.error(
+                    'Usage: %s copy %s\n%s', BASENAME,
+                    st_copy_options, st_copy_help)
+                return
+
+        except SwiftError as e:
+            output_manager.error(e.value)
+
+
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
@@ -1268,6 +1367,7 @@ Positional arguments:
                          for a container.
     post                 Updates meta information for the account, container,
                          or object; creates containers if not present.
+    copy                 Copies object, optionally adds meta
     stat                 Displays information for the account, container,
                          or object.
     upload               Uploads files or directories to the given container.

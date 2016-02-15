@@ -79,6 +79,19 @@ For more details and options see swift post \-\-help.
 \fBExample\fR: post \-m Color:Blue \-m Size:Large
 .RE
 
+\fBcopy\fR [\fIcommand-options\fR] \fIcontainer\fR \fIobject\fR
+.RS 4
+Copies an object to a new destination or adds user metadata to the object (current
+user metadata will be preserved, in contrast with the post command) depending
+on the args given. The \-\-destination option sets the destination in the form
+/container/object. If not set, the object will be copied onto itself which is useful
+for adding metadata. The \-M or \-\-fresh\-metadata option copies the object without
+the existing user metadata. The \-m or \-\-meta option is always allowed and is used
+to define the user metadata items to set in the form Name:Value (this option
+can be repeated).
+For more details and options see swift copy \-\-help.
+.RE
+
 \fBdownload\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
 .RS 4
 Downloads everything in the account (with \-\-all), or everything in a
