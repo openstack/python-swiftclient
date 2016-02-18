@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2012 Rackspace
-# flake8: noqa
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,7 +17,7 @@
 """
 OpenStack Swift Python client binding.
 """
-from .client import *
+from .client import *  # noqa
 
 # At setup.py time, we haven't installed anything yet, so there
 # is nothing that is able to set this version property. Squelching
