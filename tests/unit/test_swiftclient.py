@@ -870,6 +870,58 @@ class TestGetObject(MockHttpTest):
             self.assertRaises(StopIteration, next, resp)
             self.assertEqual(resp.read(), '')
 
+    def test_chunk_size_iter_chunked_no_retry(self):
+        conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
+        with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
+            mock_get_auth.return_value = ('http://auth.url/', 'tToken')
+            c.http_connection = self.fake_http_connection(
+                200, body='abcdef', headers={'Transfer-Encoding': 'chunked'})
+            __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=2)
+            self.assertEqual(next(resp), 'ab')
+            # simulate a dropped connection
+            resp.resp.read()
+            self.assertRaises(StopIteration, next, resp)
+
+    def test_chunk_size_iter_retry(self):
+        conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
+        with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
+            mock_get_auth.return_value = ('http://auth.url', 'tToken')
+            c.http_connection = self.fake_http_connection(
+                StubResponse(200, 'abcdef', {'etag': 'some etag',
+                                             'content-length': '6'}),
+                StubResponse(206, 'cdef', {'etag': 'some etag',
+                                           'content-length': '4'}),
+                StubResponse(206, 'ef', {'etag': 'some etag',
+                                         'content-length': '2'}),
+            )
+            __, resp = conn.get_object('asdf', 'asdf', resp_chunk_size=2)
+            self.assertEqual(next(resp), 'ab')
+            self.assertEqual(1, conn.attempts)
+            # simulate a dropped connection
+            resp.resp.read()
+            self.assertEqual(next(resp), 'cd')
+            self.assertEqual(2, conn.attempts)
+            # simulate a dropped connection
+            resp.resp.read()
+            self.assertEqual(next(resp), 'ef')
+            self.assertEqual(3, conn.attempts)
+            self.assertRaises(StopIteration, next, resp)
+        self.assertRequests([
+            ('GET', '/asdf/asdf', '', {
+                'x-auth-token': 'tToken',
+            }),
+            ('GET', '/asdf/asdf', '', {
+                'range': 'bytes=2-',
+                'if-match': 'some etag',
+                'x-auth-token': 'tToken',
+            }),
+            ('GET', '/asdf/asdf', '', {
+                'range': 'bytes=4-',
+                'if-match': 'some etag',
+                'x-auth-token': 'tToken',
+            }),
+        ])
+
     def test_get_object_with_resp_chunk_size_zero(self):
         def get_connection(self):
             def get_auth():
