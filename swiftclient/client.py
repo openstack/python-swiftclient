@@ -24,7 +24,7 @@ import warnings
 from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
 from six.moves import http_client
-from six.moves.urllib.parse import quote as _quote
+from six.moves.urllib.parse import quote as _quote, unquote
 from six.moves.urllib.parse import urlparse, urlunparse
 from time import sleep, time
 import six
@@ -71,6 +71,69 @@ if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
 logger = logging.getLogger("swiftclient")
 logger.addHandler(NullHandler())
 
+#: Default behaviour is to redact header values known to contain secrets,
+#: such as ``X-Auth-Key`` and ``X-Auth-Token``. Up to the first 16 chars
+#: may be revealed.
+#:
+#: To disable, set the value of ``redact_sensitive_headers`` to ``False``.
+#:
+#: When header redaction is enabled, ``reveal_sensitive_prefix`` configures the
+#: maximum length of any sensitive header data sent to the logs. If the header
+#: is less than twice this length, only ``int(len(value)/2)`` chars will be
+#: logged; if it is less than 15 chars long, even less will be logged.
+logger_settings = {
+    'redact_sensitive_headers': True,
+    'reveal_sensitive_prefix': 16
+}
+#: A list of sensitive headers to redact in logs. Note that when extending this
+#: list, the header names must be added in all lower case.
+LOGGER_SENSITIVE_HEADERS = [
+    'x-auth-token', 'x-auth-key', 'x-service-token', 'x-storage-token',
+    'x-account-meta-temp-url-key', 'x-account-meta-temp-url-key-2',
+    'x-container-meta-temp-url-key', 'x-container-meta-temp-url-key-2',
+    'set-cookie'
+]
+
+
+def safe_value(name, value):
+    """
+    Only show up to logger_settings['reveal_sensitive_prefix'] characters
+    from a sensitive header.
+
+    :param name: Header name
+    :param value: Header value
+    :return: Safe header value
+    """
+    if name.lower() in LOGGER_SENSITIVE_HEADERS:
+        prefix_length = logger_settings.get('reveal_sensitive_prefix', 16)
+        prefix_length = int(
+            min(prefix_length, (len(value) ** 2) / 32, len(value) / 2)
+        )
+        redacted_value = value[0:prefix_length]
+        return redacted_value + '...'
+    return value
+
+
+def scrub_headers(headers):
+    """
+    Redact header values that can contain sensitive information that
+    should not be logged.
+
+    :param headers: Either a dict or an iterable of two-element tuples
+    :return: Safe dictionary of headers with sensitive information removed
+    """
+    if isinstance(headers, dict):
+        headers = headers.items()
+    headers = [
+        (parse_header_string(key), parse_header_string(val))
+        for (key, val) in headers
+    ]
+    if not logger_settings.get('redact_sensitive_headers', True):
+        return dict(headers)
+    if logger_settings.get('reveal_sensitive_prefix', 16) < 0:
+        logger_settings['reveal_sensitive_prefix'] = 16
+    return dict((key, safe_value(key, val)) for (key, val) in headers)
+
 
 def http_log(args, kwargs, resp, body):
     if not logger.isEnabledFor(logging.INFO):
@@ -86,8 +149,9 @@ def http_log(args, kwargs, resp, body):
         else:
             string_parts.append(' %s' % element)
     if 'headers' in kwargs:
-        for element in kwargs['headers']:
-            header = ' -H "%s: %s"' % (element, kwargs['headers'][element])
+        headers = scrub_headers(kwargs['headers'])
+        for element in headers:
+            header = ' -H "%s: %s"' % (element, headers[element])
             string_parts.append(header)
 
     # log response as debug if good, or info if error
@@ -98,9 +162,41 @@ def http_log(args, kwargs, resp, body):
 
     log_method("REQ: %s", "".join(string_parts))
     log_method("RESP STATUS: %s %s", resp.status, resp.reason)
-    log_method("RESP HEADERS: %s", resp.getheaders())
+    log_method("RESP HEADERS: %s", scrub_headers(resp.getheaders()))
     if body:
         log_method("RESP BODY: %s", body)
+
+
+def parse_header_string(data):
+    if not isinstance(data, (six.text_type, six.binary_type)):
+        data = str(data)
+    if six.PY2:
+        if isinstance(data, six.text_type):
+            # Under Python2 requests only returns binary_type, but if we get
+            # some stray text_type input, this should prevent unquote from
+            # interpreting %-encoded data as raw code-points.
+            data = data.encode('utf8')
+        try:
+            unquoted = unquote(data).decode('utf8')
+        except UnicodeDecodeError:
+            try:
+                return data.decode('utf8')
+            except UnicodeDecodeError:
+                return quote(data).decode('utf8')
+    else:
+        if isinstance(data, six.binary_type):
+            # Under Python3 requests only returns text_type and tosses (!) the
+            # rest of the headers. If that ever changes, this should be a sane
+            # approach.
+            try:
+                data = data.decode('ascii')
+            except UnicodeDecodeError:
+                data = quote(data)
+        try:
+            unquoted = unquote(data, errors='strict')
+        except UnicodeDecodeError:
+            return data
+    return unquoted
 
 
 def quote(value, safe='/'):
@@ -301,11 +397,11 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
     parsed, conn = http_connection(url, cacert=cacert, insecure=insecure,
                                    timeout=timeout)
     method = 'GET'
-    conn.request(method, parsed.path, '',
-                 {'X-Auth-User': user, 'X-Auth-Key': key})
+    headers = {'X-Auth-User': user, 'X-Auth-Key': key}
+    conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log((url, method,), {}, resp, body)
+    http_log((url, method,), headers, resp, body)
     url = resp.getheader('x-storage-url')
 
     # There is a side-effect on current Rackspace 1.0 server where a

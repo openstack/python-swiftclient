@@ -124,7 +124,7 @@ def fake_http_connect(*code_iter, **kwargs):
         def getheaders(self):
             if self.headers:
                 return self.headers.items()
-            headers = {'content-length': len(self.body),
+            headers = {'content-length': str(len(self.body)),
                        'content-type': 'x-application/test',
                        'x-timestamp': self.timestamp,
                        'last-modified': self.timestamp,
@@ -132,7 +132,7 @@ def fake_http_connect(*code_iter, **kwargs):
                        'etag':
                        self.etag or '"%s"' % EMPTY_ETAG,
                        'x-works': 'yes',
-                       'x-account-container-count': 12345}
+                       'x-account-container-count': '12345'}
             if not self.timestamp:
                 del headers['x-timestamp']
             try:

@@ -32,6 +32,7 @@ from swiftclient.utils import config_true_value, generate_temp_url, prt_bytes
 from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
+from swiftclient.client import logger_settings as client_logger_settings
 from swiftclient.service import SwiftService, SwiftError, \
     SwiftUploadObject, get_conn
 from swiftclient.command_helpers import print_account_stats, \
@@ -1414,6 +1415,7 @@ Examples:
         logging.getLogger("swiftclient")
         if options.debug:
             logging.basicConfig(level=logging.DEBUG)
+            client_logger_settings['redact_sensitive_headers'] = False
         elif options.info:
             logging.basicConfig(level=logging.INFO)
 

@@ -130,6 +130,31 @@ class TestHttpHelpers(MockHttpTest):
         value = u'unicode:\xe9\u20ac'
         self.assertEqual('unicode%3A%C3%A9%E2%82%AC', c.quote(value))
 
+    def test_parse_header_string(self):
+        value = b'bytes'
+        self.assertEqual(u'bytes', c.parse_header_string(value))
+        value = u'unicode:\xe9\u20ac'
+        self.assertEqual(u'unicode:\xe9\u20ac', c.parse_header_string(value))
+        value = 'native%20string'
+        self.assertEqual(u'native string', c.parse_header_string(value))
+
+        value = b'encoded%20bytes%E2%82%AC'
+        self.assertEqual(u'encoded bytes\u20ac', c.parse_header_string(value))
+        value = 'encoded%20unicode%E2%82%AC'
+        self.assertEqual(u'encoded unicode\u20ac',
+                         c.parse_header_string(value))
+
+        value = b'bad%20bytes%ff%E2%82%AC'
+        self.assertEqual(u'bad%20bytes%ff%E2%82%AC',
+                         c.parse_header_string(value))
+        value = u'bad%20unicode%ff\u20ac'
+        self.assertEqual(u'bad%20unicode%ff\u20ac',
+                         c.parse_header_string(value))
+
+        value = b'really%20bad\xffbytes'
+        self.assertEqual(u'really%2520bad%FFbytes',
+                         c.parse_header_string(value))
+
     def test_http_connection(self):
         url = 'http://www.test.com'
         _junk, conn = c.http_connection(url)
@@ -748,7 +773,7 @@ class TestPutObject(MockHttpTest):
                 mock_file)
         text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
         headers = {'X-Header1': text,
-                   'X-2': 1, 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:fg:lp'}
+                   'X-2': '1', 'X-3': "{'a': 'b'}", 'a-b': '.x:yz mn:fg:lp'}
 
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
@@ -926,8 +951,17 @@ class TestPostObject(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
-        args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', {})
+        delete_at = 2.1  # not str! we don't know what other devs will use!
+        args = ('http://www.test.com', 'token', 'container', 'obj',
+                {'X-Object-Meta-Test': 'mymeta',
+                 'X-Delete-At': delete_at})
         c.post_object(*args)
+        self.assertRequests([
+            ('POST', '/container/obj', '', {
+                'x-auth-token': 'token',
+                'X-Object-Meta-Test': 'mymeta',
+                'X-Delete-At': delete_at}),
+        ])
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
@@ -938,7 +972,7 @@ class TestPostObject(MockHttpTest):
         text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
         headers = {'X-Header1': text,
                    b'X-Header2': 'value',
-                   'X-2': '1', 'X-3': {'a': 'b'}, 'a-b': '.x:yz mn:kl:qr',
+                   'X-2': '1', 'X-3': "{'a': 'b'}", 'a-b': '.x:yz mn:kl:qr',
                    'X-Object-Meta-Header-not-encoded': text,
                    b'X-Object-Meta-Header-encoded': 'value'}
 
@@ -1811,6 +1845,83 @@ class TestLogging(MockHttpTest):
         e = self.assertRaises(c.ClientException, c.get_object,
                               'http://www.test.com', 'asdf', 'asdf', 'asdf')
         self.assertEqual(e.http_status, 404)
+
+    def test_redact_token(self):
+        with mock.patch('swiftclient.client.logger.debug') as mock_log:
+            token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
+            token_encoded = token_value.encode('utf8')
+            unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
+            unicode_token_encoded = unicode_token_value.encode('utf8')
+            set_cookie_value = 'X-Auth-Token=%s' % token_value
+            set_cookie_encoded = set_cookie_value.encode('utf8')
+            c.http_log(
+                ['GET'],
+                {'headers': {
+                    'X-Auth-Token': token_encoded,
+                    'X-Storage-Token': unicode_token_encoded
+                }},
+                MockHttpResponse(
+                    status=200,
+                    headers={
+                        'X-Auth-Token': token_encoded,
+                        'X-Storage-Token': unicode_token_encoded,
+                        'Etag': b'mock_etag',
+                        'Set-Cookie': set_cookie_encoded
+                    }
+                ),
+                ''
+            )
+            out = []
+            for _, args, kwargs in mock_log.mock_calls:
+                for arg in args:
+                    out.append(u'%s' % arg)
+            output = u''.join(out)
+            self.assertIn('X-Auth-Token', output)
+            self.assertIn(token_value[:16] + '...', output)
+            self.assertIn('X-Storage-Token', output)
+            self.assertIn(unicode_token_value[:8] + '...', output)
+            self.assertIn('Set-Cookie', output)
+            self.assertIn(set_cookie_value[:16] + '...', output)
+            self.assertNotIn(token_value, output)
+            self.assertNotIn(unicode_token_value, output)
+            self.assertNotIn(set_cookie_value, output)
+
+    def test_show_token(self):
+        with mock.patch('swiftclient.client.logger.debug') as mock_log:
+            token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
+            token_encoded = token_value.encode('utf8')
+            unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
+            c.logger_settings['redact_sensitive_headers'] = False
+            unicode_token_encoded = unicode_token_value.encode('utf8')
+            c.http_log(
+                ['GET'],
+                {'headers': {
+                    'X-Auth-Token': token_encoded,
+                    'X-Storage-Token': unicode_token_encoded
+                }},
+                MockHttpResponse(
+                    status=200,
+                    headers=[
+                        ('X-Auth-Token', token_encoded),
+                        ('X-Storage-Token', unicode_token_encoded),
+                        ('Etag', b'mock_etag')
+                    ]
+                ),
+                ''
+            )
+            out = []
+            for _, args, kwargs in mock_log.mock_calls:
+                for arg in args:
+                    out.append(u'%s' % arg)
+            output = u''.join(out)
+            self.assertIn('X-Auth-Token', output)
+            self.assertIn(token_value, output)
+            self.assertIn('X-Storage-Token', output)
+            self.assertIn(unicode_token_value, output)
 
 
 class TestCloseConnection(MockHttpTest):
