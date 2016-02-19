@@ -72,6 +72,64 @@ if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
 logger = logging.getLogger("swiftclient")
 logger.addHandler(NullHandler())
 
+#: Default behaviour is to redact tokens, showing only the initial 16 chars.
+#: To disable, set the value of 'redact_sensitive_tokens' to False.
+#: When token redaction is enabled 'reveal_sensitive_prefix' configures the
+#: maximum length of any sensitive token data sent to the logs (if the token
+#: is less than 32 chars long then int(len(token)/2) chars will be logged,
+logger_settings = {
+    'redact_sensitive_tokens': True,
+    'reveal_sensitive_prefix': 16
+}
+#: A list of sensitive headers to redact in logs. Note that when extending this
+#: list, the header names must be added in all lower case.
+LOGGER_SENSITIVE_HEADERS = [
+    'x-auth-token', 'x-auth-key', 'x-service-token', 'x-storage-token',
+    'x-account-meta-temp-url-key', 'x-account-meta-temp-url-key-2',
+    'x-container-meta-temp-url-key', 'x-container-meta-temp-url-key-2',
+    'set-cookie'
+]
+
+
+def safe_value(name, value):
+    """
+    Only show up to logger_settings['reveal_sensitive_prefix'] characters
+    from a sensitive header.
+
+    :param name: Header name
+    :param value: Header value
+    :return: Safe (header, value) pair
+    """
+    if name.lower() in LOGGER_SENSITIVE_HEADERS:
+        prefix_length = logger_settings.get('reveal_sensitive_prefix', 16)
+        prefix_length = int(
+            min(prefix_length, (len(value) ** 2) / 32, len(value) / 2)
+        )
+        redacted_value = value[0:prefix_length]
+        return redacted_value + '...'
+    return value
+
+
+def scrub_headers(headers):
+    """
+    Redact header values that can contain sensitive information that
+    should not be logged.
+
+    :param headers: Either a dict or an iterable of two-element tuples
+    :return: Safe dictionary of headers with sensitive information removed
+    """
+    if isinstance(headers, dict):
+        headers = headers.items()
+    headers = [
+        (parse_header_string(key), parse_header_string(val))
+        for (key, val) in headers
+    ]
+    if not logger_settings.get('redact_sensitive_tokens', True):
+        return dict(headers)
+    if logger_settings.get('reveal_sensitive_prefix', 16) < 0:
+        logger_settings['reveal_sensitive_prefix'] = 16
+    return {key: safe_value(key, val) for (key, val) in headers}
+
 
 def http_log(args, kwargs, resp, body):
     if not logger.isEnabledFor(logging.INFO):
@@ -87,8 +145,9 @@ def http_log(args, kwargs, resp, body):
         else:
             string_parts.append(' %s' % element)
     if 'headers' in kwargs:
-        for element in kwargs['headers']:
-            header = ' -H "%s: %s"' % (element, kwargs['headers'][element])
+        headers = scrub_headers(kwargs['headers'])
+        for element in headers:
+            header = ' -H "%s: %s"' % (element, headers[element])
             string_parts.append(header)
 
     # log response as debug if good, or info if error
@@ -99,7 +158,7 @@ def http_log(args, kwargs, resp, body):
 
     log_method("REQ: %s", "".join(string_parts))
     log_method("RESP STATUS: %s %s", resp.status, resp.reason)
-    log_method("RESP HEADERS: %s", resp.getheaders())
+    log_method("RESP HEADERS: %s", scrub_headers(resp.getheaders()))
     if body:
         log_method("RESP BODY: %s", body)
 
@@ -386,11 +445,11 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
     parsed, conn = http_connection(url, cacert=cacert, insecure=insecure,
                                    timeout=timeout)
     method = 'GET'
-    conn.request(method, parsed.path, '',
-                 {'X-Auth-User': user, 'X-Auth-Key': key})
+    headers = {'X-Auth-User': user, 'X-Auth-Key': key}
+    conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log((url, method,), {}, resp, body)
+    http_log((url, method,), headers, resp, body)
     url = resp.getheader('x-storage-url')
 
     # There is a side-effect on current Rackspace 1.0 server where a
