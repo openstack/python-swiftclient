@@ -8,6 +8,8 @@ Developer Documentation
     :maxdepth: 2
 
     apis
+    cli
+    sdk
 
 Code-Generated Documentation
 ============================
