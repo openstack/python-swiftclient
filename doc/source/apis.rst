@@ -1,6 +1,6 @@
-============
-Introduction
-============
+======================
+python-swiftclient API
+======================
 
 The python-swiftclient includes two levels of API; a low level client API that
 provides simple python wrappers around the various authentication mechanisms
