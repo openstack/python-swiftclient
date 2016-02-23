@@ -746,6 +746,16 @@ class TestGetContainer(MockHttpTest):
             }),
         ])
 
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(
+            200, query_string="format=json&hello=20", body=b'[]')
+        c.get_container('http://www.test.com', 'asdf', 'asdf',
+                        query_string="hello=20")
+        self.assertRequests([
+            ('GET', '/asdf?format=json&hello=20', '', {
+                'x-auth-token': 'asdf'}),
+        ])
+
 
 class TestHeadContainer(MockHttpTest):
 
@@ -805,6 +815,17 @@ class TestPutContainer(MockHttpTest):
                 'content-length': '0'}),
         ])
 
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(200,
+                                                      query_string="hello=20")
+        c.put_container('http://www.test.com', 'asdf', 'asdf',
+                        query_string="hello=20")
+        for req in self.iter_request_log():
+            self.assertEqual(req['method'], 'PUT')
+            self.assertEqual(req['parsed_path'].path, '/asdf')
+            self.assertEqual(req['parsed_path'].query, 'hello=20')
+            self.assertEqual(req['headers']['x-auth-token'], 'asdf')
+
 
 class TestDeleteContainer(MockHttpTest):
 
@@ -815,6 +836,16 @@ class TestDeleteContainer(MockHttpTest):
         self.assertRequests([
             ('DELETE', '/container', '', {
                 'x-auth-token': 'token'}),
+        ])
+
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(200,
+                                                      query_string="hello=20")
+        c.delete_container('http://www.test.com', 'token', 'container',
+                           query_string="hello=20")
+        self.assertRequests([
+            ('DELETE', 'http://www.test.com/container?hello=20', '', {
+                'x-auth-token': 'token'})
         ])
 
 
