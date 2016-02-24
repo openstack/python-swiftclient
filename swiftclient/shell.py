@@ -92,17 +92,33 @@ def st_delete(parser, args, output_manager):
     parser.add_option(
         '', '--object-threads', type=int,
         default=10, help='Number of threads to use for deleting objects. '
-        'Default is 10.')
+        'Its value must be a positive integer. Default is 10.')
     parser.add_option(
         '', '--container-threads', type=int,
         default=10, help='Number of threads to use for deleting containers. '
-        'Default is 10.')
+        'Its value must be a positive integer. Default is 10.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (not args and not options.yes_all) or (args and options.yes_all):
         output_manager.error('Usage: %s delete %s\n%s',
                              BASENAME, st_delete_options,
                              st_delete_help)
+        return
+
+    if options.object_threads <= 0:
+        output_manager.error(
+            'ERROR: option --object-threads should be a positive integer.'
+            '\n\nUsage: %s delete %s\n%s',
+            BASENAME, st_delete_options,
+            st_delete_help)
+        return
+
+    if options.container_threads <= 0:
+        output_manager.error(
+            'ERROR: option --container-threads should be a positive integer.'
+            '\n\nUsage: %s delete %s\n%s',
+            BASENAME, st_delete_options,
+            st_delete_help)
         return
 
     _opts = vars(options)
@@ -272,11 +288,11 @@ def st_download(parser, args, output_manager):
     parser.add_option(
         '', '--object-threads', type=int,
         default=10, help='Number of threads to use for downloading objects. '
-        'Default is 10.')
+        'Its value must be a positive integer. Default is 10.')
     parser.add_option(
         '', '--container-threads', type=int, default=10,
         help='Number of threads to use for downloading containers. '
-        'Default is 10.')
+        'Its value must be a positive integer. Default is 10.')
     parser.add_option(
         '', '--no-download', action='store_true',
         default=False,
@@ -316,6 +332,20 @@ def st_download(parser, args, output_manager):
     if (not args and not options.yes_all) or (args and options.yes_all):
         output_manager.error('Usage: %s download %s\n%s', BASENAME,
                              st_download_options, st_download_help)
+        return
+
+    if options.object_threads <= 0:
+        output_manager.error(
+            'ERROR: option --object-threads should be a positive integer.\n\n'
+            'Usage: %s download %s\n%s', BASENAME,
+            st_download_options, st_download_help)
+        return
+
+    if options.container_threads <= 0:
+        output_manager.error(
+            'ERROR: option --container-threads should be a positive integer.'
+            '\n\nUsage: %s download %s\n%s', BASENAME,
+            st_download_options, st_download_help)
         return
 
     _opts = vars(options)
@@ -803,11 +833,11 @@ def st_upload(parser, args, output_manager):
     parser.add_option(
         '', '--object-threads', type=int, default=10,
         help='Number of threads to use for uploading full objects. '
-        'Default is 10.')
+        'Its value must be a positive integer. Default is 10.')
     parser.add_option(
         '', '--segment-threads', type=int, default=10,
         help='Number of threads to use for uploading object segments. '
-        'Default is 10.')
+        'Its value must be a positive integer. Default is 10.')
     parser.add_option(
         '-H', '--header', action='append', dest='header',
         default=[], help='Set request headers with the syntax header:value. '
@@ -859,6 +889,20 @@ def st_upload(parser, args, output_manager):
         if int(options.segment_size) <= 0:
             output_manager.error("segment-size should be positive")
             return
+
+    if options.object_threads <= 0:
+        output_manager.error(
+            'ERROR: option --object-threads should be a positive integer.'
+            '\n\nUsage: %s upload %s\n%s', BASENAME, st_upload_options,
+            st_upload_help)
+        return
+
+    if options.segment_threads <= 0:
+        output_manager.error(
+            'ERROR: option --segment-threads should be a positive integer.'
+            '\n\nUsage: %s upload %s\n%s', BASENAME, st_upload_options,
+            st_upload_help)
+        return
 
     _opts = vars(options)
     _opts['object_uu_threads'] = options.object_threads
