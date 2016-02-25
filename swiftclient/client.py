@@ -103,7 +103,7 @@ def safe_value(name, value):
 
     :param name: Header name
     :param value: Header value
-    :return: Safe (header, value) pair
+    :return: Safe header value
     """
     if name.lower() in LOGGER_SENSITIVE_HEADERS:
         prefix_length = logger_settings.get('reveal_sensitive_prefix', 16)

@@ -2191,23 +2191,26 @@ class TestLogging(MockHttpTest):
     def test_redact_token(self):
         with mock.patch('swiftclient.client.logger.debug') as mock_log:
             token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
+            token_encoded = token_value.encode('utf8')
             unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
                                    u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
                                    u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
+            unicode_token_encoded = unicode_token_value.encode('utf8')
             set_cookie_value = 'X-Auth-Token=%s' % token_value
+            set_cookie_encoded = set_cookie_value.encode('utf8')
             c.http_log(
                 ['GET'],
                 {'headers': {
-                    'X-Auth-Token': token_value,
-                    'X-Storage-Token': unicode_token_value
+                    'X-Auth-Token': token_encoded,
+                    'X-Storage-Token': unicode_token_encoded
                 }},
                 MockHttpResponse(
                     status=200,
                     headers={
-                        'X-Auth-Token': token_value,
-                        'X-Storage-Token': unicode_token_value,
+                        'X-Auth-Token': token_encoded,
+                        'X-Storage-Token': unicode_token_encoded,
                         'Etag': b'mock_etag',
-                        'Set-Cookie': set_cookie_value
+                        'Set-Cookie': set_cookie_encoded
                     }
                 ),
                 ''
@@ -2230,21 +2233,23 @@ class TestLogging(MockHttpTest):
     def test_show_token(self):
         with mock.patch('swiftclient.client.logger.debug') as mock_log:
             token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
+            token_encoded = token_value.encode('utf8')
             unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
                                    u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
                                    u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
             c.logger_settings['redact_sensitive_headers'] = False
+            unicode_token_encoded = unicode_token_value.encode('utf8')
             c.http_log(
                 ['GET'],
                 {'headers': {
-                    'X-Auth-Token': token_value,
-                    'X-Storage-Token': unicode_token_value
+                    'X-Auth-Token': token_encoded,
+                    'X-Storage-Token': unicode_token_encoded
                 }},
                 MockHttpResponse(
                     status=200,
                     headers=[
-                        ('X-Auth-Token', token_value),
-                        ('X-Storage-Token', unicode_token_value),
+                        ('X-Auth-Token', token_encoded),
+                        ('X-Storage-Token', unicode_token_encoded),
                         ('Etag', b'mock_etag')
                     ]
                 ),
