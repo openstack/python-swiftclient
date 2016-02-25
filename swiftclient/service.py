@@ -1004,7 +1004,7 @@ class SwiftService(object):
                         raise
                     raise SwiftError('Account not found', exc=err)
 
-        elif not objects:
+        elif objects is None:
             if '/' in container:
                 raise SwiftError('\'/\' in container name',
                                  container=container)
