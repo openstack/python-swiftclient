@@ -33,6 +33,7 @@ from swiftclient.utils import config_true_value, generate_temp_url, prt_bytes
 from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
+from swiftclient.client import logger_settings as client_logger_settings
 from swiftclient.service import SwiftService, SwiftError, \
     SwiftUploadObject, get_conn
 from swiftclient.command_helpers import print_account_stats, \
@@ -1107,6 +1108,7 @@ def parse_args(parser, args, enforce_requires=True):
         if options.debug:
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger('iso8601').setLevel(logging.WARNING)
+            client_logger_settings['redact_sensitive_tokens'] = False
         elif options.info:
             logging.basicConfig(level=logging.INFO)
 
