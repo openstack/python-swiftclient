@@ -2233,7 +2233,7 @@ class TestLogging(MockHttpTest):
             unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
                                    u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
                                    u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
-            c.logger_settings['redact_sensitive_tokens'] = False
+            c.logger_settings['redact_sensitive_headers'] = False
             c.http_log(
                 ['GET'],
                 {'headers': {

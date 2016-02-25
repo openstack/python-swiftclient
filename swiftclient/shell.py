@@ -1108,7 +1108,7 @@ def parse_args(parser, args, enforce_requires=True):
         if options.debug:
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger('iso8601').setLevel(logging.WARNING)
-            client_logger_settings['redact_sensitive_tokens'] = False
+            client_logger_settings['redact_sensitive_headers'] = False
         elif options.info:
             logging.basicConfig(level=logging.INFO)
 
