@@ -169,6 +169,8 @@ def http_log(args, kwargs, resp, body):
 
 
 def parse_header_string(data):
+    if not isinstance(data, (six.text_type, six.binary_type)):
+        data = str(data)
     if six.PY2:
         if isinstance(data, six.text_type):
             # Under Python2 requests only returns binary_type, but if we get
