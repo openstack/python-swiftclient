@@ -72,13 +72,18 @@ if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
 logger = logging.getLogger("swiftclient")
 logger.addHandler(NullHandler())
 
-#: Default behaviour is to redact tokens, showing only the initial 16 chars.
-#: To disable, set the value of 'redact_sensitive_tokens' to False.
-#: When token redaction is enabled 'reveal_sensitive_prefix' configures the
-#: maximum length of any sensitive token data sent to the logs (if the token
-#: is less than 32 chars long then int(len(token)/2) chars will be logged,
+#: Default behaviour is to redact header values known to contain secrets,
+#: such as ``X-Auth-Key`` and ``X-Auth-Token``. Up to the first 16 chars
+#: may be revealed.
+#:
+#: To disable, set the value of ``redact_sensitive_headers`` to ``False``.
+#:
+#: When header redaction is enabled, ``reveal_sensitive_prefix`` configures the
+#: maximum length of any sensitive header data sent to the logs. If the header
+#: is less than twice this length, only ``int(len(value)/2)`` chars will be
+#: logged; if it is less than 15 chars long, even less will be logged.
 logger_settings = {
-    'redact_sensitive_tokens': True,
+    'redact_sensitive_headers': True,
     'reveal_sensitive_prefix': 16
 }
 #: A list of sensitive headers to redact in logs. Note that when extending this
@@ -124,7 +129,7 @@ def scrub_headers(headers):
         (parse_header_string(key), parse_header_string(val))
         for (key, val) in headers
     ]
-    if not logger_settings.get('redact_sensitive_tokens', True):
+    if not logger_settings.get('redact_sensitive_headers', True):
         return dict(headers)
     if logger_settings.get('reveal_sensitive_prefix', 16) < 0:
         logger_settings['reveal_sensitive_prefix'] = 16
