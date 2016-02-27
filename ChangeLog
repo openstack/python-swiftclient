@@ -1,3 +1,46 @@
+2.8.0
+-----
+
+* Python 2.6 support has been removed. Also, Python 3.3 gate testing has
+  been removed. Support for Python 3.3 is only best-effort. Currently
+  supported and tested versions of Python are Python 2.7 and Python 3.4.
+
+* Do not reveal sensitive headers in swiftclient log messages by default.
+  This is controlled by the client.logger_settings dictionary. Setting the
+  `redact_sensitive_headers` key to False prevents the information hiding. If
+  the value is True (the default), the `reveal_sensitive_prefix` controls
+  the maximum length of any sensitive header value logged. The default is
+  16 to match the default in Swift.
+
+* Object downloads that fail partway through will now retry with a Range
+  request to read the rest of the object.
+
+* Object uploads will be retried if the source supports seek/tell or has a
+  reset() method.
+
+* Delete requests will use the cluster's bulk delete feature, if available,
+  for requests that would require a lot of individual deletes.
+
+* The delete CLI option now accepts a --prefix option to delete objects that
+  start with the given prefix (similar to the same-named option for list).
+
+* Add support for the auth-version to be specified using
+  --os-identity-api-version or OS_IDENTITY_API_VERSION
+  for compatibility with other openstack client command
+  line options.
+
+* --debug and --info command-line options now work anywhere in the command.
+
+* Objects can now be uploaded to pseudo-directories with the CLI.
+
+* Fixed an issue with uploading a large object that includes a unicode path.
+
+* swiftclient can now auth against Keystone using only a project (tenant)
+  and a token. This is useful when the client doesn't have access to the
+  password for a user but otherwise has been granted access.
+
+* Various other minor bug fixes and improvements.
+
 2.7.0
 -----
 
