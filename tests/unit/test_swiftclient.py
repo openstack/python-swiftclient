@@ -1203,13 +1203,16 @@ class TestPostObject(MockHttpTest):
 
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
+        delete_at = 2.1  # not str! we don't know what other devs will use!
         args = ('http://www.test.com', 'token', 'container', 'obj',
-                {'X-Object-Meta-Test': 'mymeta'})
+                {'X-Object-Meta-Test': 'mymeta',
+                 'X-Delete-At': delete_at})
         c.post_object(*args)
         self.assertRequests([
             ('POST', '/container/obj', '', {
                 'x-auth-token': 'token',
-                'X-Object-Meta-Test': 'mymeta'}),
+                'X-Object-Meta-Test': 'mymeta',
+                'X-Delete-At': delete_at}),
         ])
 
     def test_unicode_ok(self):
