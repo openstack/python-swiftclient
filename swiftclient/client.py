@@ -835,7 +835,7 @@ def get_container(url, token, container, marker=None, limit=None,
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
                            delimiter, end_marker, path, http_conn,
-                           service_token, headers=headers)
+                           service_token=service_token, headers=headers)
         listing = rv[1]
         while listing:
             if not delimiter:
@@ -844,7 +844,7 @@ def get_container(url, token, container, marker=None, limit=None,
                 marker = listing[-1].get('name', listing[-1].get('subdir'))
             listing = get_container(url, token, container, marker, limit,
                                     prefix, delimiter, end_marker, path,
-                                    http_conn, service_token,
+                                    http_conn, service_token=service_token,
                                     headers=headers)[1]
             if listing:
                 rv[1].extend(listing)

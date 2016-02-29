@@ -2462,6 +2462,28 @@ class TestServiceToken(MockHttpTest):
                              actual['full_path'])
         self.assertEqual(conn.attempts, 1)
 
+    def test_service_token_get_container_full_listing(self):
+        # verify service token is sent with each request for a full listing
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(200, 200)):
+            with mock.patch('swiftclient.client.parse_api_response') as resp:
+                resp.side_effect = ([{"name": "obj1"}], [])
+                conn = self.get_connection()
+                conn.get_container('container1', full_listing=True)
+        self.assertEqual(2, len(self.request_log), self.request_log)
+        expected_urls = iter((
+            'http://storage_url.com/container1?format=json',
+            'http://storage_url.com/container1?format=json&marker=obj1'
+        ))
+        for actual in self.iter_request_log():
+            self.assertEqual('GET', actual['method'])
+            actual_hdrs = actual['headers']
+            self.assertEqual('stoken', actual_hdrs.get('X-Service-Token'))
+            self.assertEqual('token', actual_hdrs['X-Auth-Token'])
+            self.assertEqual(next(expected_urls),
+                             actual['full_path'])
+        self.assertEqual(conn.attempts, 1)
+
     def test_service_token_head_container(self):
         with mock.patch('swiftclient.client.http_connection',
                         self.fake_http_connection(200)):
