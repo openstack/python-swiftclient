@@ -2,17 +2,17 @@
 python-swiftclient API
 ======================
 
-The python-swiftclient includes two levels of API; a low level client API that
-provides simple python wrappers around the various authentication mechanisms
-and the individual HTTP requests, and a high level service API that provides
+The python-swiftclient includes two levels of API. A low level client API that
+provides simple python wrappers around the various authentication mechanisms,
+the individual HTTP requests, and a high level service API that provides
 methods for performing common operations in parallel on a thread pool.
 
 This document aims to provide guidance for choosing between these APIs and
 examples of usage for the service API.
 
-------------------------
+
 Important Considerations
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 This section covers some important considerations, helpful hints, and things
 to avoid when integrating an object store into your workflow.
@@ -20,27 +20,30 @@ to avoid when integrating an object store into your workflow.
 An Object Store is not a filesystem
 -----------------------------------
 
-It cannot be stressed enough that your usage of the object store should reflect
-the proper use case, and not treat the storage like a filesystem. There are 2
-main restrictions to bear in mind here when designing your use of the object
+.. important::
+
+   It cannot be stressed enough that your usage of the object store should reflect
+   the use case, and not treat the storage like a filesystem.
+
+There are 2 main restrictions to bear in mind here when designing your use of the object
 store:
 
-    * Objects cannot be renamed due to the way in which objects are stored and
-      references by the object store. This usually requires multiple copies of
-      the data to be moved between physical storage devices.
-      As a result, a move operation is not provided. If the user wants to move an
-      object they must re-upload to the new location and delete the
-      original.
-    * Objects cannot be modified. Objects are stored in multiple locations and are
-      checked for integrity based on the ``MD5 sum`` calculated during upload.
-      Object creation is a 1-shot event, and in order to modify the contents of an
-      object the entire new contents must be re-uploaded. In certain special cases
-      it is possible to work around this restriction using large objects, but no
-      general file-like access is available to modify a stored object.
+#. Objects cannot be renamed due to the way in which objects are stored and
+   references by the object store. This usually requires multiple copies of
+   the data to be moved between physical storage devices.
+   As a result, a move operation is not provided. If the user wants to move an
+   object they must re-upload to the new location and delete the
+   original.
+#. Objects cannot be modified. Objects are stored in multiple locations and are
+   checked for integrity based on the ``MD5 sum`` calculated during upload.
+   Object creation is a 1-shot event, and in order to modify the contents of an
+   object the entire new contents must be re-uploaded. In certain special cases
+   it is possible to work around this restriction using large objects, but no
+   general file-like access is available to modify a stored object.
 
-------------------------------
+
 The swiftclient.Connection API
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A low level API that provides methods for authentication and methods that
 correspond to the individual REST API calls described in the swift
@@ -48,12 +51,12 @@ documentation.
 
 For usage details see the client docs: :mod:`swiftclient.client`.
 
---------------------------------
+
 The swiftclient.SwiftService API
---------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A higher level API aimed at allowing developers an easy way to perform multiple
-operations asynchronously using a configurable thread pool. Docs for each
+operations asynchronously using a configurable thread pool. Documentation for each
 service method call can be found here: :mod:`swiftclient.service`.
 
 Configuration
@@ -74,7 +77,7 @@ passed to the ``SwiftService`` during initialisation. The options available
 in this dictionary are described below, along with their defaults:
 
 Options
-~~~~~~~
+^^^^^^^
 
     ``retries``: ``5``
         The number of times that the library should attempt to retry HTTP
@@ -190,14 +193,14 @@ for an optional dictionary to override those specified at init time, and the
 appropriate docstrings show which options modify each method's behaviour.
 
 Authentication
---------------
+~~~~~~~~~~~~~~
 
 This section covers the various options for authenticating with a swift
 object store. The combinations of options required for each authentication
 version are detailed below.
 
 Version 1.0 Auth
-~~~~~~~~~~~~~~~~
+----------------
 
     ``auth_version``: ``environ.get('ST_AUTH_VERSION')``
 
@@ -208,8 +211,8 @@ Version 1.0 Auth
     ``key``: ``environ.get('ST_KEY')``
 
 
-Version 2.0 & 3.0 Auth
-~~~~~~~~~~~~~~~~~~~~~~
+Version 2.0 and 3.0 Auth
+------------------------
 
     ``auth_version``: ``environ.get('ST_AUTH_VERSION')``
 
@@ -233,7 +236,7 @@ having options from different auth versions can cause unexpected behaviour.
      authorization fails.
 
 Operation Return Values
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Each operation provided by the service API may raise a ``SwiftError`` or
 ``ClientException`` for any call that fails completely (or a call which
@@ -291,7 +294,7 @@ All the possible ``action`` values are detailed below:
     ]
 
 Stat
-----
+~~~~
 
 Stat can be called against an account, a container, or a list of objects to
 get account stats, container stats or information about the given objects. In
@@ -368,7 +371,7 @@ operation was not successful, and will include the keys below:
     }
 
 Example
-~~~~~~~
+-------
 
 The code below demonstrates the use of ``stat`` to retrieve the headers for a
 given list of objects in a container using 20 threads. The code creates a
@@ -396,7 +399,7 @@ mapping from object name to headers.
                 )
 
 List
-----
+~~~~
 
 List can be called against an account or a container to retrieve the containers
 or objects contained within them. Each call returns an iterator that returns
@@ -453,7 +456,7 @@ dictionary as described below:
     }
 
 Example
-~~~~~~~
+-------
 
 The code below demonstrates the use of ``list`` to list all items in a
 container that are over 10MiB in size:
@@ -482,7 +485,7 @@ container that are over 10MiB in size:
             output_manager.error(e.value)
 
 Post
-----
+~~~~
 
 Post can be called against an account, container or list of objects in order to
 update the metadata attached to the given items. Each element of the object list
@@ -494,7 +497,7 @@ an iterator over the results generated for each object post is returned. If the
 given container or account does not exist, the ``post`` method will raise a
 ``SwiftError``.
 
-When a string is given for the object name, the options
+.. When a string is given for the object name, the options
 
 Successful metadata update results are dictionaries as described below:
 
@@ -510,34 +513,31 @@ Successful metadata update results are dictionaries as described below:
     }
 
 .. note::
+
     Updating user metadata keys will not only add any specified keys, but
     will also remove user metadata that has previously been set. This means
     that each time user metadata is updated, the complete set of desired
     key-value pairs must be specified.
 
-Example
-~~~~~~~
 
-.. Do we want to hide this section until it is complete?
 
-TBD
+.. Example
+.. -------
 
-Download
---------
+.. TBD
 
-.. Do we want to hide this section until it is complete?
+.. Download
+.. ~~~~~~~~
 
-TBD
+.. TBD
 
-Example
-~~~~~~~
+.. Example
+.. -------
 
-.. Do we want to hide this section until it is complete?
-
-TBD
+.. TBD
 
 Upload
-------
+~~~~~~
 
 Upload is always called against an account and container and with a list of
 objects to upload. Each element of the object list may be a plain string
@@ -622,7 +622,7 @@ below:
     }
 
 Example
-~~~~~~~
+-------
 
 The code below demonstrates the use of ``upload`` to upload all files and
 folders in ``/tmp``, and renaming each object by replacing ``/tmp`` in the
@@ -689,31 +689,30 @@ object or directory marker names with ``temporary-objects``:
         except SwiftError as e:
             out_manager.error(e.value)
 
-Delete
-------
+.. Delete
+.. ~~~~~~
+.. Do we want to hide this section until it is complete?
+
+.. TBD
+
+.. Example
+.. -------
 
 .. Do we want to hide this section until it is complete?
 
-TBD
+.. TBD
 
-Example
-~~~~~~~
-
-.. Do we want to hide this section until it is complete?
-
-TBD
-
-Capabilities
-------------
+.. Capabilities
+.. ~~~~~~~~~~~~
 
 .. Do we want to hide this section until it is complete?
 
-TBD
+.. TBD
 
-Example
-~~~~~~~
+.. Example
+.. -------
 
 .. Do we want to hide this section until it is complete?
 
-TBD
+.. TBD
 
