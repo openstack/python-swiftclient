@@ -15,13 +15,13 @@
 
 import mock
 from six import StringIO
-import testtools
+import unittest
 
 from swiftclient import command_helpers as h
 from swiftclient.multithreading import OutputManager
 
 
-class TestStatHelpers(testtools.TestCase):
+class TestStatHelpers(unittest.TestCase):
 
     def setUp(self):
         super(TestStatHelpers, self).setUp()

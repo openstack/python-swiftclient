@@ -18,7 +18,6 @@ from requests import RequestException
 from requests.structures import CaseInsensitiveDict
 from time import sleep
 import unittest
-import testtools
 import mock
 import six
 from six.moves import reload_module
@@ -189,7 +188,7 @@ def fake_http_connect(*code_iter, **kwargs):
     return connect
 
 
-class MockHttpTest(testtools.TestCase):
+class MockHttpTest(unittest.TestCase):
 
     def setUp(self):
         super(MockHttpTest, self).setUp()

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
-import testtools
+import unittest
 import threading
 import six
 
@@ -25,7 +25,7 @@ from swiftclient import multithreading as mt
 from .utils import CaptureStream
 
 
-class ThreadTestCase(testtools.TestCase):
+class ThreadTestCase(unittest.TestCase):
     def setUp(self):
         super(ThreadTestCase, self).setUp()
         self.got_items = Queue()
@@ -163,7 +163,7 @@ class TestConnectionThreadPoolExecutor(ThreadTestCase):
             )
 
 
-class TestOutputManager(testtools.TestCase):
+class TestOutputManager(unittest.TestCase):
 
     def test_instantiation(self):
         output_manager = mt.OutputManager()
