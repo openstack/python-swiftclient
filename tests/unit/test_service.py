@@ -1672,6 +1672,22 @@ class TestServiceDownload(_TestServiceBase):
         self.assertEqual(resp['object'], 'test')
         self.assertEqual(resp['path'], 'test')
 
+    @mock.patch('swiftclient.service.interruptable_as_completed')
+    @mock.patch('swiftclient.service.SwiftService._download_container')
+    @mock.patch('swiftclient.service.SwiftService._download_object_job')
+    def test_download_with_objects_empty(self, mock_down_obj,
+                                         mock_down_cont, mock_as_comp):
+        fake_future = Future()
+        fake_future.set_result(1)
+        mock_as_comp.return_value = [fake_future]
+        service = SwiftService()
+        next(service.download('c', [], self.opts), None)
+        mock_down_obj.assert_not_called()
+        mock_down_cont.assert_not_called()
+
+        next(service.download('c', options=self.opts), None)
+        self.assertEqual(True, mock_down_cont.called)
+
     def test_download_with_output_dir(self):
         service = SwiftService()
         with mock.patch('swiftclient.service.Connection') as mock_conn:
