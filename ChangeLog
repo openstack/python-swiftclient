@@ -1,8 +1,7 @@
-2.8.0
+3.0.0
 -----
 
-* Python 2.6 support has been removed. Also, Python 3.3 gate testing has
-  been removed. Support for Python 3.3 is only best-effort. Currently
+* Python 2.6 and Python 3.3 support has been removed. Currently
   supported and tested versions of Python are Python 2.7 and Python 3.4.
 
 * Do not reveal sensitive headers in swiftclient log messages by default.
