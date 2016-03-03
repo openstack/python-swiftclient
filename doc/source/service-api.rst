@@ -1,63 +1,93 @@
-======================
-python-swiftclient API
-======================
-
-The python-swiftclient includes two levels of API. A low level client API that
-provides simple python wrappers around the various authentication mechanisms,
-the individual HTTP requests, and a high level service API that provides
-methods for performing common operations in parallel on a thread pool.
-
-This document aims to provide guidance for choosing between these APIs and
-examples of usage for the service API.
-
-
-Important Considerations
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-This section covers some important considerations, helpful hints, and things
-to avoid when integrating an object store into your workflow.
-
-An Object Store is not a filesystem
------------------------------------
-
-.. important::
-
-   It cannot be stressed enough that your usage of the object store should reflect
-   the use case, and not treat the storage like a filesystem.
-
-There are 2 main restrictions to bear in mind here when designing your use of the object
-store:
-
-#. Objects cannot be renamed due to the way in which objects are stored and
-   references by the object store. This usually requires multiple copies of
-   the data to be moved between physical storage devices.
-   As a result, a move operation is not provided. If the user wants to move an
-   object they must re-upload to the new location and delete the
-   original.
-#. Objects cannot be modified. Objects are stored in multiple locations and are
-   checked for integrity based on the ``MD5 sum`` calculated during upload.
-   Object creation is a 1-shot event, and in order to modify the contents of an
-   object the entire new contents must be re-uploaded. In certain special cases
-   it is possible to work around this restriction using large objects, but no
-   general file-like access is available to modify a stored object.
-
-
-The swiftclient.Connection API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A low level API that provides methods for authentication and methods that
-correspond to the individual REST API calls described in the swift
-documentation.
-
-For usage details see the client docs: :mod:`swiftclient.client`.
-
-
+================================
 The swiftclient.SwiftService API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+================================
 
-A higher level API aimed at allowing developers an easy way to perform multiple
-operations asynchronously using a configurable thread pool. Documentation for each
-service method call can be found here: :mod:`swiftclient.service`.
+A higher-level API aimed at allowing developers an easy way to perform multiple
+operations asynchronously using a configurable thread pool. Documentation for
+each service method call can be found here: :mod:`swiftclient.service`.
+
+Authentication
+--------------
+
+This section covers the various options for authenticating with a swift
+object store. The combinations of options required for each authentication
+version are detailed below. Once again, these are just a subset of those that
+can be used to successfully authenticate, but they are the most common and
+recommended.
+
+The relevant authentication options are presented as python dictionaries that
+should be added to any other options you are supplying to your ``SwiftService``
+instance. As indicated in the python code, you can also set these options as
+environment variables that will be loaded automatically if the relevant option
+is not specified.
+
+The ``SwiftService`` authentication attempts to automatically select
+the auth version based on the combination of options specified, but
+supplying options from multiple different auth versions can cause unexpected
+behaviour.
+
+  .. note::
+
+     Leftover environment variables are a common source of confusion when
+     authorization fails.
+
+Keystone V3
+~~~~~~~~~~~
+
+.. code-block:: python
+
+    {
+        ...
+        "auth_version": environ.get('ST_AUTH_VERSION'),  # Should be '3'
+        "os_username": environ.get('OS_USERNAME'),
+        "os_password": environ.get('OS_PASSWORD'),
+        "os_project_name": environ.get('OS_PROJECT_NAME'),
+        "os_project_domain_name": environ.get('OS_PROJECT_DOMAIN_NAME'),
+        "os_auth_url": environ.get('OS_AUTH_URL'),
+        ...
+    }
+
+.. code-block:: python
+
+    {
+        ...
+        "auth_version": environ.get('ST_AUTH_VERSION'),  # Should be '3'
+        "os_username": environ.get('OS_USERNAME'),
+        "os_password": environ.get('OS_PASSWORD'),
+        "os_project_id": environ.get('OS_PROJECT_ID'),
+        "os_project_domain_id": environ.get('OS_PROJECT_DOMAIN_ID'),
+        "os_auth_url": environ.get('OS_AUTH_URL'),
+        ...
+    }
+
+Keystone V2
+~~~~~~~~~~~
+
+.. code-block:: python
+
+    {
+        ...
+        "auth_version": environ.get('ST_AUTH_VERSION'),  # Should be '2.0'
+        "os_username": environ.get('OS_USERNAME'),
+        "os_password": environ.get('OS_PASSWORD'),
+        "os_tenant_name": environ.get('OS_TENANT_NAME'),
+        "os_auth_url": environ.get('OS_AUTH_URL'),
+        ...
+    }
+
+Legacy Auth
+~~~~~~~~~~~
+
+.. code-block:: python
+
+    {
+        ...
+        "auth_version": environ.get('ST_AUTH_VERSION'),  # Should be '1.0'
+        "auth": environ.get('ST_AUTH'),
+        "user": environ.get('ST_USER'),
+        "key": environ.get('ST_KEY'),
+        ...
+    }
 
 Configuration
 -------------
@@ -77,7 +107,7 @@ passed to the ``SwiftService`` during initialisation. The options available
 in this dictionary are described below, along with their defaults:
 
 Options
-^^^^^^^
+~~~~~~~
 
     ``retries``: ``5``
         The number of times that the library should attempt to retry HTTP
@@ -192,51 +222,8 @@ source code for ``python-swiftclient``. Each ``SwiftService`` method also allows
 for an optional dictionary to override those specified at init time, and the
 appropriate docstrings show which options modify each method's behaviour.
 
-Authentication
-~~~~~~~~~~~~~~
-
-This section covers the various options for authenticating with a swift
-object store. The combinations of options required for each authentication
-version are detailed below.
-
-Version 1.0 Auth
-----------------
-
-    ``auth_version``: ``environ.get('ST_AUTH_VERSION')``
-
-    ``auth``: ``environ.get('ST_AUTH')``
-
-    ``user``: ``environ.get('ST_USER')``
-
-    ``key``: ``environ.get('ST_KEY')``
-
-
-Version 2.0 and 3.0 Auth
-------------------------
-
-    ``auth_version``: ``environ.get('ST_AUTH_VERSION')``
-
-    ``os_username``: ``environ.get('OS_USERNAME')``
-
-    ``os_password``: ``environ.get('OS_PASSWORD')``
-
-    ``os_tenant_name``: ``environ.get('OS_TENANT_NAME')``
-
-    ``os_auth_url``: ``environ.get('OS_AUTH_URL')``
-
-As is evident from the default values, if these options are not set explicitly
-in the options dictionary, then they will default to the values of the given
-environment variables. The ``SwiftService`` authentication automatically selects
-the auth version based on the combination of options specified, but
-having options from different auth versions can cause unexpected behaviour.
-
-  .. note::
-
-     Leftover environment variables are a common source of confusion when
-     authorization fails.
-
-Operation Return Values
-~~~~~~~~~~~~~~~~~~~~~~~
+Available Operations
+--------------------
 
 Each operation provided by the service API may raise a ``SwiftError`` or
 ``ClientException`` for any call that fails completely (or a call which
@@ -371,32 +358,14 @@ operation was not successful, and will include the keys below:
     }
 
 Example
--------
+^^^^^^^
 
 The code below demonstrates the use of ``stat`` to retrieve the headers for a
 given list of objects in a container using 20 threads. The code creates a
-mapping from object name to headers.
+mapping from object name to headers which is then pretty printed to the log.
 
-.. code-block:: python
-
-    import logging
-
-    from swiftclient.service import SwiftService
-
-    logger = logging.getLogger()
-    _opts = {'object_dd_threads': 20}
-    with SwiftService(options=_opts) as swift:
-        container = 'container1'
-        objects = [ 'object_%s' % n for n in range(0,100) ]
-        header_data = {}
-        stats_it = swift.stat(container=container, objects=objects)
-        for stat_res in stats_it:
-            if stat_res['success']:
-                header_data[stat_res['object']] = stat_res['headers']
-            else:
-                logger.error(
-                    'Failed to retrieve stats for %s' % stat_res['object']
-                )
+.. literalinclude:: ../../examples/stat.py
+   :language: python
 
 List
 ~~~~
@@ -456,55 +425,38 @@ dictionary as described below:
     }
 
 Example
--------
+^^^^^^^
 
 The code below demonstrates the use of ``list`` to list all items in a
 container that are over 10MiB in size:
 
-.. code-block:: python
-
-    container = 'example_container'
-    minimum_size = 10*1024**2
-    with SwiftService() as swift:
-        try:
-            stats_parts_gen = swift.list(container=container)
-            for stats in stats_parts_gen:
-                if stats["success"]:
-                    for item in stats["listing"]:
-                        i_size = int(item["bytes"])
-                        if i_size > minimum_size:
-                            i_name = item["name"]
-                            i_etag = item["hash"]
-                            print(
-                                "%s [size: %s] [etag: %s]" %
-                                (i_name, i_size, i_etag)
-                            )
-                else:
-                    raise stats["error"]
-        except SwiftError as e:
-            output_manager.error(e.value)
+.. literalinclude:: ../../examples/list.py
+   :language: python
 
 Post
 ~~~~
 
 Post can be called against an account, container or list of objects in order to
-update the metadata attached to the given items. Each element of the object list
-may be a plain string of the object name, or a ``SwiftPostObject`` that
-allows finer control over the options applied to each of the individual post
-operations. In the first two cases a single dictionary is returned containing the
-results of the operation, and in the case of a list of objects being supplied,
-an iterator over the results generated for each object post is returned. If the
-given container or account does not exist, the ``post`` method will raise a
-``SwiftError``.
+update the metadata attached to the given items. In the first two cases a single
+dictionary is returned containing the results of the operation, and in the case
+of a list of objects being supplied, an iterator over the results generated for
+each object post is returned.
 
-.. When a string is given for the object name, the options
+Each element of the object list may be a plain string of the object name, or a
+``SwiftPostObject`` that allows finer control over the options and metadata
+applied to each of the individual post operations. When a string is given for
+the object name, the options and metadata applied are a combination of those
+supplied to the call to ``post()`` and the defaults of the ``SwiftService``
+object.
 
-Successful metadata update results are dictionaries as described below:
+If the given container or account does not exist, the ``post`` method will
+raise a ``SwiftError``. Successful metadata update results are dictionaries as
+described below:
 
 .. code-block:: python
 
     {
-        'action': <'post_account'|<'post_container'>|'post_object'>,
+        'action': <'post_account'|'post_container'|'post_object'>,
         'success': True,
         'container': <container>,
         'object': <object>,
@@ -513,28 +465,87 @@ Successful metadata update results are dictionaries as described below:
     }
 
 .. note::
-
     Updating user metadata keys will not only add any specified keys, but
     will also remove user metadata that has previously been set. This means
     that each time user metadata is updated, the complete set of desired
     key-value pairs must be specified.
 
+Example
+^^^^^^^
 
+The code below demonstrates the use of ``post`` to set an archive folder in a
+given container to expire after a 24 hour delay:
 
-.. Example
-.. -------
+.. literalinclude:: ../../examples/post.py
+   :language: python
 
-.. TBD
+Download
+~~~~~~~~
 
-.. Download
-.. ~~~~~~~~
+Download can be called against an entire account, a single container, or a list
+of objects in a given container. Each element of the object list is a string
+detailing the full name of an object to download.
 
-.. TBD
+In order to download the full contents of an entire account, you must set the
+value of ``yes_all`` to ``True`` in the ``options`` dictionary supplied to
+either the ``SwiftService`` instance or the call to ``download``.
 
-.. Example
-.. -------
+If the given container or account does not exist, the ``download`` method will
+raise a ``SwiftError``, otherwise an iterator over the results generated for
+each object download is returned.
 
-.. TBD
+See :mod:`swiftclient.service.SwiftService.download` for docs generated from the
+method docstring.
+
+For each successfully downloaded object, the results returned by the iterator
+will be a dictionary as described below (results are not returned for completed
+container or object segment downloads):
+
+.. code-block:: python
+
+    {
+        'action': 'download_object',
+        'container': <container>,
+        'object': <object name>,
+        'success': True,
+        'path': <local path to downloaded object>,
+        'pseudodir': <if true, the download created an empty directory>,
+        'start_time': <time download started>,
+        'end_time': <time download completed>,
+        'headers_receipt': <time the headers from the object were retrieved>,
+        'auth_end_time': <time authentication completed>,
+        'read_length': <bytes_read>,
+        'attempts': <attempt count>,
+        'response_dict': <HTTP response details>
+    }
+
+Any failure uploading an object will return a failure dictionary as described
+below:
+
+.. code-block:: python
+
+    {
+        'action': 'download_object',
+        'container': <container>,
+        'object': <object name>,
+        'success': False,
+        'path': <local path of the failed download>,
+        'pseudodir': <if true, the failed download was an empty directory>,
+        'attempts': <attempt count>,
+        'error': <error>,
+        'traceback': <trace>,
+        'error_timestamp': <timestamp>,
+        'response_dict': <HTTP response details>
+    }
+
+Example
+^^^^^^^
+
+The code below demonstrates the use of ``download`` to download all PNG images
+from a dated archive folder in a given container:
+
+.. literalinclude:: ../../examples/download.py
+   :language: python
 
 Upload
 ~~~~~~
@@ -550,7 +561,7 @@ the upload are those supplied to the call to ``upload``.
 
 Constructing a ``SwiftUploadObject`` allows the user to supply an object name
 for the uploaded file, and modify the options used by ``upload`` at the
-granularity of invidivual files.
+granularity of individual files.
 
 If the given container or account does not exist, the ``upload`` method will
 raise a ``SwiftError``, otherwise an iterator over the results generated for
@@ -622,97 +633,195 @@ below:
     }
 
 Example
--------
+^^^^^^^
 
 The code below demonstrates the use of ``upload`` to upload all files and
-folders in ``/tmp``, and renaming each object by replacing ``/tmp`` in the
-object or directory marker names with ``temporary-objects``:
+folders in a given directory, and rename each object by replacing the root
+directory name with 'my-<d>-objects', where <d> is the name of the uploaded
+directory:
+
+.. literalinclude:: ../../examples/upload.py
+   :language: python
+
+Delete
+~~~~~~
+
+Delete can be called against an account or a container to remove the containers
+or objects contained within them. Each call to ``delete`` returns an iterator
+over results of each resulting sub-request.
+
+If the number of requested delete operations is large and the target swift
+cluster is running the bulk middleware, the call to ``SwiftService.delete`` will
+make use of bulk operations and the returned result iterator will return
+``bulk_delete`` results rather than individual ``delete_object``,
+``delete_container`` or ``delete_segment`` results.
+
+See :mod:`swiftclient.service.SwiftService.delete` for docs generated from the
+method docstring.
+
+For each successfully deleted container, object or segment, the results returned
+by the iterator will be a dictionary as described below:
 
 .. code-block:: python
 
-    _opts['object_uu_threads'] = 20
-    with SwiftService(options=_opts) as swift, OutputManager() as out_manager:
-        try:
-            # Collect all the files and folders in '/tmp'
-            objs = []
-            dir_markers = []
-            dir = '/tmp':
-                for (_dir, _ds, _fs) in walk(f):
-                    if not (_ds + _fs):
-                        dir_markers.append(_dir)
-                    else:
-                        objs.extend([join(_dir, _f) for _f in _fs])
+    {
+        'action': <'delete_object'|'delete_segment'>,
+        'container': <container>,
+        'object': <object name>,
+        'success': True,
+        'attempts': <attempt count>,
+        'response_dict': <HTTP response details>
+    }
 
-            # Now that we've collected all the required files and dir markers
-            # build the ``SwiftUploadObject``s for the call to upload
-            objs = [
-                SwiftUploadObject(
-                    o, object_name=o.replace(
-                        '/tmp', 'temporary-objects', 1
-                    )
-                ) for o in objs
-            ]
-            dir_markers = [
-                SwiftUploadObject(
-                    None, object_name=d.replace(
-                        '/tmp', 'temporary-objects', 1
-                    ), options={'dir_marker': True}
-                ) for d in dir_markers
-            ]
+    {
+        'action': 'delete_container',
+        'container': <container>,
+        'success': True,
+        'response_dict': <HTTP response details>,
+        'attempts': <attempt count>
+    }
 
-            # Schedule uploads on the SwiftService thread pool and iterate
-            # over the results
-            for r in swift.upload(container, objs + dir_markers):
-                if r['success']:
-                    if 'object' in r:
-                        out_manager.print_msg(r['object'])
-                    elif 'for_object' in r:
-                        out_manager.print_msg(
-                            '%s segment %s' % (r['for_object'],
-                                               r['segment_index'])
-                            )
-                else:
-                    error = r['error']
-                    if r['action'] == "create_container":
-                        out_manager.warning(
-                            'Warning: failed to create container '
-                            "'%s'%s", container, msg
-                        )
-                    elif r['action'] == "upload_object":
-                        out_manager.error(
-                            "Failed to upload object %s to container %s: %s" %
-                            (container, r['object'], error)
-                        )
-                    else:
-                        out_manager.error("%s" % error)
+    {
+        'action': 'bulk_delete',
+        'container': <container>,
+        'objects': <[objects]>,
+        'success': True,
+        'attempts': <attempt count>,
+        'response_dict': <HTTP response details>
+    }
 
-        except SwiftError as e:
-            out_manager.error(e.value)
+Any failure in a delete operation will return a failure dictionary as described
+below:
 
-.. Delete
-.. ~~~~~~
-.. Do we want to hide this section until it is complete?
+.. code-block:: python
 
-.. TBD
+    {
+        'action': ('delete_object'|'delete_segment'),
+        'container': <container>,
+        'object': <object name>,
+        'success': False,
+        'attempts': <attempt count>,
+        'error': <error>,
+        'traceback': <trace>,
+        'error_timestamp': <timestamp>,
+        'response_dict': <HTTP response details>
+    }
 
-.. Example
-.. -------
+    {
+        'action': 'delete_container',
+        'container': <container>,
+        'success': False,
+        'error': <error>,
+        'traceback': <trace>,
+        'error_timestamp': <timestamp>,
+        'response_dict': <HTTP response details>,
+        'attempts': <attempt count>
+    }
 
-.. Do we want to hide this section until it is complete?
+    {
+        'action': 'bulk_delete',
+        'container': <container>,
+        'objects': <[objects]>,
+        'success': False,
+        'attempts': <attempt count>,
+        'error': <error>,
+        'traceback': <trace>,
+        'error_timestamp': <timestamp>,
+        'response_dict': <HTTP response details>
+    }
 
-.. TBD
+Example
+^^^^^^^
 
-.. Capabilities
-.. ~~~~~~~~~~~~
+The code below demonstrates the use of ``delete`` to remove a given list of
+objects from a specified container. As the objects are deleted the transaction
+id of the relevant request is printed along with the object name and number
+of attempts required. By printing the transaction id, the printed operations
+can be easily linked to events in the swift server logs:
 
-.. Do we want to hide this section until it is complete?
+.. literalinclude:: ../../examples/delete.py
+   :language: python
 
-.. TBD
+Capabilities
+~~~~~~~~~~~~
 
-.. Example
-.. -------
+Capabilities can be called against an account or a particular proxy URL in
+order to determine the capabilities of the swift cluster. These capabilities
+include details about configuration options and the middlewares that are
+installed in the proxy pipeline.
 
-.. Do we want to hide this section until it is complete?
+See :mod:`swiftclient.service.SwiftService.capabilities` for docs generated from
+the method docstring.
 
-.. TBD
+For each successful call to list capabilities, a result dictionary will be
+returned with the contents described below:
 
+    {
+        'action': 'capabilities',
+        'timestamp': <time of the call>,
+        'success': True,
+        'capabilities': <dictionary containing capability details>
+    }
+
+The contents of the capabilities dictionary contain the core swift capabilities
+under the key ``swift``, all other keys show the configuration options for
+additional middlewares deployed in the proxy pipeline. An example capabilities
+dictionary is given below:
+
+.. code-block:: python
+
+    {
+        'account_quotas': {},
+        'bulk_delete': {
+            'max_deletes_per_request': 10000,
+            'max_failed_deletes': 1000
+        },
+        'bulk_upload': {
+            'max_containers_per_extraction': 10000,
+            'max_failed_extractions': 1000
+        },
+        'container_quotas': {},
+        'container_sync': {'realms': {}},
+        'formpost': {},
+        'keystoneauth': {},
+        'slo': {
+            'max_manifest_segments': 1000,
+            'max_manifest_size': 2097152,
+            'min_segment_size': 1048576
+        },
+        'swift': {
+            'account_autocreate': True,
+            'account_listing_limit': 10000,
+            'allow_account_management': True,
+            'container_listing_limit': 10000,
+            'extra_header_count': 0,
+            'max_account_name_length': 256,
+            'max_container_name_length': 256,
+            'max_file_size': 5368709122,
+            'max_header_size': 8192,
+            'max_meta_count': 90,
+            'max_meta_name_length': 128,
+            'max_meta_overall_size': 4096,
+            'max_meta_value_length': 256,
+            'max_object_name_length': 1024,
+            'policies': [
+                {'default': True, 'name': 'Policy-0'}
+            ],
+            'strict_cors_mode': False,
+            'version': '2.2.2'
+        },
+        'tempurl': {
+            'methods': ['GET', 'HEAD', 'PUT']
+        }
+    }
+
+Example
+^^^^^^^
+
+The code below demonstrates the us of ``capabilities`` to determine if the
+Swift cluster supports static large objects, and if so,  the maximum number of
+segments that can be described in a single manifest file, along with the
+size restrictions on those objects:
+
+.. literalinclude:: ../../examples/capabilities.py
+   :language: python

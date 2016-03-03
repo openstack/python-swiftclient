@@ -1,18 +1,28 @@
+======================================
 Welcome to the python-swiftclient Docs
-**************************************
+======================================
 
-Developer Documentation
-=======================
+Introduction
+~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 2
 
-    apis
+    introduction
+
+Developer Documentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 2
+
     cli
-    sdk
+    service-api
+    client-api
+
 
 Code-Generated Documentation
-============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 2
@@ -20,14 +30,14 @@ Code-Generated Documentation
     swiftclient
 
 Indices and tables
-==================
+~~~~~~~~~~~~~~~~~~
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 
 License
-=======
+~~~~~~~
 
     Copyright 2013 OpenStack, LLC.
 
