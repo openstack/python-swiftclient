@@ -688,10 +688,10 @@ class TestShell(unittest.TestCase):
             [None, []]
         ]
         connection.return_value.put_object.return_value = EMPTY_ETAG
-        swiftclient.shell.main(argv)
         # create the delete_object child mock here in attempt to fix
         # https://bugs.launchpad.net/python-swiftclient/+bug/1480223
         connection.return_value.delete_object.return_value = None
+        swiftclient.shell.main(argv)
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
