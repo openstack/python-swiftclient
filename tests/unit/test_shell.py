@@ -763,6 +763,37 @@ class TestShell(testtools.TestCase):
     @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
                        lambda *a: False)
     @mock.patch('swiftclient.service.Connection')
+    def test_delete_bad_threads(self, mock_connection):
+        mock_connection.return_value.get_container.return_value = (None, [])
+        mock_connection.return_value.attempts = 0
+
+        def check_bad(argv):
+            args, env = _make_cmd(
+                'delete', {}, {}, cmd_args=['cont'] + argv)
+            with mock.patch.dict(os.environ, env):
+                with CaptureOutput() as output:
+                    self.assertRaises(SystemExit, swiftclient.shell.main, args)
+            self.assertIn(
+                'ERROR: option %s should be a positive integer.' % argv[0],
+                output.err)
+
+        def check_good(argv):
+            args, env = _make_cmd(
+                'delete', {}, {}, cmd_args=['cont'] + argv)
+            with mock.patch.dict(os.environ, env):
+                with CaptureOutput() as output:
+                    swiftclient.shell.main(args)
+            self.assertEqual('', output.err)
+        check_bad(["--object-threads", "-1"])
+        check_bad(["--object-threads", "0"])
+        check_bad(["--container-threads", "-1"])
+        check_bad(["--container-threads", "0"])
+        check_good(["--object-threads", "1"])
+        check_good(["--container-threads", "1"])
+
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
+    @mock.patch('swiftclient.service.Connection')
     def test_delete_account(self, connection):
         connection.return_value.get_account.side_effect = [
             [None, [{'name': 'container'}, {'name': 'container2'}]],
@@ -2195,6 +2226,38 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
             return status
         return on_request
 
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_bad_threads(self, mock_connection):
+        mock_connection.return_value.put_object.return_value = EMPTY_ETAG
+        mock_connection.return_value.attempts = 0
+
+        def check_bad(argv):
+            args, env = self._make_cmd(
+                'upload', cmd_args=[self.cont, self.obj] + argv)
+            with mock.patch.dict(os.environ, env):
+                with CaptureOutput() as output:
+                    self.assertRaises(SystemExit, swiftclient.shell.main, args)
+            self.assertIn(
+                'ERROR: option %s should be a positive integer.' % argv[0],
+                output.err)
+
+        def check_good(argv):
+            args, env = self._make_cmd(
+                'upload',
+                cmd_args=[self.cont, self.obj, '--leave-segments'] + argv)
+            with mock.patch.dict(os.environ, env):
+                with CaptureOutput() as output:
+                    swiftclient.shell.main(args)
+            self.assertEqual('', output.err)
+        check_bad(["--object-threads", "-1"])
+        check_bad(["--object-threads", "0"])
+        check_bad(["--segment-threads", "-1"])
+        check_bad(["--segment-threads", "0"])
+        check_good(["--object-threads", "1"])
+        check_good(["--segment-threads", "1"])
+
     def test_upload_with_read_write_access(self):
         req_handler = self._fake_cross_account_auth(True, True)
         fake_conn = self.fake_http_connection(403, 403,
@@ -2345,6 +2408,38 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
                        % self.obj_path
         self.assertTrue(expected_err in out.err)
         self.assertEqual('', out)
+
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
+    @mock.patch('swiftclient.service.Connection')
+    def test_download_bad_threads(self, mock_connection):
+        mock_connection.return_value.get_object.return_value = [{}, '']
+        mock_connection.return_value.attempts = 0
+
+        def check_bad(argv):
+            args, env = self._make_cmd(
+                'download', cmd_args=[self.cont, self.obj] + argv)
+            with mock.patch.dict(os.environ, env):
+                with CaptureOutput() as output:
+                    self.assertRaises(SystemExit, swiftclient.shell.main, args)
+            self.assertIn(
+                'ERROR: option %s should be a positive integer.' % argv[0],
+                output.err)
+
+        def check_good(argv):
+            args, env = self._make_cmd(
+                'download',
+                cmd_args=[self.cont, self.obj, '--no-download'] + argv)
+            with mock.patch.dict(os.environ, env):
+                with CaptureOutput() as output:
+                    swiftclient.shell.main(args)
+            self.assertEqual('', output.err)
+        check_bad(["--object-threads", "-1"])
+        check_bad(["--object-threads", "0"])
+        check_bad(["--container-threads", "-1"])
+        check_bad(["--container-threads", "0"])
+        check_good(["--object-threads", "1"])
+        check_good(["--container-threads", "1"])
 
     def test_download_with_read_write_access(self):
         req_handler = self._fake_cross_account_auth(True, True)
