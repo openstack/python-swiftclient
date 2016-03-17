@@ -1073,13 +1073,42 @@ class TestShell(unittest.TestCase):
     def test_post_account_bad_auth(self, connection):
         argv = ["", "post"]
         connection.return_value.post_account.side_effect = \
-            swiftclient.ClientException('bad auth')
+            swiftclient.ClientException(
+                'bad auth', http_response_headers={'X-Trans-Id': 'trans_id'})
 
         with CaptureOutput() as output:
             with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
-            self.assertEqual(output.err, 'bad auth\n')
+            self.assertEqual(output.err,
+                             'bad auth\nFailed Transaction ID: trans_id\n')
+
+        # do it again with a unicode token
+        connection.return_value.post_account.side_effect = \
+            swiftclient.ClientException(
+                'bad auth', http_response_headers={
+                    'X-Trans-Id': 'non\u2011utf8'})
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEqual(output.err,
+                             'bad auth\n'
+                             'Failed Transaction ID: non\u2011utf8\n')
+
+        # do it again with a wonky token
+        connection.return_value.post_account.side_effect = \
+            swiftclient.ClientException(
+                'bad auth', http_response_headers={
+                    'X-Trans-Id': b'non\xffutf8'})
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+
+            self.assertEqual(output.err,
+                             'bad auth\nFailed Transaction ID: non%FFutf8\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_account_not_found(self, connection):

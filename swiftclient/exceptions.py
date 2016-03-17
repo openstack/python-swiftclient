@@ -13,12 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from six.moves import urllib
+
 
 class ClientException(Exception):
 
     def __init__(self, msg, http_scheme='', http_host='', http_port='',
                  http_path='', http_query='', http_status=None, http_reason='',
-                 http_device='', http_response_content=''):
+                 http_device='', http_response_content='',
+                 http_response_headers=None):
         super(ClientException, self).__init__(msg)
         self.msg = msg
         self.http_scheme = http_scheme
@@ -30,6 +33,16 @@ class ClientException(Exception):
         self.http_reason = http_reason
         self.http_device = http_device
         self.http_response_content = http_response_content
+        self.http_response_headers = http_response_headers
+
+    @classmethod
+    def from_response(cls, resp, msg=None, body=None):
+        msg = msg or '%s %s' % (resp.status_code, resp.reason)
+        body = body or resp.content
+        parsed_url = urllib.parse.urlparse(resp.request.url)
+        return cls(msg, parsed_url.scheme, parsed_url.hostname,
+                   parsed_url.port, parsed_url.path, parsed_url.query,
+                   resp.status_code, resp.reason, '', body, resp.headers)
 
     def __str__(self):
         a = self.msg
