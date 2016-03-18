@@ -778,6 +778,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.attempts = 0
         argv = ["", "delete", "--all"]
         connection.return_value.head_object.return_value = {}
+        connection.return_value.delete_object.return_value = None
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_has_calls([
             mock.call('container', 'object', query_string=None,
