@@ -254,7 +254,7 @@ Optional arguments:
                         sides.
   --no-shuffle          By default, when downloading a complete account or
                         container, download order is randomised in order to
-                        to reduce the load on individual drives when multiple
+                        reduce the load on individual drives when multiple
                         clients are executed simultaneously to download the
                         same set of objects (e.g. a nightly automated download
                         script to multiple servers). Enable this option to
