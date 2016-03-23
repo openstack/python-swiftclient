@@ -1655,16 +1655,15 @@ class TestServiceDownload(_TestServiceBase):
         self.assertEqual(expected_r, actual_r)
 
     def test_download(self):
-        service = SwiftService()
         with mock.patch('swiftclient.service.Connection') as mock_conn:
             header = {'content-length': self.obj_len,
                       'etag': self.obj_etag}
             mock_conn.get_object.return_value = header, self._readbody()
 
-            resp = service._download_object_job(mock_conn,
-                                                'c',
-                                                'test',
-                                                self.opts)
+            resp = SwiftService()._download_object_job(mock_conn,
+                                                       'c',
+                                                       'test',
+                                                       self.opts)
 
         self.assertIsNone(resp.get('error'))
         self.assertIs(True, resp['success'])
@@ -1689,7 +1688,6 @@ class TestServiceDownload(_TestServiceBase):
         self.assertEqual(True, mock_down_cont.called)
 
     def test_download_with_output_dir(self):
-        service = SwiftService()
         with mock.patch('swiftclient.service.Connection') as mock_conn:
             header = {'content-length': self.obj_len,
                       'etag': self.obj_etag}
@@ -1697,10 +1695,10 @@ class TestServiceDownload(_TestServiceBase):
 
             options = self.opts.copy()
             options['out_directory'] = 'temp_dir'
-            resp = service._download_object_job(mock_conn,
-                                                'c',
-                                                'example/test',
-                                                options)
+            resp = SwiftService()._download_object_job(mock_conn,
+                                                       'c',
+                                                       'example/test',
+                                                       options)
 
         self.assertIsNone(resp.get('error'))
         self.assertIs(True, resp['success'])
@@ -1709,7 +1707,6 @@ class TestServiceDownload(_TestServiceBase):
         self.assertEqual(resp['path'], 'temp_dir/example/test')
 
     def test_download_with_remove_prefix(self):
-        service = SwiftService()
         with mock.patch('swiftclient.service.Connection') as mock_conn:
             header = {'content-length': self.obj_len,
                       'etag': self.obj_etag}
@@ -1718,10 +1715,10 @@ class TestServiceDownload(_TestServiceBase):
             options = self.opts.copy()
             options['prefix'] = 'example/'
             options['remove_prefix'] = True
-            resp = service._download_object_job(mock_conn,
-                                                'c',
-                                                'example/test',
-                                                options)
+            resp = SwiftService()._download_object_job(mock_conn,
+                                                       'c',
+                                                       'example/test',
+                                                       options)
 
         self.assertIsNone(resp.get('error'))
         self.assertIs(True, resp['success'])
@@ -1730,7 +1727,6 @@ class TestServiceDownload(_TestServiceBase):
         self.assertEqual(resp['path'], 'test')
 
     def test_download_with_remove_prefix_and_remove_slashes(self):
-        service = SwiftService()
         with mock.patch('swiftclient.service.Connection') as mock_conn:
             header = {'content-length': self.obj_len,
                       'etag': self.obj_etag}
@@ -1739,10 +1735,10 @@ class TestServiceDownload(_TestServiceBase):
             options = self.opts.copy()
             options['prefix'] = 'example'
             options['remove_prefix'] = True
-            resp = service._download_object_job(mock_conn,
-                                                'c',
-                                                'example/test',
-                                                options)
+            resp = SwiftService()._download_object_job(mock_conn,
+                                                       'c',
+                                                       'example/test',
+                                                       options)
 
         self.assertIsNone(resp.get('error'))
         self.assertIs(True, resp['success'])
@@ -1751,7 +1747,6 @@ class TestServiceDownload(_TestServiceBase):
         self.assertEqual(resp['path'], 'test')
 
     def test_download_with_output_dir_and_remove_prefix(self):
-        service = SwiftService()
         with mock.patch('swiftclient.service.Connection') as mock_conn:
             header = {'content-length': self.obj_len,
                       'etag': self.obj_etag}
@@ -1761,10 +1756,10 @@ class TestServiceDownload(_TestServiceBase):
             options['prefix'] = 'example'
             options['out_directory'] = 'new/dir'
             options['remove_prefix'] = True
-            resp = service._download_object_job(mock_conn,
-                                                'c',
-                                                'example/test',
-                                                options)
+            resp = SwiftService()._download_object_job(mock_conn,
+                                                       'c',
+                                                       'example/test',
+                                                       options)
 
         self.assertIsNone(resp.get('error'))
         self.assertIs(True, resp['success'])
@@ -2153,18 +2148,17 @@ class TestServicePost(_TestServiceBase):
             "test_spo",
             {'meta': ["meta1:test2"], "header": ["hdr1:test2"]})
 
-        service = SwiftService()
         SwiftService().post('test_c', ['test_o', spo], self.opts)
 
         calls = [
             mock.call(
-                service._post_object_job, 'test_c', 'test_o',
+                SwiftService._post_object_job, 'test_c', 'test_o',
                 {
                     "X-Object-Meta-Meta1": "test1",
                     "Hdr1": "test1"},
                 {}),
             mock.call(
-                service._post_object_job, 'test_c', 'test_spo',
+                SwiftService._post_object_job, 'test_c', 'test_spo',
                 {
                     "X-Object-Meta-Meta1": "test2",
                     "Hdr1": "test2"},
