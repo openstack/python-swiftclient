@@ -569,7 +569,7 @@ class SwiftService(object):
 
                             {
                                 'meta': [],
-                                'headers': [],
+                                'header': [],
                                 'read_acl': None,   # For containers only
                                 'write_acl': None,  # For containers only
                                 'sync_to': None,    # For containers only
@@ -700,10 +700,10 @@ class SwiftService(object):
                     if 'meta' in obj_options:
                         headers.update(
                             split_headers(
-                                obj_options['meta'], 'X-Object-Meta'
+                                obj_options['meta'], 'X-Object-Meta-'
                             )
                         )
-                    if 'headers' in obj_options:
+                    if 'header' in obj_options:
                         headers.update(
                             split_headers(obj_options['header'], '')
                         )

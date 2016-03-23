@@ -2130,3 +2130,49 @@ class TestServiceDownload(_TestServiceBase):
                           resp_chunk_size=65536,
                           headers={'If-None-Match': on_disk_md5},
                           response_dict={})])
+
+
+class TestServicePost(_TestServiceBase):
+
+    def setUp(self):
+        super(TestServicePost, self).setUp()
+        self.opts = swiftclient.service._default_local_options.copy()
+
+    @mock.patch('swiftclient.service.MultiThreadingManager')
+    @mock.patch('swiftclient.service.ResultsIterator')
+    def test_object_post(self, res_iter, thread_manager):
+        """
+        Check post method translates strings and objects to _post_object_job
+        calls correctly
+        """
+        tm_instance = Mock()
+        thread_manager.return_value = tm_instance
+
+        self.opts.update({'meta': ["meta1:test1"], "header": ["hdr1:test1"]})
+        spo = swiftclient.service.SwiftPostObject(
+            "test_spo",
+            {'meta': ["meta1:test2"], "header": ["hdr1:test2"]})
+
+        service = SwiftService()
+        SwiftService().post('test_c', ['test_o', spo], self.opts)
+
+        calls = [
+            mock.call(
+                service._post_object_job, 'test_c', 'test_o',
+                {
+                    "X-Object-Meta-Meta1": "test1",
+                    "Hdr1": "test1"},
+                {}),
+            mock.call(
+                service._post_object_job, 'test_c', 'test_spo',
+                {
+                    "X-Object-Meta-Meta1": "test2",
+                    "Hdr1": "test2"},
+                {}),
+        ]
+        tm_instance.object_uu_pool.submit.assert_has_calls(calls)
+        self.assertEqual(
+            tm_instance.object_uu_pool.submit.call_count, len(calls))
+
+        res_iter.assert_called_with(
+            [tm_instance.object_uu_pool.submit()] * len(calls))
