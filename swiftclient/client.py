@@ -609,6 +609,7 @@ def get_auth(auth_url, user, key, **kwargs):
     use of this network path causes no bandwidth charges but requires the
     client to be running on Rackspace's ServiceNet network.
     """
+    session = kwargs.get('session', None)
     auth_version = kwargs.get('auth_version', '1')
     os_options = kwargs.get('os_options', {})
 
@@ -617,7 +618,14 @@ def get_auth(auth_url, user, key, **kwargs):
     cert = kwargs.get('cert')
     cert_key = kwargs.get('cert_key')
     timeout = kwargs.get('timeout', None)
-    if auth_version in AUTH_VERSIONS_V1:
+
+    if session:
+        service_type = os_options.get('service_type', 'object-store')
+        interface = os_options.get('endpoint_type', 'public')
+        storage_url = session.get_endpoint(service_type=service_type,
+                                           interface=interface)
+        token = session.get_token()
+    elif auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
                                           user,
                                           key,
@@ -654,8 +662,8 @@ def get_auth(auth_url, user, key, **kwargs):
                                                timeout=timeout,
                                                auth_version=auth_version)
     else:
-        raise ClientException('Unknown auth_version %s specified.'
-                              % auth_version)
+        raise ClientException('Unknown auth_version %s specified and no '
+                              'session found.' % auth_version)
 
     # Override storage url, if necessary
     if os_options.get('object_storage_url'):
@@ -1414,7 +1422,7 @@ class Connection(object):
                  os_options=None, auth_version="1", cacert=None,
                  insecure=False, cert=None, cert_key=None,
                  ssl_compression=True, retry_on_ratelimit=False,
-                 timeout=None):
+                 timeout=None, session=None):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1449,7 +1457,9 @@ class Connection(object):
                                    this parameter to True will cause a retry
                                    after a backoff.
         :param timeout: The connect timeout for the HTTP connection.
+        :param session: A keystoneauth session object.
         """
+        self.session = session
         self.authurl = authurl
         self.user = user
         self.key = key
@@ -1493,7 +1503,7 @@ class Connection(object):
 
     def get_auth(self):
         self.url, self.token = get_auth(self.authurl, self.user, self.key,
-                                        snet=self.snet,
+                                        session=self.session, snet=self.snet,
                                         auth_version=self.auth_version,
                                         os_options=self.os_options,
                                         cacert=self.cacert,
@@ -1512,8 +1522,8 @@ class Connection(object):
                                                          None)
         service_user = opts.get('service_username', None)
         service_key = opts.get('service_key', None)
-        return get_auth(self.authurl, service_user,
-                        service_key,
+        return get_auth(self.authurl, service_user, service_key,
+                        session=self.session,
                         snet=self.snet,
                         auth_version=self.auth_version,
                         os_options=service_options,
@@ -1577,10 +1587,15 @@ class Connection(object):
                     logger.exception(err)
                     raise
                 if err.http_status == 401:
+                    if self.session:
+                        should_retry = self.session.invalidate()
+                    else:
+                        # Without a proper session, just check for auth creds
+                        should_retry = all((self.authurl, self.user, self.key))
+
                     self.url = self.token = self.service_token = None
-                    if retried_auth or not all((self.authurl,
-                                                self.user,
-                                                self.key)):
+
+                    if retried_auth or not should_retry:
                         logger.exception(err)
                         raise
                     retried_auth = True
