@@ -51,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Swiftclient'
-copyright = u'2013 OpenStack, LLC.'
+copyright = u'2013-2016 OpenStack, LLC.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

@@ -5,6 +5,12 @@ swiftclient
 
 .. automodule:: swiftclient
 
+swiftclient.authv1
+==================
+
+.. automodule:: swiftclient.authv1
+   :inherited-members:
+
 swiftclient.client
 ==================
 
