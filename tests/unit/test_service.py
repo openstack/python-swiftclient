@@ -687,6 +687,41 @@ class TestServiceList(_TestServiceBase):
         self.assertEqual(expected_r_long, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
+    def test_list_container_marker(self):
+        mock_q = Queue()
+        mock_conn = self._get_mock_connection()
+
+        get_container_returns = [
+            (None, [{'name': 'b'}, {'name': 'c'}]),
+            (None, [])
+        ]
+        mock_get_cont = Mock(side_effect=get_container_returns)
+        mock_conn.get_container = mock_get_cont
+
+        expected_r = self._get_expected({
+            'action': 'list_container_part',
+            'container': 'test_c',
+            'success': True,
+            'listing': [{'name': 'b'}, {'name': 'c'}],
+            'marker': 'b'
+        })
+
+        _opts = self.opts.copy()
+        _opts['marker'] = 'b'
+        SwiftService._list_container_job(mock_conn, 'test_c', _opts, mock_q)
+
+        # This does not test if the marker is propagated, because we always
+        # get the final call to the get_container with the final item 'c',
+        # even if marker wasn't set. This test just makes sure the whole
+        # stack works in a sane way.
+        mock_kw = mock_get_cont.call_args[1]
+        self.assertEqual(mock_kw['marker'], 'c')
+
+        # This tests that the lower levels get the marker delivered.
+        self.assertEqual(expected_r, self._get_queue(mock_q))
+
+        self.assertIsNone(self._get_queue(mock_q))
+
     def test_list_container_exception(self):
         mock_q = Queue()
         mock_conn = self._get_mock_connection()

@@ -203,7 +203,7 @@ def st_delete(parser, args, output_manager):
             output_manager.error(err.value)
 
 
-st_download_options = '''[--all] [--marker] [--prefix <prefix>]
+st_download_options = '''[--all] [--marker <marker>] [--prefix <prefix>]
                       [--output <out_file>] [--output-dir <out_directory>]
                       [--object-threads <threads>]
                       [--container-threads <threads>] [--no-download]
@@ -225,7 +225,7 @@ Positional arguments:
 Optional arguments:
   -a, --all             Indicates that you really want to download
                         everything in the account.
-  -m, --marker          Marker to use when starting a container or account
+  -m, --marker <marker> Marker to use when starting a container or account
                         download.
   -p, --prefix <prefix> Only download items beginning with <prefix>
   -r, --remove-prefix   An optional flag for --prefix <prefix>, use this
