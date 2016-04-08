@@ -945,11 +945,12 @@ class TestServiceUpload(_TestServiceBase):
             self.assertEqual(r, expected_r)
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
-            mock_conn.put_object.assert_called_with('test_c_segments',
-                                                    'test_s_1',
-                                                    mock.ANY,
-                                                    content_length=10,
-                                                    response_dict={})
+            mock_conn.put_object.assert_called_with(
+                'test_c_segments', 'test_s_1',
+                mock.ANY,
+                content_length=10,
+                content_type='application/swiftclient-segment',
+                response_dict={})
             contents = mock_conn.put_object.call_args[0][2]
             self.assertIsInstance(contents, utils.LengthWrapper)
             self.assertEqual(len(contents), 10)
@@ -988,11 +989,12 @@ class TestServiceUpload(_TestServiceBase):
 
             self.assertIsNone(r.get('error'))
             self.assertEqual(mock_conn.put_object.call_count, 1)
-            mock_conn.put_object.assert_called_with('test_c_segments',
-                                                    'test_s_1',
-                                                    mock.ANY,
-                                                    content_length=10,
-                                                    response_dict={})
+            mock_conn.put_object.assert_called_with(
+                'test_c_segments', 'test_s_1',
+                mock.ANY,
+                content_length=10,
+                content_type='application/swiftclient-segment',
+                response_dict={})
             contents = mock_conn.put_object.call_args[0][2]
             # Check that md5sum is not calculated.
             self.assertEqual(contents.get_md5sum(), '')
@@ -1028,11 +1030,12 @@ class TestServiceUpload(_TestServiceBase):
             self.assertIn('md5 mismatch', str(r.get('error')))
 
             self.assertEqual(mock_conn.put_object.call_count, 1)
-            mock_conn.put_object.assert_called_with('test_c_segments',
-                                                    'test_s_1',
-                                                    mock.ANY,
-                                                    content_length=10,
-                                                    response_dict={})
+            mock_conn.put_object.assert_called_with(
+                'test_c_segments', 'test_s_1',
+                mock.ANY,
+                content_length=10,
+                content_type='application/swiftclient-segment',
+                response_dict={})
             contents = mock_conn.put_object.call_args[0][2]
             self.assertEqual(contents.get_md5sum(), md5(b'b' * 10).hexdigest())
 
