@@ -62,16 +62,19 @@ def _make_args(cmd, opts, os_opts, separator='-', flags=None, cmd_args=None):
     args = [""]
     flags = flags or []
     for k, v in opts.items():
-        arg = "--" + k.replace("_", "-")
-        args = args + [arg, v]
+        args.append("--" + k.replace("_", "-"))
+        if v is not None:
+            args.append(v)
     for k, v in os_opts.items():
-        arg = "--os" + separator + k.replace("_", separator)
-        args = args + [arg, v]
+        args.append("--os" + separator + k.replace("_", separator))
+        if v is not None:
+            args.append(v)
     for flag in flags:
         args.append('--%s' % flag)
-    args = args + [cmd]
+    if cmd:
+        args.append(cmd)
     if cmd_args:
-        args = args + cmd_args
+        args.extend(cmd_args)
     return args
 
 
@@ -1291,17 +1294,17 @@ class TestShell(unittest.TestCase):
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
             with self.assertRaises(SystemExit):
-                argv = ["", "upload", "-S", "-40K", "container", "object"]
+                argv = ["", "upload", "-S=-40K", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
             with self.assertRaises(SystemExit):
-                argv = ["", "upload", "-S", "-40M", "container", "object"]
+                argv = ["", "upload", "-S=-40M", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
             with self.assertRaises(SystemExit):
-                argv = ["", "upload", "-S", "-40G", "container", "object"]
+                argv = ["", "upload", "-S=-40G", "container", "object"]
                 swiftclient.shell.main(argv)
             self.assertEqual(output.err, "segment-size should be positive\n")
             output.clear()
@@ -1722,17 +1725,17 @@ class TestParsing(TestBase):
 
     def test_help(self):
         # --help returns condensed help message
-        opts = {"help": ""}
+        opts = {"help": None}
         os_opts = {}
-        args = _make_args("stat", opts, os_opts)
+        args = _make_args(None, opts, os_opts)
         with CaptureOutput() as out:
             self.assertRaises(SystemExit, swiftclient.shell.main, args)
         self.assertTrue(out.find('[--key <api_key>]') > 0)
         self.assertEqual(-1, out.find('--os-username=<auth-user-name>'))
 
         # --help returns condensed help message, overrides --os-help
-        opts = {"help": ""}
-        os_opts = {"help": ""}
+        opts = {"help": None}
+        os_opts = {"help": None}
         args = _make_args("", opts, os_opts)
         with CaptureOutput() as out:
             self.assertRaises(SystemExit, swiftclient.shell.main, args)
@@ -1741,8 +1744,8 @@ class TestParsing(TestBase):
 
         # --os-password, --os-username and --os-auth_url should be ignored
         # because --help overrides it
-        opts = {"help": ""}
-        os_opts = {"help": "",
+        opts = {"help": None}
+        os_opts = {"help": None,
                    "password": "secret",
                    "username": "user",
                    "auth_url": "http://example.com:5000/v3"}

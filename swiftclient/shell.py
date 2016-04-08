@@ -16,11 +16,11 @@
 
 from __future__ import print_function, unicode_literals
 
+import argparse
 import logging
 import signal
 import socket
 
-from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
 from six import text_type, PY2
@@ -81,22 +81,22 @@ Optional arguments:
 
 
 def st_delete(parser, args, output_manager):
-    parser.add_option(
+    parser.add_argument(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Delete all containers and objects.')
-    parser.add_option(
+    parser.add_argument(
         '-p', '--prefix', dest='prefix',
         help='Only delete items beginning with the <prefix>.')
-    parser.add_option(
-        '', '--leave-segments', action='store_true',
+    parser.add_argument(
+        '--leave-segments', action='store_true',
         dest='leave_segments', default=False,
         help='Do not delete segments of manifest objects.')
-    parser.add_option(
-        '', '--object-threads', type=int,
+    parser.add_argument(
+        '--object-threads', type=int,
         default=10, help='Number of threads to use for deleting objects. '
         'Its value must be a positive integer. Default is 10.')
-    parser.add_option(
-        '', '--container-threads', type=int,
+    parser.add_argument(
+        '--container-threads', type=int,
         default=10, help='Number of threads to use for deleting containers. '
         'Its value must be a positive integer. Default is 10.')
     (options, args) = parse_args(parser, args)
@@ -264,52 +264,52 @@ Optional arguments:
 
 
 def st_download(parser, args, output_manager):
-    parser.add_option(
+    parser.add_argument(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Indicates that you really want to download '
         'everything in the account.')
-    parser.add_option(
+    parser.add_argument(
         '-m', '--marker', dest='marker',
         default='', help='Marker to use when starting a container or '
         'account download.')
-    parser.add_option(
+    parser.add_argument(
         '-p', '--prefix', dest='prefix',
         help='Only download items beginning with the <prefix>.')
-    parser.add_option(
+    parser.add_argument(
         '-o', '--output', dest='out_file', help='For a single '
         'download, stream the output to <out_file>. '
         'Specifying "-" as <out_file> will redirect to stdout.')
-    parser.add_option(
+    parser.add_argument(
         '-D', '--output-dir', dest='out_directory',
         help='An optional directory to which to store objects. '
         'By default, all objects are recreated in the current directory.')
-    parser.add_option(
+    parser.add_argument(
         '-r', '--remove-prefix', action='store_true', dest='remove_prefix',
         default=False, help='An optional flag for --prefix <prefix>, '
         'use this option to download items without <prefix>.')
-    parser.add_option(
-        '', '--object-threads', type=int,
+    parser.add_argument(
+        '--object-threads', type=int,
         default=10, help='Number of threads to use for downloading objects. '
         'Its value must be a positive integer. Default is 10.')
-    parser.add_option(
-        '', '--container-threads', type=int, default=10,
+    parser.add_argument(
+        '--container-threads', type=int, default=10,
         help='Number of threads to use for downloading containers. '
         'Its value must be a positive integer. Default is 10.')
-    parser.add_option(
-        '', '--no-download', action='store_true',
+    parser.add_argument(
+        '--no-download', action='store_true',
         default=False,
         help="Perform download(s), but don't actually write anything to disk.")
-    parser.add_option(
+    parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[],
         help='Adds a customized request header to the query, like "Range" or '
         '"If-Match". This option may be repeated. '
         'Example: --header "content-type:text/plain"')
-    parser.add_option(
+    parser.add_argument(
         '--skip-identical', action='store_true', dest='skip_identical',
         default=False, help='Skip downloading files that are identical on '
         'both sides.')
-    parser.add_option(
+    parser.add_argument(
         '--no-shuffle', action='store_false', dest='shuffle',
         default=True, help='By default, download order is randomised in order '
         'to reduce the load on individual drives when multiple clients are '
@@ -519,26 +519,26 @@ def st_list(parser, args, output_manager):
                 output_manager.print_msg(
                     prt_bytes(total_bytes, options.human))
 
-    parser.add_option(
+    parser.add_argument(
         '-l', '--long', dest='long', action='store_true', default=False,
         help='Long listing format, similar to ls -l.')
-    parser.add_option(
+    parser.add_argument(
         '--lh', dest='human', action='store_true',
         default=False, help='Report sizes in human readable format, '
         "similar to ls -lh.")
-    parser.add_option(
+    parser.add_argument(
         '-t', '--totals', dest='totals',
         help='used with -l or --lh, only report totals.',
         action='store_true', default=False)
-    parser.add_option(
+    parser.add_argument(
         '-p', '--prefix', dest='prefix',
         help='Only list items beginning with the prefix.')
-    parser.add_option(
+    parser.add_argument(
         '-d', '--delimiter', dest='delimiter',
         help='Roll up items with the given delimiter. For containers '
              'only. See OpenStack Swift API documentation for '
              'what this means.')
-    (options, args) = parse_args(parser, args)
+    options, args = parse_args(parser, args)
     args = args[1:]
     if options.delimiter and not args:
         exit('-d option only allowed for container listings')
@@ -596,10 +596,10 @@ Optional arguments:
 
 
 def st_stat(parser, args, output_manager):
-    parser.add_option(
+    parser.add_argument(
         '--lh', dest='human', action='store_true', default=False,
         help='Report sizes in human readable format similar to ls -lh.')
-    (options, args) = parse_args(parser, args)
+    options, args = parse_args(parser, args)
     args = args[1:]
 
     _opts = vars(options)
@@ -687,25 +687,25 @@ Optional arguments:
 
 
 def st_post(parser, args, output_manager):
-    parser.add_option(
+    parser.add_argument(
         '-r', '--read-acl', dest='read_acl', help='Read ACL for containers. '
         'Quick summary of ACL syntax: .r:*, .r:-.example.com, '
         '.r:www.example.com, account1, account2:user2')
-    parser.add_option(
+    parser.add_argument(
         '-w', '--write-acl', dest='write_acl', help='Write ACL for '
         'containers. Quick summary of ACL syntax: account1, '
         'account2:user2')
-    parser.add_option(
+    parser.add_argument(
         '-t', '--sync-to', dest='sync_to', help='Sets the '
         'Sync To for containers, for multi-cluster replication.')
-    parser.add_option(
+    parser.add_argument(
         '-k', '--sync-key', dest='sync_key', help='Sets the '
         'Sync Key for containers, for multi-cluster replication.')
-    parser.add_option(
+    parser.add_argument(
         '-m', '--meta', action='append', dest='meta', default=[],
         help='Sets a meta data item. This option may be repeated. '
         'Example: -m Color:Blue -m Size:Large')
-    parser.add_option(
+    parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[], help='Adds a customized request header. '
         'This option may be repeated. '
@@ -806,58 +806,58 @@ Optional arguments:
 
 
 def st_upload(parser, args, output_manager):
-    parser.add_option(
+    parser.add_argument(
         '-c', '--changed', action='store_true', dest='changed',
         default=False, help='Only upload files that have changed since '
         'the last upload.')
-    parser.add_option(
+    parser.add_argument(
         '--skip-identical', action='store_true', dest='skip_identical',
         default=False, help='Skip uploading files that are identical on '
         'both sides.')
-    parser.add_option(
+    parser.add_argument(
         '-S', '--segment-size', dest='segment_size', help='Upload files '
         'in segments no larger than <size> (in Bytes) and then create a '
         '"manifest" file that will download all the segments as if it were '
         'the original file. Sizes may also be expressed as bytes with the '
         'B suffix, kilobytes with the K suffix, megabytes with the M suffix '
         'or gigabytes with the G suffix.')
-    parser.add_option(
+    parser.add_argument(
         '-C', '--segment-container', dest='segment_container',
         help='Upload the segments into the specified container. '
         'If not specified, the segments will be uploaded to a '
         '<container>_segments container to not pollute the main '
         '<container> listings.')
-    parser.add_option(
-        '', '--leave-segments', action='store_true',
+    parser.add_argument(
+        '--leave-segments', action='store_true',
         dest='leave_segments', default=False, help='Indicates that you want '
         'the older segments of manifest objects left alone (in the case of '
         'overwrites).')
-    parser.add_option(
-        '', '--object-threads', type=int, default=10,
+    parser.add_argument(
+        '--object-threads', type=int, default=10,
         help='Number of threads to use for uploading full objects. '
         'Its value must be a positive integer. Default is 10.')
-    parser.add_option(
-        '', '--segment-threads', type=int, default=10,
+    parser.add_argument(
+        '--segment-threads', type=int, default=10,
         help='Number of threads to use for uploading object segments. '
         'Its value must be a positive integer. Default is 10.')
-    parser.add_option(
+    parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[], help='Set request headers with the syntax header:value. '
         ' This option may be repeated. Example -H "content-type:text/plain" '
         '-H "Content-Length: 4000"')
-    parser.add_option(
-        '', '--use-slo', action='store_true', default=False,
+    parser.add_argument(
+        '--use-slo', action='store_true', default=False,
         help='When used in conjunction with --segment-size, it will '
         'create a Static Large Object instead of the default '
         'Dynamic Large Object.')
-    parser.add_option(
-        '', '--object-name', dest='object_name',
+    parser.add_argument(
+        '--object-name', dest='object_name',
         help='Upload file and name object to <object-name> or upload dir and '
         'use <object-name> as object prefix instead of folder name.')
-    parser.add_option(
-        '', '--ignore-checksum', dest='checksum', default=True,
+    parser.add_argument(
+        '--ignore-checksum', dest='checksum', default=True,
         action='store_false', help='Turn off checksum validation for uploads.')
-    (options, args) = parse_args(parser, args)
+    options, args = parse_args(parser, args)
     args = args[1:]
     if len(args) < 2:
         output_manager.error(
@@ -1116,7 +1116,7 @@ Optional arguments:
 
 
 def st_tempurl(parser, args, thread_manager):
-    parser.add_option(
+    parser.add_argument(
         '--absolute', action='store_true',
         dest='absolute_expiry', default=False,
         help=("If present, seconds argument will be interpreted as a Unix "
@@ -1144,10 +1144,41 @@ def st_tempurl(parser, args, thread_manager):
     thread_manager.print_msg(url)
 
 
+class HelpFormatter(argparse.HelpFormatter):
+    def _format_action_invocation(self, action):
+        if not action.option_strings:
+            default = self._get_default_metavar_for_positional(action)
+            metavar, = self._metavar_formatter(action, default)(1)
+            return metavar
+
+        else:
+            parts = []
+
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                parts.extend(action.option_strings)
+
+            # if the Optional takes a value, format is:
+            #    -s=ARGS, --long=ARGS
+            else:
+                default = self._get_default_metavar_for_optional(action)
+                args_string = self._format_args(action, default)
+                for option_string in action.option_strings:
+                    parts.append('%s=%s' % (option_string, args_string))
+
+            return ', '.join(parts)
+
+    # Back-port py3 methods
+    def _get_default_metavar_for_optional(self, action):
+        return action.dest.upper()
+
+    def _get_default_metavar_for_positional(self, action):
+        return action.dest
+
+
 def parse_args(parser, args, enforce_requires=True):
-    if not args:
-        args = ['-h']
-    (options, args) = parser.parse_args(args)
+    options, args = parser.parse_known_args(args or ['-h'])
     if enforce_requires and (options.debug or options.info):
         logging.getLogger("swiftclient")
         if options.debug:
@@ -1157,14 +1188,14 @@ def parse_args(parser, args, enforce_requires=True):
         elif options.info:
             logging.basicConfig(level=logging.INFO)
 
-    if len(args) > 1 and args[1] == '--help':
+    if args and options.help:
         _help = globals().get('st_%s_help' % args[0],
                               "no help for %s" % args[0])
         print(_help)
         exit()
 
     # Short circuit for tempurl, which doesn't need auth
-    if len(args) > 0 and args[0] == 'tempurl':
+    if args and args[0] == 'tempurl':
         return options, args
 
     if options.auth_version == '3.0':
@@ -1207,7 +1238,7 @@ def parse_args(parser, args, enforce_requires=True):
 
     if (options.os_options.get('object_storage_url') and
             options.os_options.get('auth_token') and
-            (options.auth_version == '2.0' or options.auth_version == '3')):
+            options.auth_version in ('2.0', '3')):
         return options, args
 
     if enforce_requires:
@@ -1235,17 +1266,14 @@ adding "-V 2" is necessary for this.'''.strip('\n'))
 
 
 def main(arguments=None):
-    if arguments:
-        argv = arguments
-    else:
-        argv = sys_argv
+    argv = sys_argv if arguments is None else arguments
 
     argv = [a if isinstance(a, text_type) else a.decode('utf-8') for a in argv]
 
     version = client_version
-    parser = OptionParser(version='python-swiftclient %s' % version,
-                          usage='''
-usage: %prog [--version] [--help] [--os-help] [--snet] [--verbose]
+    parser = argparse.ArgumentParser(
+        add_help=False, formatter_class=HelpFormatter, usage='''
+%(prog)s [--version] [--help] [--os-help] [--snet] [--verbose]
              [--debug] [--info] [--quiet] [--auth <auth_url>]
              [--auth-version <auth_version> |
                  --os-identity-api-version <auth_version> ]
@@ -1287,29 +1315,34 @@ Positional arguments:
     auth                 Display auth related environment variables.
 
 Examples:
-  %prog download --help
+  %(prog)s download --help
 
-  %prog -A https://auth.api.rackspacecloud.com/v1.0 -U user -K api_key stat -v
+  %(prog)s -A https://auth.api.rackspacecloud.com/v1.0 \\
+      -U user -K api_key stat -v
 
-  %prog --os-auth-url https://api.example.com/v2.0 --os-tenant-name tenant \\
+  %(prog)s --os-auth-url https://api.example.com/v2.0 \\
+      --os-tenant-name tenant \\
       --os-username user --os-password password list
 
-  %prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
+  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
       --os-project-name project1 --os-project-domain-name domain1 \\
       --os-username user --os-user-domain-name domain1 \\
       --os-password password list
 
-  %prog --os-auth-url https://api.example.com/v3 --auth-version 3\\
+  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
       --os-project-id 0123456789abcdef0123456789abcdef \\
       --os-user-id abcdef0123456789abcdef0123456789 \\
       --os-password password list
 
-  %prog --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
+  %(prog)s --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
       --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
       list
 
-  %prog list --lh
+  %(prog)s list --lh
 '''.strip('\n'))
+    parser.add_argument('--version', action='version',
+                        version='python-swiftclient %s' % version)
+    parser.add_argument('-h', '--help', action='store_true')
 
     default_auth_version = '1.0'
     for k in ('ST_AUTH_VERSION', 'OS_AUTH_VERSION', 'OS_IDENTITY_API_VERSION'):
@@ -1319,193 +1352,196 @@ Examples:
         except KeyError:
             pass
 
-    parser.add_option('--os-help', action='store_true', dest='os_help',
-                      help='Show OpenStack authentication options.')
-    parser.add_option('--os_help', action='store_true', help=SUPPRESS_HELP)
-    parser.add_option('-s', '--snet', action='store_true', dest='snet',
-                      default=False, help='Use SERVICENET internal network.')
-    parser.add_option('-v', '--verbose', action='count', dest='verbose',
-                      default=1, help='Print more info.')
-    parser.add_option('--debug', action='store_true', dest='debug',
-                      default=False, help='Show the curl commands and results '
-                      'of all http queries regardless of result status.')
-    parser.add_option('--info', action='store_true', dest='info',
-                      default=False, help='Show the curl commands and results '
-                      'of all http queries which return an error.')
-    parser.add_option('-q', '--quiet', action='store_const', dest='verbose',
-                      const=0, default=1, help='Suppress status output.')
-    parser.add_option('-A', '--auth', dest='auth',
-                      default=environ.get('ST_AUTH'),
-                      help='URL for obtaining an auth token.')
-    parser.add_option('-V', '--auth-version', '--os-identity-api-version',
-                      dest='auth_version',
-                      default=default_auth_version,
-                      type=str,
-                      help='Specify a version for authentication. '
-                           'Defaults to env[ST_AUTH_VERSION], '
-                           'env[OS_AUTH_VERSION], env[OS_IDENTITY_API_VERSION]'
-                           ' or 1.0.')
-    parser.add_option('-U', '--user', dest='user',
-                      default=environ.get('ST_USER'),
-                      help='User name for obtaining an auth token.')
-    parser.add_option('-K', '--key', dest='key',
-                      default=environ.get('ST_KEY'),
-                      help='Key for obtaining an auth token.')
-    parser.add_option('-R', '--retries', type=int, default=5, dest='retries',
-                      help='The number of times to retry a failed connection.')
+    parser.add_argument('--os-help', action='store_true', dest='os_help',
+                        help='Show OpenStack authentication options.')
+    parser.add_argument('--os_help', action='store_true',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('-s', '--snet', action='store_true', dest='snet',
+                        default=False, help='Use SERVICENET internal network.')
+    parser.add_argument('-v', '--verbose', action='count', dest='verbose',
+                        default=1, help='Print more info.')
+    parser.add_argument('--debug', action='store_true', dest='debug',
+                        default=False, help='Show the curl commands and '
+                        'results of all http queries regardless of result '
+                        'status.')
+    parser.add_argument('--info', action='store_true', dest='info',
+                        default=False, help='Show the curl commands and '
+                        'results of all http queries which return an error.')
+    parser.add_argument('-q', '--quiet', action='store_const', dest='verbose',
+                        const=0, default=1, help='Suppress status output.')
+    parser.add_argument('-A', '--auth', dest='auth',
+                        default=environ.get('ST_AUTH'),
+                        help='URL for obtaining an auth token.')
+    parser.add_argument('-V', '--auth-version', '--os-identity-api-version',
+                        dest='auth_version',
+                        default=default_auth_version,
+                        type=str,
+                        help='Specify a version for authentication. '
+                             'Defaults to env[ST_AUTH_VERSION], '
+                             'env[OS_AUTH_VERSION], '
+                             'env[OS_IDENTITY_API_VERSION] or 1.0.')
+    parser.add_argument('-U', '--user', dest='user',
+                        default=environ.get('ST_USER'),
+                        help='User name for obtaining an auth token.')
+    parser.add_argument('-K', '--key', dest='key',
+                        default=environ.get('ST_KEY'),
+                        help='Key for obtaining an auth token.')
+    parser.add_argument('-R', '--retries', type=int, default=5, dest='retries',
+                        help='The number of times to retry a failed '
+                             'connection.')
     default_val = config_true_value(environ.get('SWIFTCLIENT_INSECURE'))
-    parser.add_option('--insecure',
-                      action="store_true", dest="insecure",
-                      default=default_val,
-                      help='Allow swiftclient to access servers without '
-                           'having to verify the SSL certificate. '
-                           'Defaults to env[SWIFTCLIENT_INSECURE] '
-                           '(set to \'true\' to enable).')
-    parser.add_option('--no-ssl-compression',
-                      action='store_false', dest='ssl_compression',
-                      default=True,
-                      help='This option is deprecated and not used anymore. '
-                           'SSL compression should be disabled by default '
-                           'by the system SSL library.')
+    parser.add_argument('--insecure',
+                        action="store_true", dest="insecure",
+                        default=default_val,
+                        help='Allow swiftclient to access servers without '
+                             'having to verify the SSL certificate. '
+                             'Defaults to env[SWIFTCLIENT_INSECURE] '
+                             '(set to \'true\' to enable).')
+    parser.add_argument('--no-ssl-compression',
+                        action='store_false', dest='ssl_compression',
+                        default=True,
+                        help='This option is deprecated and not used anymore. '
+                             'SSL compression should be disabled by default '
+                             'by the system SSL library.')
 
-    os_grp = OptionGroup(parser, "OpenStack authentication options")
-    os_grp.add_option('--os-username',
-                      metavar='<auth-user-name>',
-                      default=environ.get('OS_USERNAME'),
-                      help='OpenStack username. Defaults to env[OS_USERNAME].')
-    os_grp.add_option('--os_username',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-user-id',
-                      metavar='<auth-user-id>',
-                      default=environ.get('OS_USER_ID'),
-                      help='OpenStack user ID. '
-                      'Defaults to env[OS_USER_ID].')
-    os_grp.add_option('--os_user_id',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-user-domain-id',
-                      metavar='<auth-user-domain-id>',
-                      default=environ.get('OS_USER_DOMAIN_ID'),
-                      help='OpenStack user domain ID. '
-                      'Defaults to env[OS_USER_DOMAIN_ID].')
-    os_grp.add_option('--os_user_domain_id',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-user-domain-name',
-                      metavar='<auth-user-domain-name>',
-                      default=environ.get('OS_USER_DOMAIN_NAME'),
-                      help='OpenStack user domain name. '
-                           'Defaults to env[OS_USER_DOMAIN_NAME].')
-    os_grp.add_option('--os_user_domain_name',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-password',
-                      metavar='<auth-password>',
-                      default=environ.get('OS_PASSWORD'),
-                      help='OpenStack password. Defaults to env[OS_PASSWORD].')
-    os_grp.add_option('--os_password',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-tenant-id',
-                      metavar='<auth-tenant-id>',
-                      default=environ.get('OS_TENANT_ID'),
-                      help='OpenStack tenant ID. '
-                      'Defaults to env[OS_TENANT_ID].')
-    os_grp.add_option('--os_tenant_id',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-tenant-name',
-                      metavar='<auth-tenant-name>',
-                      default=environ.get('OS_TENANT_NAME'),
-                      help='OpenStack tenant name. '
-                           'Defaults to env[OS_TENANT_NAME].')
-    os_grp.add_option('--os_tenant_name',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-project-id',
-                      metavar='<auth-project-id>',
-                      default=environ.get('OS_PROJECT_ID'),
-                      help='OpenStack project ID. '
-                      'Defaults to env[OS_PROJECT_ID].')
-    os_grp.add_option('--os_project_id',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-project-name',
-                      metavar='<auth-project-name>',
-                      default=environ.get('OS_PROJECT_NAME'),
-                      help='OpenStack project name. '
-                           'Defaults to env[OS_PROJECT_NAME].')
-    os_grp.add_option('--os_project_name',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-project-domain-id',
-                      metavar='<auth-project-domain-id>',
-                      default=environ.get('OS_PROJECT_DOMAIN_ID'),
-                      help='OpenStack project domain ID. '
-                      'Defaults to env[OS_PROJECT_DOMAIN_ID].')
-    os_grp.add_option('--os_project_domain_id',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-project-domain-name',
-                      metavar='<auth-project-domain-name>',
-                      default=environ.get('OS_PROJECT_DOMAIN_NAME'),
-                      help='OpenStack project domain name. '
-                           'Defaults to env[OS_PROJECT_DOMAIN_NAME].')
-    os_grp.add_option('--os_project_domain_name',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-auth-url',
-                      metavar='<auth-url>',
-                      default=environ.get('OS_AUTH_URL'),
-                      help='OpenStack auth URL. Defaults to env[OS_AUTH_URL].')
-    os_grp.add_option('--os_auth_url',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-auth-token',
-                      metavar='<auth-token>',
-                      default=environ.get('OS_AUTH_TOKEN'),
-                      help='OpenStack token. Defaults to env[OS_AUTH_TOKEN]. '
-                           'Used with --os-storage-url to bypass the '
-                           'usual username/password authentication.')
-    os_grp.add_option('--os_auth_token',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-storage-url',
-                      metavar='<storage-url>',
-                      default=environ.get('OS_STORAGE_URL'),
-                      help='OpenStack storage URL. '
-                           'Defaults to env[OS_STORAGE_URL]. '
-                           'Overrides the storage url returned during auth. '
-                           'Will bypass authentication when used with '
-                           '--os-auth-token.')
-    os_grp.add_option('--os_storage_url',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-region-name',
-                      metavar='<region-name>',
-                      default=environ.get('OS_REGION_NAME'),
-                      help='OpenStack region name. '
-                           'Defaults to env[OS_REGION_NAME].')
-    os_grp.add_option('--os_region_name',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-service-type',
-                      metavar='<service-type>',
-                      default=environ.get('OS_SERVICE_TYPE'),
-                      help='OpenStack Service type. '
-                           'Defaults to env[OS_SERVICE_TYPE].')
-    os_grp.add_option('--os_service_type',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-endpoint-type',
-                      metavar='<endpoint-type>',
-                      default=environ.get('OS_ENDPOINT_TYPE'),
-                      help='OpenStack Endpoint type. '
-                           'Defaults to env[OS_ENDPOINT_TYPE].')
-    os_grp.add_option('--os_endpoint_type',
-                      help=SUPPRESS_HELP)
-    os_grp.add_option('--os-cacert',
-                      metavar='<ca-certificate>',
-                      default=environ.get('OS_CACERT'),
-                      help='Specify a CA bundle file to use in verifying a '
-                      'TLS (https) server certificate. '
-                      'Defaults to env[OS_CACERT].')
-    parser.disable_interspersed_args()
-    # call parse_args before adding os options group so that -h, --help will
-    # print a condensed help message without the os options
-    (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
-    parser.add_option_group(os_grp)
-    if options.os_help:
-        # if openstack option help has been explicitly requested then force
-        # help message, now that os_options group has been added to parser
-        argv = ['-h']
-    (options, args) = parse_args(parser, argv[1:], enforce_requires=False)
-    parser.enable_interspersed_args()
+    os_grp = parser.add_argument_group("OpenStack authentication options")
+    os_grp.add_argument('--os-username',
+                        metavar='<auth-user-name>',
+                        default=environ.get('OS_USERNAME'),
+                        help='OpenStack username. Defaults to '
+                             'env[OS_USERNAME].')
+    os_grp.add_argument('--os_username',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-user-id',
+                        metavar='<auth-user-id>',
+                        default=environ.get('OS_USER_ID'),
+                        help='OpenStack user ID. '
+                        'Defaults to env[OS_USER_ID].')
+    os_grp.add_argument('--os_user_id',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-user-domain-id',
+                        metavar='<auth-user-domain-id>',
+                        default=environ.get('OS_USER_DOMAIN_ID'),
+                        help='OpenStack user domain ID. '
+                        'Defaults to env[OS_USER_DOMAIN_ID].')
+    os_grp.add_argument('--os_user_domain_id',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-user-domain-name',
+                        metavar='<auth-user-domain-name>',
+                        default=environ.get('OS_USER_DOMAIN_NAME'),
+                        help='OpenStack user domain name. '
+                             'Defaults to env[OS_USER_DOMAIN_NAME].')
+    os_grp.add_argument('--os_user_domain_name',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-password',
+                        metavar='<auth-password>',
+                        default=environ.get('OS_PASSWORD'),
+                        help='OpenStack password. Defaults to '
+                             'env[OS_PASSWORD].')
+    os_grp.add_argument('--os_password',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-tenant-id',
+                        metavar='<auth-tenant-id>',
+                        default=environ.get('OS_TENANT_ID'),
+                        help='OpenStack tenant ID. '
+                        'Defaults to env[OS_TENANT_ID].')
+    os_grp.add_argument('--os_tenant_id',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-tenant-name',
+                        metavar='<auth-tenant-name>',
+                        default=environ.get('OS_TENANT_NAME'),
+                        help='OpenStack tenant name. '
+                             'Defaults to env[OS_TENANT_NAME].')
+    os_grp.add_argument('--os_tenant_name',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-project-id',
+                        metavar='<auth-project-id>',
+                        default=environ.get('OS_PROJECT_ID'),
+                        help='OpenStack project ID. '
+                        'Defaults to env[OS_PROJECT_ID].')
+    os_grp.add_argument('--os_project_id',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-project-name',
+                        metavar='<auth-project-name>',
+                        default=environ.get('OS_PROJECT_NAME'),
+                        help='OpenStack project name. '
+                             'Defaults to env[OS_PROJECT_NAME].')
+    os_grp.add_argument('--os_project_name',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-project-domain-id',
+                        metavar='<auth-project-domain-id>',
+                        default=environ.get('OS_PROJECT_DOMAIN_ID'),
+                        help='OpenStack project domain ID. '
+                        'Defaults to env[OS_PROJECT_DOMAIN_ID].')
+    os_grp.add_argument('--os_project_domain_id',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-project-domain-name',
+                        metavar='<auth-project-domain-name>',
+                        default=environ.get('OS_PROJECT_DOMAIN_NAME'),
+                        help='OpenStack project domain name. '
+                             'Defaults to env[OS_PROJECT_DOMAIN_NAME].')
+    os_grp.add_argument('--os_project_domain_name',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-auth-url',
+                        metavar='<auth-url>',
+                        default=environ.get('OS_AUTH_URL'),
+                        help='OpenStack auth URL. Defaults to '
+                             'env[OS_AUTH_URL].')
+    os_grp.add_argument('--os_auth_url',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-auth-token',
+                        metavar='<auth-token>',
+                        default=environ.get('OS_AUTH_TOKEN'),
+                        help='OpenStack token. Defaults to '
+                             'env[OS_AUTH_TOKEN]. Used with --os-storage-url '
+                             'to bypass the usual username/password '
+                             'authentication.')
+    os_grp.add_argument('--os_auth_token',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-storage-url',
+                        metavar='<storage-url>',
+                        default=environ.get('OS_STORAGE_URL'),
+                        help='OpenStack storage URL. '
+                             'Defaults to env[OS_STORAGE_URL]. '
+                             'Overrides the storage url returned during auth. '
+                             'Will bypass authentication when used with '
+                             '--os-auth-token.')
+    os_grp.add_argument('--os_storage_url',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-region-name',
+                        metavar='<region-name>',
+                        default=environ.get('OS_REGION_NAME'),
+                        help='OpenStack region name. '
+                             'Defaults to env[OS_REGION_NAME].')
+    os_grp.add_argument('--os_region_name',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-service-type',
+                        metavar='<service-type>',
+                        default=environ.get('OS_SERVICE_TYPE'),
+                        help='OpenStack Service type. '
+                             'Defaults to env[OS_SERVICE_TYPE].')
+    os_grp.add_argument('--os_service_type',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-endpoint-type',
+                        metavar='<endpoint-type>',
+                        default=environ.get('OS_ENDPOINT_TYPE'),
+                        help='OpenStack Endpoint type. '
+                             'Defaults to env[OS_ENDPOINT_TYPE].')
+    os_grp.add_argument('--os_endpoint_type',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-cacert',
+                        metavar='<ca-certificate>',
+                        default=environ.get('OS_CACERT'),
+                        help='Specify a CA bundle file to use in verifying a '
+                        'TLS (https) server certificate. '
+                        'Defaults to env[OS_CACERT].')
+    options, args = parse_args(parser, argv[1:], enforce_requires=False)
+
+    if options.help or options.os_help:
+        if options.help:
+            parser._action_groups.pop()
+        parser.print_help()
+        exit()
 
     if not args or args[0] not in commands:
         parser.print_usage()
@@ -1516,7 +1552,6 @@ Examples:
     signal.signal(signal.SIGINT, immediate_exit)
 
     with OutputManager() as output:
-
         parser.usage = globals()['st_%s_help' % args[0]]
         try:
             globals()['st_%s' % args[0]](parser, argv[1:], output)
