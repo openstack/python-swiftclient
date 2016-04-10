@@ -322,7 +322,8 @@ class _RetryBody(_ObjectBody):
 
 class HTTPConnection(object):
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
-                 ssl_compression=False, default_user_agent=None, timeout=None):
+                 cert=None, cert_key=None, ssl_compression=False,
+                 default_user_agent=None, timeout=None):
         """
         Make an HTTPConnection or HTTPSConnection
 
@@ -333,6 +334,9 @@ class HTTPConnection(object):
                        certificate.
         :param insecure: Allow to access servers without checking SSL certs.
                          The server's certificate will not be verified.
+        :param cert: Client certificate file to connect on SSL server
+                            requiring SSL client certificate.
+        :param cert_key: Client certificate private key file.
         :param ssl_compression: SSL compression should be disabled by default
                                 and this setting is not usable as of now. The
                                 parameter is kept for backward compatibility.
@@ -362,6 +366,14 @@ class HTTPConnection(object):
             # verify requests parameter is used to pass the CA_BUNDLE file
             # see: http://docs.python-requests.org/en/latest/user/advanced/
             self.requests_args['verify'] = cacert
+        if cert:
+            # NOTE(cbrandily): cert requests parameter is used to pass client
+            # cert path or  a tuple with client certificate/key paths.
+            if cert_key:
+                self.requests_args['cert'] = cert, cert_key
+            else:
+                self.requests_args['cert'] = cert
+
         if proxy:
             proxy_parsed = urlparse(proxy)
             if not proxy_parsed.scheme:
@@ -448,8 +460,11 @@ def http_connection(*arg, **kwarg):
 def get_auth_1_0(url, user, key, snet, **kwargs):
     cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
+    cert = kwargs.get('cert')
+    cert_key = kwargs.get('cert_key')
     timeout = kwargs.get('timeout', None)
     parsed, conn = http_connection(url, cacert=cacert, insecure=insecure,
+                                   cert=cert, cert_key=cert_key,
                                    timeout=timeout)
     method = 'GET'
     headers = {'X-Auth-User': user, 'X-Auth-Key': key}
@@ -530,6 +545,8 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
             project_domain_id=os_options.get('project_domain_id'),
             debug=debug,
             cacert=kwargs.get('cacert'),
+            cert=kwargs.get('cert'),
+            key=kwargs.get('cert_key'),
             auth_url=auth_url, insecure=insecure, timeout=timeout)
     except exceptions.Unauthorized:
         msg = 'Unauthorized. Check username, password and tenant name/id.'
@@ -580,6 +597,8 @@ def get_auth(auth_url, user, key, **kwargs):
 
     cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
+    cert = kwargs.get('cert')
+    cert_key = kwargs.get('cert_key')
     timeout = kwargs.get('timeout', None)
     if auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
@@ -588,6 +607,8 @@ def get_auth(auth_url, user, key, **kwargs):
                                           kwargs.get('snet'),
                                           cacert=cacert,
                                           insecure=insecure,
+                                          cert=cert,
+                                          cert_key=cert_key,
                                           timeout=timeout)
     elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:
         # We are handling a special use case here where the user argument
@@ -611,6 +632,8 @@ def get_auth(auth_url, user, key, **kwargs):
                                                key, os_options,
                                                cacert=cacert,
                                                insecure=insecure,
+                                               cert=cert,
+                                               cert_key=cert_key,
                                                timeout=timeout,
                                                auth_version=auth_version)
     else:
@@ -1372,8 +1395,9 @@ class Connection(object):
                  preauthurl=None, preauthtoken=None, snet=False,
                  starting_backoff=1, max_backoff=64, tenant_name=None,
                  os_options=None, auth_version="1", cacert=None,
-                 insecure=False, ssl_compression=True,
-                 retry_on_ratelimit=False, timeout=None):
+                 insecure=False, cert=None, cert_key=None,
+                 ssl_compression=True, retry_on_ratelimit=False,
+                 timeout=None):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1395,6 +1419,9 @@ class Connection(object):
                            service_username, service_project_name, service_key
         :param insecure: Allow to access servers without checking SSL certs.
                          The server's certificate will not be verified.
+        :param cert: Client certificate file to connect on SSL server
+                            requiring SSL client certificate.
+        :param cert_key: Client certificate private key file.
         :param ssl_compression: Whether to enable compression at the SSL layer.
                                 If set to 'False' and the pyOpenSSL library is
                                 present an attempt to disable SSL compression
@@ -1430,6 +1457,8 @@ class Connection(object):
         self.service_token = None
         self.cacert = cacert
         self.insecure = insecure
+        self.cert = cert
+        self.cert_key = cert_key
         self.ssl_compression = ssl_compression
         self.auth_end_time = 0
         self.retry_on_ratelimit = retry_on_ratelimit
@@ -1452,6 +1481,8 @@ class Connection(object):
                                         os_options=self.os_options,
                                         cacert=self.cacert,
                                         insecure=self.insecure,
+                                        cert=self.cert,
+                                        cert_key=self.cert_key,
                                         timeout=self.timeout)
         return self.url, self.token
 
@@ -1477,6 +1508,8 @@ class Connection(object):
         return http_connection(url if url else self.url,
                                cacert=self.cacert,
                                insecure=self.insecure,
+                               cert=self.cert,
+                               cert_key=self.cert_key,
                                ssl_compression=self.ssl_compression,
                                timeout=self.timeout)
 

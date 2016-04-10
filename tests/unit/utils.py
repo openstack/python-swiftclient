@@ -57,6 +57,11 @@ def fake_get_auth_keystone(expected_os_options=None, exc=None,
            actual_kwargs['cacert'] is None:
             from swiftclient import client as c
             raise c.ClientException("unverified-certificate")
+        if auth_url.startswith("https") and \
+           auth_url.endswith("client-certificate") and \
+           not (actual_kwargs['cert'] and actual_kwargs['cert_key']):
+            from swiftclient import client as c
+            raise c.ClientException("noclient-certificate")
 
         return storage_url, token
     return fake_get_auth_keystone
@@ -215,6 +220,7 @@ class MockHttpTest(unittest.TestCase):
             on_request = kwargs.get('on_request')
 
             def wrapper(url, proxy=None, cacert=None, insecure=False,
+                        cert=None, cert_key=None,
                         ssl_compression=True, timeout=None):
                 if storage_url:
                     self.assertEqual(storage_url, url)

@@ -148,6 +148,8 @@ def _build_default_global_options():
         "os_service_type": environ.get('OS_SERVICE_TYPE'),
         "os_endpoint_type": environ.get('OS_ENDPOINT_TYPE'),
         "os_cacert": environ.get('OS_CACERT'),
+        "os_cert": environ.get('OS_CERT'),
+        "os_key": environ.get('OS_KEY'),
         "insecure": config_true_value(environ.get('SWIFTCLIENT_INSECURE')),
         "ssl_compression": False,
         'segment_threads': 10,
@@ -236,6 +238,8 @@ def get_conn(options):
                       snet=options['snet'],
                       cacert=options['os_cacert'],
                       insecure=options['insecure'],
+                      cert=options['os_cert'],
+                      cert_key=options['os_key'],
                       ssl_compression=options['ssl_compression'])
 
 

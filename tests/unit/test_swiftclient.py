@@ -512,6 +512,32 @@ class TestGetAuth(MockHttpTest):
                           os_options=os_options, auth_version='2.0',
                           insecure=False)
 
+    def test_auth_v2_cert(self):
+        os_options = {'tenant_name': 'foo'}
+        c.get_auth_keystone = fake_get_auth_keystone(os_options, None)
+
+        auth_url_no_sslauth = 'https://www.tests.com'
+        auth_url_sslauth = 'https://www.tests.com/client-certificate'
+
+        url, token = c.get_auth(auth_url_no_sslauth, 'asdf', 'asdf',
+                                os_options=os_options, auth_version='2.0')
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+        url, token = c.get_auth(auth_url_sslauth, 'asdf', 'asdf',
+                                os_options=os_options, auth_version='2.0',
+                                cert='minnie', cert_key='mickey')
+        self.assertTrue(url.startswith("http"))
+        self.assertTrue(token)
+
+        self.assertRaises(c.ClientException, c.get_auth,
+                          auth_url_sslauth, 'asdf', 'asdf',
+                          os_options=os_options, auth_version='2.0')
+        self.assertRaises(c.ClientException, c.get_auth,
+                          auth_url_sslauth, 'asdf', 'asdf',
+                          os_options=os_options, auth_version='2.0',
+                          cert='minnie')
+
     def test_auth_v3_with_tenant_name(self):
         # check the correct auth version is passed to get_auth_keystone
         os_options = {'tenant_name': 'asdf'}
@@ -1511,6 +1537,15 @@ class TestHTTPConnection(MockHttpTest):
         conn = c.http_connection(u'http://www.test.com/', insecure=True)
         self.assertEqual(conn[1].requests_args['verify'], False)
 
+    def test_cert(self):
+        conn = c.http_connection(u'http://www.test.com/', cert='minnie')
+        self.assertEqual(conn[1].requests_args['cert'], 'minnie')
+
+    def test_cert_key(self):
+        conn = c.http_connection(
+            u'http://www.test.com/', cert='minnie', cert_key='mickey')
+        self.assertEqual(conn[1].requests_args['cert'], ('minnie', 'mickey'))
+
     def test_response_connection_released(self):
         _parsed_url, conn = c.http_connection(u'http://www.test.com/')
         conn.resp = MockHttpResponse()
@@ -2018,8 +2053,8 @@ class TestConnection(MockHttpTest):
                 return ''
 
         def local_http_connection(url, proxy=None, cacert=None,
-                                  insecure=False, ssl_compression=True,
-                                  timeout=None):
+                                  insecure=False, cert=None, cert_key=None,
+                                  ssl_compression=True, timeout=None):
             parsed = urlparse(url)
             return parsed, LocalConnection()
 

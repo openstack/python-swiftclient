@@ -1294,6 +1294,8 @@ def main(arguments=None):
              [--os-service-type <service-type>]
              [--os-endpoint-type <endpoint-type>]
              [--os-cacert <ca-certificate>] [--insecure]
+             [--os-cert <client-certificate-file>]
+             [--os-key <client-certificate-key-file>]
              [--no-ssl-compression]
              <subcommand> [--help] [<subcommand options>]
 
@@ -1535,6 +1537,16 @@ Examples:
                         help='Specify a CA bundle file to use in verifying a '
                         'TLS (https) server certificate. '
                         'Defaults to env[OS_CACERT].')
+    os_grp.add_argument('--os-cert',
+                        metavar='<client-certificate-file>',
+                        default=environ.get('OS_CERT'),
+                        help='Specify a client certificate file (for client '
+                        'auth). Defaults to env[OS_CERT].')
+    os_grp.add_argument('--os-key',
+                        metavar='<client-certificate-key-file>',
+                        default=environ.get('OS_KEY'),
+                        help='Specify a client certificate key file (for '
+                        'client auth). Defaults to env[OS_KEY].')
     options, args = parse_args(parser, argv[1:], enforce_requires=False)
 
     if options.help or options.os_help:
