@@ -883,7 +883,7 @@ class SwiftService(object):
 
     @staticmethod
     def _list_container_job(conn, container, options, result_queue):
-        marker = ''
+        marker = options.get('marker', '')
         error = None
         try:
             while True:
