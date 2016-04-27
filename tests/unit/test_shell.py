@@ -1971,6 +1971,13 @@ class TestKeystoneOptions(MockHttpTest):
         self._test_options(opts, os_opts, flags=self.flags)
 
         opts = {}
+        self.defaults['auth-version'] = '3'
+        self._test_options(opts, os_opts, flags=self.flags)
+
+        for o in ('user-domain-name', 'user-domain-id',
+                  'project-domain-name', 'project-domain-id'):
+            os_opts.pop(o)
+        self.defaults['auth-version'] = '2.0'
         self._test_options(opts, os_opts, flags=self.flags)
 
     def test_catalog_options_and_flags_not_required_v3(self):
@@ -2018,6 +2025,28 @@ class TestKeystoneOptions(MockHttpTest):
         self._test_options(opts, os_opts)
 
         keys = ('username', 'password', 'tenant-id', 'auth-url')
+        os_opts = self._build_os_opts(keys)
+        self._test_options(opts, os_opts)
+
+        # ...except when it should be 3
+        self.defaults['auth-version'] = '3'
+        keys = ('username', 'user-domain-name', 'password', 'project-name',
+                'auth-url')
+        os_opts = self._build_os_opts(keys)
+        self._test_options(opts, os_opts)
+
+        keys = ('username', 'user-domain-id', 'password', 'project-name',
+                'auth-url')
+        os_opts = self._build_os_opts(keys)
+        self._test_options(opts, os_opts)
+
+        keys = ('username', 'project-domain-name', 'password', 'project-name',
+                'auth-url')
+        os_opts = self._build_os_opts(keys)
+        self._test_options(opts, os_opts)
+
+        keys = ('username', 'project-domain-id', 'password', 'project-name',
+                'auth-url')
         os_opts = self._build_os_opts(keys)
         self._test_options(opts, os_opts)
 

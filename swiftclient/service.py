@@ -92,11 +92,18 @@ def process_options(options):
     elif options.get('auth_version') == '2':
         options['auth_version'] = '2.0'
 
-    if (not (options.get('auth') and options.get('user')
-             and options.get('key'))
-            and options.get('auth_version') != '3'):
-        # Use keystone 2.0 auth if any of the old-style args are missing
-        options['auth_version'] = '2.0'
+    if options.get('auth_version') not in ('2.0', '3') and not all(
+            options.get(key) for key in ('auth', 'user', 'key')):
+        # Use keystone auth if any of the new-style args are present
+        if any(options.get(k) for k in (
+                'os_user_domain_id',
+                'os_user_domain_name',
+                'os_project_domain_id',
+                'os_project_domain_name')):
+            # Use v3 if there's any reference to domains
+            options['auth_version'] = '3'
+        else:
+            options['auth_version'] = '2.0'
 
     # Use new-style args if old ones not present
     if not options['auth'] and options['os_auth_url']:

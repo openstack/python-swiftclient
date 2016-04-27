@@ -1197,8 +1197,7 @@ def parse_args(parser, args, enforce_requires=True):
         return options, args
 
     if (options['os_options']['object_storage_url'] and
-            options['os_options']['auth_token'] and
-            options['auth_version'] in ('2.0', '3')):
+            options['os_options']['auth_token']):
         return options, args
 
     if enforce_requires:
