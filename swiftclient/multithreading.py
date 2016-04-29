@@ -126,7 +126,6 @@ class MultiThreadingManager(object):
     def __init__(self, create_connection, segment_threads=10,
                  object_dd_threads=10, object_uu_threads=10,
                  container_threads=10):
-
         """
         :param segment_threads: The number of threads allocated to segment
                                 uploads
