@@ -1657,10 +1657,13 @@ class SwiftService(object):
             fp.seek(segment_start)
 
             contents = LengthWrapper(fp, segment_size, md5=options['checksum'])
-            etag = conn.put_object(segment_container,
-                                   segment_name, contents,
-                                   content_length=segment_size,
-                                   response_dict=results_dict)
+            etag = conn.put_object(
+                segment_container,
+                segment_name,
+                contents,
+                content_length=segment_size,
+                content_type='application/swiftclient-segment',
+                response_dict=results_dict)
 
             if options['checksum'] and etag and etag != contents.get_md5sum():
                 raise SwiftError('Segment {0}: upload verification failed: '
