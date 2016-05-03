@@ -1438,18 +1438,18 @@ class TestParsing(TestBase):
         expected_os_opts_dict = expected_os_opts_dict or {}
         # check the expected opts are set
         for key, v in expected_opts.items():
-            actual = getattr(actual_opts, key)
+            actual = actual_opts.get(key)
             self.assertEqual(v, actual, 'Expected %s for key %s, found %s' %
                              (v, key, actual))
 
         for key, v in expected_os_opts.items():
-            actual = getattr(actual_opts, "os_" + key)
+            actual = actual_opts.get("os_" + key)
             self.assertEqual(v, actual, 'Expected %s for key %s, found %s' %
                              (v, key, actual))
 
         # check the os_options dict values are set
-        self.assertTrue(hasattr(actual_opts, 'os_options'))
-        actual_os_opts_dict = getattr(actual_opts, 'os_options')
+        self.assertIn('os_options', actual_opts)
+        actual_os_opts_dict = actual_opts['os_options']
         expected_os_opts_keys = ['project_name', 'region_name',
                                  'tenant_name',
                                  'user_domain_name', 'endpoint_type',
@@ -1478,8 +1478,8 @@ class TestParsing(TestBase):
                        ('os_auth_url', 'auth'),
                        ('os_password', 'key')]
         for pair in equivalents:
-            self.assertEqual(getattr(actual_opts, pair[0]),
-                             getattr(actual_opts, pair[1]))
+            self.assertEqual(actual_opts.get(pair[0]),
+                             actual_opts.get(pair[1]))
 
     def test_minimum_required_args_v3(self):
         opts = {"auth_version": "3"}

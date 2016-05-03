@@ -101,13 +101,13 @@ def st_delete(parser, args, output_manager):
         'Its value must be a positive integer. Default is 10.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
-    if (not args and not options.yes_all) or (args and options.yes_all):
+    if (not args and not options['yes_all']) or (args and options['yes_all']):
         output_manager.error('Usage: %s delete %s\n%s',
                              BASENAME, st_delete_options,
                              st_delete_help)
         return
 
-    if options.object_threads <= 0:
+    if options['object_threads'] <= 0:
         output_manager.error(
             'ERROR: option --object-threads should be a positive integer.'
             '\n\nUsage: %s delete %s\n%s',
@@ -115,7 +115,7 @@ def st_delete(parser, args, output_manager):
             st_delete_help)
         return
 
-    if options.container_threads <= 0:
+    if options['container_threads'] <= 0:
         output_manager.error(
             'ERROR: option --container-threads should be a positive integer.'
             '\n\nUsage: %s delete %s\n%s',
@@ -123,9 +123,8 @@ def st_delete(parser, args, output_manager):
             st_delete_help)
         return
 
-    _opts = vars(options)
-    _opts['object_dd_threads'] = options.object_threads
-    with SwiftService(options=_opts) as swift:
+    options['object_dd_threads'] = options['object_threads']
+    with SwiftService(options=options) as swift:
         try:
             if not args:
                 del_iter = swift.delete()
@@ -169,7 +168,7 @@ def st_delete(parser, args, output_manager):
                                 pass
 
                         for o in objs:
-                            if options.yes_all:
+                            if options['yes_all']:
                                 p = '{0}/{1}'.format(c, o)
                             else:
                                 p = o
@@ -180,12 +179,12 @@ def st_delete(parser, args, output_manager):
                                                  .format(c, o, r['error']))
                 else:
                     if r['success']:
-                        if options.verbose:
+                        if options['verbose']:
                             a = (' [after {0} attempts]'.format(a)
                                  if a > 1 else '')
 
                             if r['action'] == 'delete_object':
-                                if options.yes_all:
+                                if options['yes_all']:
                                     p = '{0}/{1}'.format(c, o)
                                 else:
                                     p = o
@@ -319,40 +318,39 @@ def st_download(parser, args, output_manager):
         'are listed in the object store.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
-    if options.out_file == '-':
-        options.verbose = 0
+    if options['out_file'] == '-':
+        options['verbose'] = 0
 
-    if options.out_file and len(args) != 2:
+    if options['out_file'] and len(args) != 2:
         exit('-o option only allowed for single file downloads')
 
-    if not options.prefix:
-        options.remove_prefix = False
+    if not options['prefix']:
+        options['remove_prefix'] = False
 
-    if options.out_directory and len(args) == 2:
+    if options['out_directory'] and len(args) == 2:
         exit('Please use -o option for single file downloads and renames')
 
-    if (not args and not options.yes_all) or (args and options.yes_all):
+    if (not args and not options['yes_all']) or (args and options['yes_all']):
         output_manager.error('Usage: %s download %s\n%s', BASENAME,
                              st_download_options, st_download_help)
         return
 
-    if options.object_threads <= 0:
+    if options['object_threads'] <= 0:
         output_manager.error(
             'ERROR: option --object-threads should be a positive integer.\n\n'
             'Usage: %s download %s\n%s', BASENAME,
             st_download_options, st_download_help)
         return
 
-    if options.container_threads <= 0:
+    if options['container_threads'] <= 0:
         output_manager.error(
             'ERROR: option --container-threads should be a positive integer.'
             '\n\nUsage: %s download %s\n%s', BASENAME,
             st_download_options, st_download_help)
         return
 
-    _opts = vars(options)
-    _opts['object_dd_threads'] = options.object_threads
-    with SwiftService(options=_opts) as swift:
+    options['object_dd_threads'] = options['object_threads']
+    with SwiftService(options=options) as swift:
         try:
             if not args:
                 down_iter = swift.download()
@@ -372,13 +370,13 @@ def st_download(parser, args, output_manager):
                     down_iter = swift.download(container, objects)
 
             for down in down_iter:
-                if options.out_file == '-' and 'contents' in down:
+                if options['out_file'] == '-' and 'contents' in down:
                     contents = down['contents']
                     for chunk in contents:
                         output_manager.print_raw(chunk)
                 else:
                     if down['success']:
-                        if options.verbose:
+                        if options['verbose']:
                             start_time = down['start_time']
                             headers_receipt = \
                                 down['headers_receipt'] - start_time
@@ -423,7 +421,7 @@ def st_download(parser, args, output_manager):
                         obj = down['object']
                         if isinstance(error, ClientException):
                             if error.http_status == 304 and \
-                                    options.skip_identical:
+                                    options['skip_identical']:
                                 output_manager.print_msg(
                                     "Skipped identical file '%s'", path)
                                 continue
@@ -467,17 +465,17 @@ Optional arguments:
 
 def st_list(parser, args, output_manager):
 
-    def _print_stats(options, stats):
+    def _print_stats(options, stats, human):
         total_count = total_bytes = 0
         container = stats.get("container", None)
         for item in stats["listing"]:
             item_name = item.get('name')
-            if not options.long and not options.human:
+            if not options['long'] and not human:
                 output_manager.print_msg(item.get('name', item.get('subdir')))
             else:
                 if not container:    # listing containers
                     item_bytes = item.get('bytes')
-                    byte_str = prt_bytes(item_bytes, options.human)
+                    byte_str = prt_bytes(item_bytes, human)
                     count = item.get('count')
                     total_count += count
                     try:
@@ -486,7 +484,7 @@ def st_list(parser, args, output_manager):
                         datestamp = strftime('%Y-%m-%d %H:%M:%S', utc)
                     except TypeError:
                         datestamp = '????-??-?? ??:??:??'
-                    if not options.totals:
+                    if not options['totals']:
                         output_manager.print_msg(
                             "%5s %s %s %s", count, byte_str,
                             datestamp, item_name)
@@ -495,29 +493,29 @@ def st_list(parser, args, output_manager):
                     content_type = item.get('content_type')
                     if subdir is None:
                         item_bytes = item.get('bytes')
-                        byte_str = prt_bytes(item_bytes, options.human)
+                        byte_str = prt_bytes(item_bytes, human)
                         date, xtime = item.get('last_modified').split('T')
                         xtime = xtime.split('.')[0]
                     else:
                         item_bytes = 0
-                        byte_str = prt_bytes(item_bytes, options.human)
+                        byte_str = prt_bytes(item_bytes, human)
                         date = xtime = ''
                         item_name = subdir
-                    if not options.totals:
+                    if not options['totals']:
                         output_manager.print_msg(
                             "%s %10s %8s %24s %s",
                             byte_str, date, xtime, content_type, item_name)
                 total_bytes += item_bytes
 
         # report totals
-        if options.long or options.human:
+        if options['long'] or human:
             if not container:
                 output_manager.print_msg(
                     "%5s %s", prt_bytes(total_count, True),
-                    prt_bytes(total_bytes, options.human))
+                    prt_bytes(total_bytes, human))
             else:
                 output_manager.print_msg(
-                    prt_bytes(total_bytes, options.human))
+                    prt_bytes(total_bytes, human))
 
     parser.add_argument(
         '-l', '--long', dest='long', action='store_true', default=False,
@@ -540,20 +538,19 @@ def st_list(parser, args, output_manager):
              'what this means.')
     options, args = parse_args(parser, args)
     args = args[1:]
-    if options.delimiter and not args:
+    if options['delimiter'] and not args:
         exit('-d option only allowed for container listings')
 
-    _opts = vars(options).copy()
-    if _opts['human']:
-        _opts.pop('human')
-        _opts['long'] = True
+    human = options.pop('human')
+    if human:
+        options['long'] = True
 
-    if options.totals and not options.long and not options.human:
+    if options['totals'] and not options['long']:
         output_manager.error(
             "Listing totals only works with -l or --lh.")
         return
 
-    with SwiftService(options=_opts) as swift:
+    with SwiftService(options=options) as swift:
         try:
             if not args:
                 stats_parts_gen = swift.list()
@@ -570,7 +567,7 @@ def st_list(parser, args, output_manager):
 
             for stats in stats_parts_gen:
                 if stats["success"]:
-                    _print_stats(options, stats)
+                    _print_stats(options, stats, human)
                 else:
                     raise stats["error"]
 
@@ -602,9 +599,7 @@ def st_stat(parser, args, output_manager):
     options, args = parse_args(parser, args)
     args = args[1:]
 
-    _opts = vars(options)
-
-    with SwiftService(options=_opts) as swift:
+    with SwiftService(options=options) as swift:
         try:
             if not args:
                 stat_result = swift.stat()
@@ -713,13 +708,11 @@ def st_post(parser, args, output_manager):
         '-H "Content-Length: 4000"')
     (options, args) = parse_args(parser, args)
     args = args[1:]
-    if (options.read_acl or options.write_acl or options.sync_to or
-            options.sync_key) and not args:
+    if (options['read_acl'] or options['write_acl'] or options['sync_to'] or
+            options['sync_key']) and not args:
         exit('-r, -w, -t, and -k options only allowed for containers')
 
-    _opts = vars(options)
-
-    with SwiftService(options=_opts) as swift:
+    with SwiftService(options=options) as swift:
         try:
             if not args:
                 result = swift.post()
@@ -868,47 +861,46 @@ def st_upload(parser, args, output_manager):
         container = args[0]
         files = args[1:]
 
-    if options.object_name is not None:
+    if options['object_name'] is not None:
         if len(files) > 1:
             output_manager.error('object-name only be used with 1 file or dir')
             return
         else:
             orig_path = files[0]
 
-    if options.segment_size:
+    if options['segment_size']:
         try:
             # If segment size only has digits assume it is bytes
-            int(options.segment_size)
+            int(options['segment_size'])
         except ValueError:
             try:
-                size_mod = "BKMG".index(options.segment_size[-1].upper())
-                multiplier = int(options.segment_size[:-1])
+                size_mod = "BKMG".index(options['segment_size'][-1].upper())
+                multiplier = int(options['segment_size'][:-1])
             except ValueError:
                 output_manager.error("Invalid segment size")
                 return
 
-            options.segment_size = str((1024 ** size_mod) * multiplier)
-        if int(options.segment_size) <= 0:
+            options['segment_size'] = str((1024 ** size_mod) * multiplier)
+        if int(options['segment_size']) <= 0:
             output_manager.error("segment-size should be positive")
             return
 
-    if options.object_threads <= 0:
+    if options['object_threads'] <= 0:
         output_manager.error(
             'ERROR: option --object-threads should be a positive integer.'
             '\n\nUsage: %s upload %s\n%s', BASENAME, st_upload_options,
             st_upload_help)
         return
 
-    if options.segment_threads <= 0:
+    if options['segment_threads'] <= 0:
         output_manager.error(
             'ERROR: option --segment-threads should be a positive integer.'
             '\n\nUsage: %s upload %s\n%s', BASENAME, st_upload_options,
             st_upload_help)
         return
 
-    _opts = vars(options)
-    _opts['object_uu_threads'] = options.object_threads
-    with SwiftService(options=_opts) as swift:
+    options['object_uu_threads'] = options['object_threads']
+    with SwiftService(options=options) as swift:
         try:
             objs = []
             dir_markers = []
@@ -926,25 +918,25 @@ def st_upload(parser, args, output_manager):
 
             # Now that we've collected all the required files and dir markers
             # build the tuples for the call to upload
-            if options.object_name is not None:
+            if options['object_name'] is not None:
                 objs = [
                     SwiftUploadObject(
                         o, object_name=o.replace(
-                            orig_path, options.object_name, 1
+                            orig_path, options['object_name'], 1
                         )
                     ) for o in objs
                 ]
                 dir_markers = [
                     SwiftUploadObject(
                         None, object_name=d.replace(
-                            orig_path, options.object_name, 1
+                            orig_path, options['object_name'], 1
                         ), options={'dir_marker': True}
                     ) for d in dir_markers
                 ]
 
             for r in swift.upload(container, objs + dir_markers):
                 if r['success']:
-                    if options.verbose:
+                    if options['verbose']:
                         if 'attempts' in r and r['attempts'] > 1:
                             if 'object' in r:
                                 output_manager.print_msg(
@@ -990,7 +982,7 @@ def st_upload(parser, args, output_manager):
                         output_manager.error("%s" % error)
                         too_large = (isinstance(error, ClientException) and
                                      error.http_status == 413)
-                        if too_large and options.verbose > 0:
+                        if too_large and options['verbose'] > 0:
                             output_manager.error(
                                 "Consider using the --segment-size option "
                                 "to chunk the object")
@@ -1028,8 +1020,7 @@ def st_capabilities(parser, args, output_manager):
                              st_capabilities_options, st_capabilities_help)
         return
 
-    _opts = vars(options)
-    with SwiftService(options=_opts) as swift:
+    with SwiftService(options=options) as swift:
         try:
             if len(args) == 2:
                 url = args[1]
@@ -1067,23 +1058,23 @@ Display auth related authentication variables in shell friendly format.
 
 def st_auth(parser, args, thread_manager):
     (options, args) = parse_args(parser, args)
-    _opts = vars(options)
-    if options.verbose > 1:
-        if options.auth_version in ('1', '1.0'):
-            print('export ST_AUTH=%s' % sh_quote(options.auth))
-            print('export ST_USER=%s' % sh_quote(options.user))
-            print('export ST_KEY=%s' % sh_quote(options.key))
+    if options['verbose'] > 1:
+        if options['auth_version'] in ('1', '1.0'):
+            print('export ST_AUTH=%s' % sh_quote(options['auth']))
+            print('export ST_USER=%s' % sh_quote(options['user']))
+            print('export ST_KEY=%s' % sh_quote(options['key']))
         else:
             print('export OS_IDENTITY_API_VERSION=%s' % sh_quote(
-                options.auth_version))
-            print('export OS_AUTH_VERSION=%s' % sh_quote(options.auth_version))
-            print('export OS_AUTH_URL=%s' % sh_quote(options.auth))
-            for k, v in sorted(_opts.items()):
+                options['auth_version']))
+            print('export OS_AUTH_VERSION=%s' % sh_quote(
+                options['auth_version']))
+            print('export OS_AUTH_URL=%s' % sh_quote(options['auth']))
+            for k, v in sorted(options.items()):
                 if v and k.startswith('os_') and \
                         k not in ('os_auth_url', 'os_options'):
                     print('export %s=%s' % (k.upper(), sh_quote(v)))
     else:
-        conn = get_conn(_opts)
+        conn = get_conn(options)
         url, token = conn.get_auth()
         print('export OS_STORAGE_URL=%s' % sh_quote(url))
         print('export OS_AUTH_TOKEN=%s' % sh_quote(token))
@@ -1140,7 +1131,7 @@ def st_tempurl(parser, args, thread_manager):
                                  'tempurl specified, possibly an error' %
                                  method.upper())
     url = generate_temp_url(path, seconds, key, method,
-                            absolute=options.absolute_expiry)
+                            absolute=options['absolute_expiry'])
     thread_manager.print_msg(url)
 
 
@@ -1179,16 +1170,17 @@ class HelpFormatter(argparse.HelpFormatter):
 
 def parse_args(parser, args, enforce_requires=True):
     options, args = parser.parse_known_args(args or ['-h'])
-    if enforce_requires and (options.debug or options.info):
+    options = vars(options)
+    if enforce_requires and (options['debug'] or options['info']):
         logging.getLogger("swiftclient")
-        if options.debug:
+        if options['debug']:
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger('iso8601').setLevel(logging.WARNING)
             client_logger_settings['redact_sensitive_headers'] = False
-        elif options.info:
+        elif options['info']:
             logging.basicConfig(level=logging.INFO)
 
-    if args and options.help:
+    if args and options['help']:
         _help = globals().get('st_%s_help' % args[0],
                               "no help for %s" % args[0])
         print(_help)
@@ -1198,62 +1190,62 @@ def parse_args(parser, args, enforce_requires=True):
     if args and args[0] == 'tempurl':
         return options, args
 
-    if options.auth_version == '3.0':
+    if options['auth_version'] == '3.0':
         # tolerate sloppy auth_version
-        options.auth_version = '3'
+        options['auth_version'] = '3'
 
-    if (not (options.auth and options.user and options.key)
-            and options.auth_version != '3'):
+    if (not (options['auth'] and options['user'] and options['key'])
+            and options['auth_version'] != '3'):
         # Use keystone auth if any of the old-style args are missing
-        options.auth_version = '2.0'
+        options['auth_version'] = '2.0'
 
     # Use new-style args if old ones not present
-    if not options.auth and options.os_auth_url:
-        options.auth = options.os_auth_url
-    if not options.user and options.os_username:
-        options.user = options.os_username
-    if not options.key and options.os_password:
-        options.key = options.os_password
+    if not options['auth'] and options['os_auth_url']:
+        options['auth'] = options['os_auth_url']
+    if not options['user'] and options['os_username']:
+        options['user'] = options['os_username']
+    if not options['key'] and options['os_password']:
+        options['key'] = options['os_password']
 
     # Specific OpenStack options
-    options.os_options = {
-        'user_id': options.os_user_id,
-        'user_domain_id': options.os_user_domain_id,
-        'user_domain_name': options.os_user_domain_name,
-        'tenant_id': options.os_tenant_id,
-        'tenant_name': options.os_tenant_name,
-        'project_id': options.os_project_id,
-        'project_name': options.os_project_name,
-        'project_domain_id': options.os_project_domain_id,
-        'project_domain_name': options.os_project_domain_name,
-        'service_type': options.os_service_type,
-        'endpoint_type': options.os_endpoint_type,
-        'auth_token': options.os_auth_token,
-        'object_storage_url': options.os_storage_url,
-        'region_name': options.os_region_name,
+    options['os_options'] = {
+        'user_id': options['os_user_id'],
+        'user_domain_id': options['os_user_domain_id'],
+        'user_domain_name': options['os_user_domain_name'],
+        'tenant_id': options['os_tenant_id'],
+        'tenant_name': options['os_tenant_name'],
+        'project_id': options['os_project_id'],
+        'project_name': options['os_project_name'],
+        'project_domain_id': options['os_project_domain_id'],
+        'project_domain_name': options['os_project_domain_name'],
+        'service_type': options['os_service_type'],
+        'endpoint_type': options['os_endpoint_type'],
+        'auth_token': options['os_auth_token'],
+        'object_storage_url': options['os_storage_url'],
+        'region_name': options['os_region_name'],
     }
 
     if len(args) > 1 and args[0] == "capabilities":
         return options, args
 
-    if (options.os_options.get('object_storage_url') and
-            options.os_options.get('auth_token') and
-            options.auth_version in ('2.0', '3')):
+    if (options['os_options']['object_storage_url'] and
+            options['os_options']['auth_token'] and
+            options['auth_version'] in ('2.0', '3')):
         return options, args
 
     if enforce_requires:
-        if options.auth_version == '3':
-            if not options.auth:
+        if options['auth_version'] == '3':
+            if not options['auth']:
                 exit('Auth version 3 requires OS_AUTH_URL to be set or ' +
                      'overridden with --os-auth-url')
-            if not (options.user or options.os_user_id):
+            if not (options['user'] or options['os_user_id']):
                 exit('Auth version 3 requires either OS_USERNAME or ' +
                      'OS_USER_ID to be set or overridden with ' +
                      '--os-username or --os-user-id respectively.')
-            if not options.key:
+            if not options['key']:
                 exit('Auth version 3 requires OS_PASSWORD to be set or ' +
                      'overridden with --os-password')
-        elif not (options.auth and options.user and options.key):
+        elif not (options['auth'] and options['user'] and options['key']):
             exit('''
 Auth version 1.0 requires ST_AUTH, ST_USER, and ST_KEY environment variables
 to be set or overridden with -A, -U, or -K.
@@ -1537,8 +1529,8 @@ Examples:
                         'Defaults to env[OS_CACERT].')
     options, args = parse_args(parser, argv[1:], enforce_requires=False)
 
-    if options.help or options.os_help:
-        if options.help:
+    if options['help'] or options['os_help']:
+        if options['help']:
             parser._action_groups.pop()
         parser.print_help()
         exit()
