@@ -1522,6 +1522,43 @@ class TestParsing(TestBase):
             swiftclient.shell.main(args)
         self._verify_opts(result[0], opts, os_opts, os_opts_dict)
 
+    def test_sloppy_versions(self):
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v3",
+                   "identity-api-version": "3.0"}
+
+        # check os_identity_api_version is sufficient in place of auth_version
+        args = _make_args("stat", {}, os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, {}):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        expected_opts = {'auth_version': '3'}  # NB: not '3.0'
+        expected_os_opts = {"password": "secret",
+                            "username": "user",
+                            "auth_url": "http://example.com:5000/v3"}
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
+        os_opts = {"password": "secret",
+                   "username": "user",
+                   "auth_url": "http://example.com:5000/v2.0",
+                   "identity-api-version": "2"}
+
+        # check os_identity_api_version is sufficient in place of auth_version
+        args = _make_args("stat", {}, os_opts, '-')
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, {}):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        expected_opts = {'auth_version': '2.0'}  # NB: not '2'
+        expected_os_opts = {"password": "secret",
+                            "username": "user",
+                            "auth_url": "http://example.com:5000/v2.0"}
+        self._verify_opts(result[0], expected_opts, expected_os_opts, {})
+
     def test_os_identity_api_version(self):
         os_opts = {"password": "secret",
                    "username": "user",

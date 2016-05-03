@@ -36,7 +36,7 @@ from swiftclient import __version__ as client_version
 from swiftclient.client import logger_settings as client_logger_settings, \
     parse_header_string
 from swiftclient.service import SwiftService, SwiftError, \
-    SwiftUploadObject, get_conn
+    SwiftUploadObject, get_conn, process_options
 from swiftclient.command_helpers import print_account_stats, \
     print_container_stats, print_object_stats
 
@@ -1190,40 +1190,8 @@ def parse_args(parser, args, enforce_requires=True):
     if args and args[0] == 'tempurl':
         return options, args
 
-    if options['auth_version'] == '3.0':
-        # tolerate sloppy auth_version
-        options['auth_version'] = '3'
-
-    if (not (options['auth'] and options['user'] and options['key'])
-            and options['auth_version'] != '3'):
-        # Use keystone auth if any of the old-style args are missing
-        options['auth_version'] = '2.0'
-
-    # Use new-style args if old ones not present
-    if not options['auth'] and options['os_auth_url']:
-        options['auth'] = options['os_auth_url']
-    if not options['user'] and options['os_username']:
-        options['user'] = options['os_username']
-    if not options['key'] and options['os_password']:
-        options['key'] = options['os_password']
-
-    # Specific OpenStack options
-    options['os_options'] = {
-        'user_id': options['os_user_id'],
-        'user_domain_id': options['os_user_domain_id'],
-        'user_domain_name': options['os_user_domain_name'],
-        'tenant_id': options['os_tenant_id'],
-        'tenant_name': options['os_tenant_name'],
-        'project_id': options['os_project_id'],
-        'project_name': options['os_project_name'],
-        'project_domain_id': options['os_project_domain_id'],
-        'project_domain_name': options['os_project_domain_name'],
-        'service_type': options['os_service_type'],
-        'endpoint_type': options['os_endpoint_type'],
-        'auth_token': options['os_auth_token'],
-        'object_storage_url': options['os_storage_url'],
-        'region_name': options['os_region_name'],
-    }
+    # Massage auth version; build out os_options subdict
+    process_options(options)
 
     if len(args) > 1 and args[0] == "capabilities":
         return options, args

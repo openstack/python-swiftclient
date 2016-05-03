@@ -86,6 +86,12 @@ class SwiftError(Exception):
 
 
 def process_options(options):
+    # tolerate sloppy auth_version
+    if options.get('auth_version') == '3.0':
+        options['auth_version'] = '3'
+    elif options.get('auth_version') == '2':
+        options['auth_version'] = '2.0'
+
     if (not (options.get('auth') and options.get('user')
              and options.get('key'))
             and options.get('auth_version') != '3'):
