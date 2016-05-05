@@ -1528,7 +1528,7 @@ class TestParsing(TestBase):
                    "auth_url": "http://example.com:5000/v3",
                    "identity-api-version": "3.0"}
 
-        # check os_identity_api_version is sufficient in place of auth_version
+        # check os_identity_api_version=3.0 is mapped to auth_version=3
         args = _make_args("stat", {}, os_opts, '-')
         result = [None, None]
         fake_command = self._make_fake_command(result)
@@ -1541,13 +1541,19 @@ class TestParsing(TestBase):
                             "auth_url": "http://example.com:5000/v3"}
         self._verify_opts(result[0], expected_opts, expected_os_opts, {})
 
+        # check os_identity_api_version=2 is mapped to auth_version=2.0
+        # A somewhat contrived scenario - we need to pass in the v1 style opts
+        # to prevent auth version defaulting to 2.0 due to lack of v1 style
+        # options. That way we can actually verify that the sloppy 2 was
+        # interpreted and mapped to 2.0
         os_opts = {"password": "secret",
                    "username": "user",
                    "auth_url": "http://example.com:5000/v2.0",
                    "identity-api-version": "2"}
-
-        # check os_identity_api_version is sufficient in place of auth_version
-        args = _make_args("stat", {}, os_opts, '-')
+        opts = {"key": "secret",
+                "user": "user",
+                "auth": "http://example.com:5000/v2.0"}
+        args = _make_args("stat", opts, os_opts, '-')
         result = [None, None]
         fake_command = self._make_fake_command(result)
         with mock.patch.dict(os.environ, {}):
