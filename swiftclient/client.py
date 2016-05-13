@@ -676,8 +676,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     :param limit: limit query
     :param prefix: prefix query
     :param end_marker: end_marker query
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param full_listing: if True, return a full listing, else returns a max
                          of 10000 listings
     :param service_token: service auth token
@@ -732,8 +732,8 @@ def head_account(url, token, http_conn=None, service_token=None):
 
     :param url: storage URL
     :param token: auth token
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
@@ -765,8 +765,8 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     :param url: storage URL
     :param token: auth token
     :param headers: additional headers to include in the request
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
@@ -817,8 +817,8 @@ def get_container(url, token, container, marker=None, limit=None,
     :param delimiter: string to delimit the queries on
     :param end_marker: marker query
     :param path: path query (equivalent: "delimiter=/" and "prefix=path/")
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param full_listing: if True, return a full listing, else returns a max
                          of 10000 listings
     :param service_token: service auth token
@@ -894,8 +894,8 @@ def head_container(url, token, container, http_conn=None, headers=None,
     :param url: storage URL
     :param token: auth token
     :param container: container name to get stats for
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param headers: additional headers to include in the request
     :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
@@ -935,8 +935,8 @@ def put_container(url, token, container, headers=None, http_conn=None,
     :param token: auth token
     :param container: container name to create
     :param headers: additional headers to include in the request
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
@@ -976,8 +976,8 @@ def post_container(url, token, container, headers, http_conn=None,
     :param token: auth token
     :param container: container name to update
     :param headers: additional headers to include in the request
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
@@ -1015,8 +1015,8 @@ def delete_container(url, token, container, http_conn=None,
     :param url: storage URL
     :param token: auth token
     :param container: container name to delete
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
@@ -1054,8 +1054,8 @@ def get_object(url, token, container, name, http_conn=None,
     :param token: auth token
     :param container: container name that the object is in
     :param name: object name to get
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param resp_chunk_size: if defined, chunk size of data to read. NOTE: If
                             you specify a resp_chunk_size you must fully read
                             the object's contents before making another
@@ -1114,8 +1114,8 @@ def head_object(url, token, container, name, http_conn=None,
     :param token: auth token
     :param container: container name that the object is in
     :param name: object name to get info for
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param service_token: service auth token
     :param headers: additional headers to include in the request
     :returns: a dict containing the response's headers (all header names will
@@ -1176,8 +1176,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                        value is found in the headers param, an empty string
                        value will be sent
     :param headers: additional headers to include in the request, if any
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param proxy: proxy to connect through, if any; None by default; str of the
                   format 'http://127.0.0.1:8888' to set one
     :param query_string: if set will be appended with '?' to generated path
@@ -1269,8 +1269,8 @@ def post_object(url, token, container, name, headers, http_conn=None,
     :param container: container name that the object is in
     :param name: name of the object to update
     :param headers: additional headers to include in the request
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
@@ -1308,8 +1308,8 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
                       container name is expected to be part of the url
     :param name: object name to delete; if None, the object name is expected to
                  be part of the url
-    :param http_conn: HTTP connection object (If None, it will create the
-                      conn object)
+    :param http_conn: a tuple of (parsed url, HTTPConnection object),
+                      (If None, it will create the conn object)
     :param headers: additional headers to include in the request
     :param proxy: proxy to connect through, if any; None by default; str of the
                   format 'http://127.0.0.1:8888' to set one
@@ -1354,7 +1354,7 @@ def get_capabilities(http_conn):
     """
     Get cluster capability infos.
 
-    :param http_conn: HTTP connection
+    :param http_conn: a tuple of (parsed url, HTTPConnection object)
     :returns: a dict containing the cluster capabilities
     :raises ClientException: HTTP Capabilities GET failed
     """
