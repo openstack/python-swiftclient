@@ -1386,6 +1386,142 @@ class TestServiceUpload(_TestServiceBase):
                 errors.append(msg)
         self.assertFalse(errors, "\nERRORS:\n%s" % '\n'.join(errors))
 
+    def test_create_dir_marker_job_unchanged(self):
+        mock_conn = mock.Mock()
+        mock_conn.head_object.return_value = {
+            'content-type': 'application/directory',
+            'content-length': '0',
+            'x-object-meta-mtime': '1.234000',
+            'etag': md5().hexdigest()}
+
+        s = SwiftService()
+        with mock.patch('swiftclient.service.get_conn',
+                        return_value=mock_conn):
+            with mock.patch('swiftclient.service.getmtime',
+                            return_value=1.234):
+                r = s._create_dir_marker_job(conn=mock_conn,
+                                             container='test_c',
+                                             obj='test_o',
+                                             path='test',
+                                             options={'changed': True,
+                                                      'skip_identical': True,
+                                                      'leave_segments': True,
+                                                      'header': '',
+                                                      'segment_size': 10})
+        self.assertEqual({
+            'action': 'create_dir_marker',
+            'container': 'test_c',
+            'object': 'test_o',
+            'path': 'test',
+            'headers': {'x-object-meta-mtime': '1.234000'},
+            # NO response dict!
+            'success': True,
+        }, r)
+        self.assertEqual([], mock_conn.put_object.mock_calls)
+
+    def test_create_dir_marker_job_unchanged_old_type(self):
+        mock_conn = mock.Mock()
+        mock_conn.head_object.return_value = {
+            'content-type': 'text/directory',
+            'content-length': '0',
+            'x-object-meta-mtime': '1.000000',
+            'etag': md5().hexdigest()}
+
+        s = SwiftService()
+        with mock.patch('swiftclient.service.get_conn',
+                        return_value=mock_conn):
+            with mock.patch('swiftclient.service.time',
+                            return_value=1.234):
+                r = s._create_dir_marker_job(conn=mock_conn,
+                                             container='test_c',
+                                             obj='test_o',
+                                             options={'changed': True,
+                                                      'skip_identical': True,
+                                                      'leave_segments': True,
+                                                      'header': '',
+                                                      'segment_size': 10})
+        self.assertEqual({
+            'action': 'create_dir_marker',
+            'container': 'test_c',
+            'object': 'test_o',
+            'path': None,
+            'headers': {'x-object-meta-mtime': '1.000000'},
+            # NO response dict!
+            'success': True,
+        }, r)
+        self.assertEqual([], mock_conn.put_object.mock_calls)
+
+    def test_create_dir_marker_job_overwrites_bad_type(self):
+        mock_conn = mock.Mock()
+        mock_conn.head_object.return_value = {
+            'content-type': 'text/plain',
+            'content-length': '0',
+            'x-object-meta-mtime': '1.000000',
+            'etag': md5().hexdigest()}
+
+        s = SwiftService()
+        with mock.patch('swiftclient.service.get_conn',
+                        return_value=mock_conn):
+            with mock.patch('swiftclient.service.time',
+                            return_value=1.234):
+                r = s._create_dir_marker_job(conn=mock_conn,
+                                             container='test_c',
+                                             obj='test_o',
+                                             options={'changed': True,
+                                                      'skip_identical': True,
+                                                      'leave_segments': True,
+                                                      'header': '',
+                                                      'segment_size': 10})
+        self.assertEqual({
+            'action': 'create_dir_marker',
+            'container': 'test_c',
+            'object': 'test_o',
+            'path': None,
+            'headers': {'x-object-meta-mtime': '1.000000'},
+            'response_dict': {},
+            'success': True,
+        }, r)
+        self.assertEqual([mock.call(
+            'test_c', 'test_o', '',
+            content_length=0,
+            content_type='application/directory',
+            headers={'x-object-meta-mtime': '1.000000'},
+            response_dict={})], mock_conn.put_object.mock_calls)
+
+    def test_create_dir_marker_job_missing(self):
+        mock_conn = mock.Mock()
+        mock_conn.head_object.side_effect = \
+            ClientException('Not Found', http_status=404)
+
+        s = SwiftService()
+        with mock.patch('swiftclient.service.get_conn',
+                        return_value=mock_conn):
+            with mock.patch('swiftclient.service.time',
+                            return_value=1.234):
+                r = s._create_dir_marker_job(conn=mock_conn,
+                                             container='test_c',
+                                             obj='test_o',
+                                             options={'changed': True,
+                                                      'skip_identical': True,
+                                                      'leave_segments': True,
+                                                      'header': '',
+                                                      'segment_size': 10})
+        self.assertEqual({
+            'action': 'create_dir_marker',
+            'container': 'test_c',
+            'object': 'test_o',
+            'path': None,
+            'headers': {'x-object-meta-mtime': '1.000000'},
+            'response_dict': {},
+            'success': True,
+        }, r)
+        self.assertEqual([mock.call(
+            'test_c', 'test_o', '',
+            content_length=0,
+            content_type='application/directory',
+            headers={'x-object-meta-mtime': '1.000000'},
+            response_dict={})], mock_conn.put_object.mock_calls)
+
 
 class TestServiceDownload(_TestServiceBase):
 

@@ -202,6 +202,10 @@ _default_local_options = {
 }
 
 POLICY = 'X-Storage-Policy'
+KNOWN_DIR_MARKERS = (
+    'application/directory',  # Preferred
+    'text/directory',  # Historically relevant
+)
 
 
 def get_from_queue(q, timeout=864000):
@@ -1143,9 +1147,8 @@ class SwiftService(object):
 
             fp = None
             try:
-                content_type = headers.get('content-type')
-                if (content_type and
-                   content_type.split(';', 1)[0] == 'text/directory'):
+                content_type = headers.get('content-type', '').split(';', 1)[0]
+                if content_type in KNOWN_DIR_MARKERS:
                     make_dir = not no_file and out_file != "-"
                     if make_dir and not isdir(path):
                         mkdirs(path)
@@ -1603,12 +1606,12 @@ class SwiftService(object):
         if options['changed']:
             try:
                 headers = conn.head_object(container, obj)
-                ct = headers.get('content-type')
+                ct = headers.get('content-type', '').split(';', 1)[0]
                 cl = int(headers.get('content-length'))
                 et = headers.get('etag')
                 mt = headers.get('x-object-meta-mtime')
 
-                if (ct.split(';', 1)[0] == 'text/directory' and
+                if (ct in KNOWN_DIR_MARKERS and
                         cl == 0 and
                         et == EMPTY_ETAG and
                         mt == put_headers['x-object-meta-mtime']):
@@ -1627,7 +1630,7 @@ class SwiftService(object):
                     return res
         try:
             conn.put_object(container, obj, '', content_length=0,
-                            content_type='text/directory',
+                            content_type=KNOWN_DIR_MARKERS[0],
                             headers=put_headers,
                             response_dict=results_dict)
             res.update({
