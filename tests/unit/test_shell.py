@@ -1855,7 +1855,9 @@ class TestKeystoneOptions(MockHttpTest):
                    'project-id': 'projectid',
                    'project-domain-id': 'projectdomainid',
                    'project-domain-name': 'projectdomain',
-                   'cacert': 'foo'}
+                   'cacert': 'foo',
+                   'cert': 'minnie',
+                   'key': 'mickey'}
     catalog_opts = {'service-type': 'my-object-store',
                     'endpoint-type': 'public',
                     'region-name': 'my-region'}
