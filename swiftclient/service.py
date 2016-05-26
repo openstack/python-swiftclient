@@ -323,13 +323,12 @@ class SwiftPostObject(object):
     specified separately for each individual object.
     """
     def __init__(self, object_name, options=None):
-        if not isinstance(object_name, string_types) or not object_name:
+        if not (isinstance(object_name, string_types) and object_name):
             raise SwiftError(
                 "Object names must be specified as non-empty strings"
             )
-        else:
-            self.object_name = object_name
-            self.options = options
+        self.object_name = object_name
+        self.options = options
 
 
 class SwiftCopyObject(object):
@@ -340,7 +339,7 @@ class SwiftCopyObject(object):
     destination and fresh_metadata should be set in options
     """
     def __init__(self, object_name, options=None):
-        if not isinstance(object_name, string_types) or not object_name:
+        if not (isinstance(object_name, string_types) and object_name):
             raise SwiftError(
                 "Object names must be specified as non-empty strings"
             )
