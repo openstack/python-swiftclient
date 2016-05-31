@@ -186,7 +186,8 @@ Download
        container, or a list of objects depending on the arguments given. For a
        single object download, you may use the ``-o <filename>`` or ``--output <filename>``
        option to redirect the output to a specific file or ``-`` to
-       redirect to stdout. You can specify optional headers with the repeatable
+       redirect to stdout. The ``--ignore-checksum`` is an option that turn off
+       checksum validation. You can specify optional headers with the repeatable
        cURL-like option ``-H [--header <name:value>]``.
 
 Delete

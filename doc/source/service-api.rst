@@ -207,6 +207,9 @@ Options
         Affects uploads, and allows empty 'pseudofolder' objects to be created
         when the source of an upload is ``None``.
 
+    ``checksum``: ``True``
+        Affects uploads and downloads, and means if check md5 for downloads/uploads.
+
     ``shuffle``: ``False``
         When downloading objects, the default behaviour of the CLI is to shuffle
         lists of objects in order to spread the load on storage drives when multiple

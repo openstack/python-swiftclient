@@ -367,6 +367,24 @@ class TestShell(unittest.TestCase):
         mock_open.assert_called_with('object', 'wb')
         self.assertEqual([], makedirs.mock_calls)
 
+        # Test downloading without md5 checks
+        objcontent = six.BytesIO(b'objcontent')
+        connection.return_value.get_object.side_effect = [
+            ({'content-type': 'text/plain',
+              'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
+             objcontent)
+        ]
+        with mock.patch(BUILTIN_OPEN) as mock_open, mock.patch(
+                'swiftclient.service._SwiftReader') as sr:
+            argv = ["", "download", "container", "object", "--ignore-check"]
+            swiftclient.shell.main(argv)
+        connection.return_value.get_object.assert_called_with(
+            'container', 'object', headers={}, resp_chunk_size=65536,
+            response_dict={})
+        mock_open.assert_called_with('object', 'wb')
+        sr.assert_called_once_with('object', mock.ANY, mock.ANY, False)
+        self.assertEqual([], makedirs.mock_calls)
+
         # Test downloading single object to stdout
         objcontent = six.BytesIO(b'objcontent')
         connection.return_value.get_object.side_effect = [
