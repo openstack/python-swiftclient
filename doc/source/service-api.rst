@@ -818,7 +818,7 @@ dictionary is given below:
 Example
 ^^^^^^^
 
-The code below demonstrates the us of ``capabilities`` to determine if the
+The code below demonstrates the use of ``capabilities`` to determine if the
 Swift cluster supports static large objects, and if so,  the maximum number of
 segments that can be described in a single manifest file, along with the
 size restrictions on those objects:
