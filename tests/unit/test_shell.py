@@ -23,7 +23,7 @@ import tempfile
 import unittest
 import textwrap
 
-
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import six
 
 import swiftclient
@@ -1899,15 +1899,23 @@ class TestKeystoneOptions(MockHttpTest):
                                               auth_token=token)
 
         with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
-            with mock.patch('swiftclient.client.http_connection', fake_conn):
-                with mock.patch.dict(os.environ, env, clear=True):
-                    try:
-                        swiftclient.shell.main(args)
-                    except SystemExit as e:
-                        self.fail('Unexpected SystemExit: %s' % e)
-                    except SwiftError as err:
-                        self.fail('Unexpected SwiftError: %s' % err)
+                        _make_fake_import_keystone_client(fake_ks)), \
+                mock.patch('swiftclient.client.http_connection', fake_conn), \
+                mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch('requests.packages.urllib3.disable_warnings') as \
+                mock_disable_warnings:
+            try:
+                swiftclient.shell.main(args)
+            except SystemExit as e:
+                self.fail('Unexpected SystemExit: %s' % e)
+            except SwiftError as err:
+                self.fail('Unexpected SwiftError: %s' % err)
+
+        if 'insecure' in flags:
+            self.assertEqual([mock.call(InsecureRequestWarning)],
+                             mock_disable_warnings.mock_calls)
+        else:
+            self.assertEqual([], mock_disable_warnings.mock_calls)
 
         if no_auth:
             # check that keystone client was not used and terminate tests
