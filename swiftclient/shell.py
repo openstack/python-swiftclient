@@ -663,10 +663,12 @@ Positional arguments:
 
 Optional arguments:
   -r, --read-acl <acl>  Read ACL for containers. Quick summary of ACL syntax:
-                        .r:*, .r:-.example.com, .r:www.example.com, account1,
-                        account2:user2
+                        .r:*, .r:-.example.com, .r:www.example.com,
+                        account1 (v1.0 identity API only),
+                        account1:*, account2:user2 (v2.0+ identity API).
   -w, --write-acl <acl> Write ACL for containers. Quick summary of ACL syntax:
-                        account1 account2:user2
+                        account1 (v1.0 identity API only),
+                        account1:*, account2:user2 (v2.0+ identity API).
   -t, --sync-to <sync-to>
                         Sync To for containers, for multi-cluster replication.
   -k, --sync-key <sync-key>
