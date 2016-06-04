@@ -756,6 +756,8 @@ the method docstring.
 For each successful call to list capabilities, a result dictionary will be
 returned with the contents described below:
 
+.. code-block:: python
+
     {
         'action': 'capabilities',
         'timestamp': <time of the call>,
