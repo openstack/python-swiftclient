@@ -103,6 +103,15 @@ class TestSwiftReader(unittest.TestCase):
         self.assertEqual(sr._expected_etag, None)
         self.assertEqual(sr._actual_md5, None)
 
+    def test_create_with_ignore_checksum(self):
+        # md5 should not be initialized if checksum is False
+        sr = self.sr('path', 'body', {}, False)
+        self.assertEqual(sr._path, 'path')
+        self.assertEqual(sr._body, 'body')
+        self.assertEqual(sr._content_length, None)
+        self.assertEqual(sr._expected_etag, None)
+        self.assertEqual(sr._actual_md5, None)
+
     def test_create_with_content_length(self):
         sr = self.sr('path', 'body', {'content-length': 5})
 

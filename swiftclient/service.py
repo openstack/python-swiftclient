@@ -336,7 +336,7 @@ class _SwiftReader(object):
     errors on failures caused by either invalid md5sum or size of the
     data read.
     """
-    def __init__(self, path, body, headers):
+    def __init__(self, path, body, headers, checksum=True):
         self._path = path
         self._body = body
         self._actual_read = 0
@@ -345,7 +345,7 @@ class _SwiftReader(object):
         self._expected_etag = headers.get('etag')
 
         if ('x-object-manifest' not in headers
-                and 'x-static-large-object' not in headers):
+                and 'x-static-large-object' not in headers and checksum):
             self._actual_md5 = md5()
 
         if 'content-length' in headers:
@@ -980,6 +980,7 @@ class SwiftService(object):
                                 'header': [],
                                 'skip_identical': False,
                                 'out_directory': None,
+                                'checksum': True,
                                 'out_file': None,
                                 'remove_prefix': False,
                                 'shuffle' : False
@@ -1135,7 +1136,8 @@ class SwiftService(object):
 
             headers_receipt = time()
 
-            obj_body = _SwiftReader(path, body, headers)
+            obj_body = _SwiftReader(path, body, headers,
+                                    options.get('checksum', True))
 
             no_file = options['no_download']
             if out_file == "-" and not no_file:

@@ -204,7 +204,7 @@ def st_delete(parser, args, output_manager):
 
 st_download_options = '''[--all] [--marker <marker>] [--prefix <prefix>]
                       [--output <out_file>] [--output-dir <out_directory>]
-                      [--object-threads <threads>]
+                      [--object-threads <threads>] [--ignore-checksum]
                       [--container-threads <threads>] [--no-download]
                       [--skip-identical] [--remove-prefix]
                       [--header <header:value>] [--no-shuffle]
@@ -251,6 +251,7 @@ Optional arguments:
                         Example --header "content-type:text/plain"
   --skip-identical      Skip downloading files that are identical on both
                         sides.
+  --ignore-checksum     Turn off checksum validation for downloads.
   --no-shuffle          By default, when downloading a complete account or
                         container, download order is randomised in order to
                         reduce the load on individual drives when multiple
@@ -308,6 +309,9 @@ def st_download(parser, args, output_manager):
         '--skip-identical', action='store_true', dest='skip_identical',
         default=False, help='Skip downloading files that are identical on '
         'both sides.')
+    parser.add_argument(
+        '--ignore-checksum', action='store_false', dest='checksum',
+        default=True, help='Turn off checksum validation for downloads.')
     parser.add_argument(
         '--no-shuffle', action='store_false', dest='shuffle',
         default=True, help='By default, download order is randomised in order '
