@@ -2556,6 +2556,84 @@ class TestServiceToken(MockHttpTest):
         self.assertEqual('service_project_name',
                          auth_kwargs['os_options']['tenant_name'])
 
+    def test_service_token_reauth_retries_0(self):
+        get_auth_call_list = []
+
+        def get_auth(url, user, key, **kwargs):
+            # The real get_auth function will always return the os_option
+            # dict's object_storage_url which will be overridden by the
+            # preauthurl parameter to Connection if it is provided.
+            args = {'url': url, 'user': user, 'key': key, 'kwargs': kwargs}
+            get_auth_call_list.append(args)
+            return_dict = {'asdf': 'new', 'service_username': 'newserv'}
+            storage_url = kwargs['os_options'].get('object_storage_url')
+            return storage_url, return_dict[user]
+
+        def swap_sleep(*args):
+            self.swap_sleep_called = True
+            c.get_auth = get_auth
+
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(401, 200)):
+            with mock.patch('swiftclient.client.sleep', swap_sleep):
+                self.swap_sleep_called = False
+
+                conn = c.Connection('http://www.test.com', 'asdf', 'asdf',
+                                    preauthurl='http://www.old.com',
+                                    preauthtoken='old',
+                                    os_options=self.os_options,
+                                    retries=0)
+
+                self.assertEqual(conn.attempts, 0)
+                self.assertEqual(conn.url, 'http://www.old.com')
+                self.assertEqual(conn.token, 'old')
+
+                conn.head_account()
+
+        self.assertTrue(self.swap_sleep_called)
+        self.assertEqual(conn.attempts, 2)
+        # The original 'preauth' storage URL *must* be preserved
+        self.assertEqual(conn.url, 'http://www.old.com')
+        self.assertEqual(conn.token, 'new')
+        self.assertEqual(conn.service_token, 'newserv')
+
+        # Check get_auth was called with expected args
+        auth_args = get_auth_call_list[0]
+        auth_kwargs = get_auth_call_list[0]['kwargs']
+        self.assertEqual('asdf', auth_args['user'])
+        self.assertEqual('asdf', auth_args['key'])
+        self.assertEqual('service_key',
+                         auth_kwargs['os_options']['service_key'])
+        self.assertEqual('service_username',
+                         auth_kwargs['os_options']['service_username'])
+        self.assertEqual('service_project_name',
+                         auth_kwargs['os_options']['service_project_name'])
+
+        auth_args = get_auth_call_list[1]
+        auth_kwargs = get_auth_call_list[1]['kwargs']
+        self.assertEqual('service_username', auth_args['user'])
+        self.assertEqual('service_key', auth_args['key'])
+        self.assertEqual('service_project_name',
+                         auth_kwargs['os_options']['tenant_name'])
+
+        # Ensure this is not an endless loop - it fails after the second 401
+        with mock.patch('swiftclient.client.http_connection',
+                        self.fake_http_connection(401, 401, 401, 401)):
+            with mock.patch('swiftclient.client.sleep', swap_sleep):
+                self.swap_sleep_called = False
+
+                conn = c.Connection('http://www.test.com', 'asdf', 'asdf',
+                                    preauthurl='http://www.old.com',
+                                    preauthtoken='old',
+                                    os_options=self.os_options,
+                                    retries=0)
+
+                self.assertEqual(conn.attempts, 0)
+                self.assertRaises(c.ClientException, conn.head_account)
+                self.assertEqual(conn.attempts, 2)
+                unused_responses = list(self.fake_connect.code_iter)
+                self.assertEqual(unused_responses, [401, 401])
+
     def test_service_token_get_account(self):
         with mock.patch('swiftclient.client.http_connection',
                         self.fake_http_connection(200)):
