@@ -17,7 +17,7 @@ in the `OpenStack wiki`__.
 
 __ http://docs.openstack.org/infra/manual/developers.html
 
-This code is based on original the client previously included with
+This code is based on the original client previously included with
 `OpenStack's Swift`__ The python-swiftclient is licensed under the
 Apache License like the rest of OpenStack.
 

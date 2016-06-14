@@ -827,7 +827,8 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
 def get_container(url, token, container, marker=None, limit=None,
                   prefix=None, delimiter=None, end_marker=None,
                   path=None, http_conn=None,
-                  full_listing=False, service_token=None, headers=None):
+                  full_listing=False, service_token=None, headers=None,
+                  query_string=None):
     """
     Get a listing of objects for the container.
 
@@ -846,6 +847,7 @@ def get_container(url, token, container, marker=None, limit=None,
                          of 10000 listings
     :param service_token: service auth token
     :param headers: additional headers to include in the request
+    :param query_string: if set will be appended with '?' to generated path
     :returns: a tuple of (response headers, a list of objects) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -889,6 +891,8 @@ def get_container(url, token, container, marker=None, limit=None,
         qs += '&end_marker=%s' % quote(end_marker)
     if path:
         qs += '&path=%s' % quote(path)
+    if query_string:
+        qs += '&%s' % query_string.lstrip('?')
     if service_token:
         headers['X-Service-Token'] = service_token
     method = 'GET'
@@ -950,7 +954,7 @@ def head_container(url, token, container, http_conn=None, headers=None,
 
 
 def put_container(url, token, container, headers=None, http_conn=None,
-                  response_dict=None, service_token=None):
+                  response_dict=None, service_token=None, query_string=None):
     """
     Create a container
 
@@ -963,6 +967,7 @@ def put_container(url, token, container, headers=None, http_conn=None,
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
+    :param query_string: if set will be appended with '?' to generated path
     :raises ClientException: HTTP PUT request failed
     """
     if http_conn:
@@ -978,6 +983,8 @@ def put_container(url, token, container, headers=None, http_conn=None,
         headers['X-Service-Token'] = service_token
     if 'content-length' not in (k.lower() for k in headers):
         headers['Content-Length'] = '0'
+    if query_string:
+        path += '?' + query_string.lstrip('?')
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
@@ -1031,7 +1038,8 @@ def post_container(url, token, container, headers, http_conn=None,
 
 
 def delete_container(url, token, container, http_conn=None,
-                     response_dict=None, service_token=None):
+                     response_dict=None, service_token=None,
+                     query_string=None):
     """
     Delete a container
 
@@ -1043,6 +1051,7 @@ def delete_container(url, token, container, http_conn=None,
     :param response_dict: an optional dictionary into which to place
                      the response - status, reason and headers
     :param service_token: service auth token
+    :param query_string: if set will be appended with '?' to generated path
     :raises ClientException: HTTP DELETE request failed
     """
     if http_conn:
@@ -1053,6 +1062,8 @@ def delete_container(url, token, container, http_conn=None,
     headers = {'X-Auth-Token': token}
     if service_token:
         headers['X-Service-Token'] = service_token
+    if query_string:
+        path += '?' + query_string.lstrip('?')
     method = 'DELETE'
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
@@ -1625,7 +1636,7 @@ class Connection(object):
 
     def get_container(self, container, marker=None, limit=None, prefix=None,
                       delimiter=None, end_marker=None, path=None,
-                      full_listing=False, headers=None):
+                      full_listing=False, headers=None, query_string=None):
         """Wrapper for :func:`get_container`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
@@ -1633,22 +1644,27 @@ class Connection(object):
         return self._retry(None, get_container, container, marker=marker,
                            limit=limit, prefix=prefix, delimiter=delimiter,
                            end_marker=end_marker, path=path,
-                           full_listing=full_listing, headers=headers)
+                           full_listing=full_listing, headers=headers,
+                           query_string=query_string)
 
-    def put_container(self, container, headers=None, response_dict=None):
+    def put_container(self, container, headers=None, response_dict=None,
+                      query_string=None):
         """Wrapper for :func:`put_container`"""
         return self._retry(None, put_container, container, headers=headers,
-                           response_dict=response_dict)
+                           response_dict=response_dict,
+                           query_string=query_string)
 
     def post_container(self, container, headers, response_dict=None):
         """Wrapper for :func:`post_container`"""
         return self._retry(None, post_container, container, headers,
                            response_dict=response_dict)
 
-    def delete_container(self, container, response_dict=None):
+    def delete_container(self, container, response_dict=None,
+                         query_string=None):
         """Wrapper for :func:`delete_container`"""
         return self._retry(None, delete_container, container,
-                           response_dict=response_dict)
+                           response_dict=response_dict,
+                           query_string=query_string)
 
     def head_object(self, container, obj, headers=None):
         """Wrapper for :func:`head_object`"""
