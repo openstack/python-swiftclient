@@ -15,7 +15,11 @@
 # limitations under the License.
 
 # THIS FILE IS MANAGED BY THE GLOBAL REQUIREMENTS REPO - DO NOT EDIT
-import setuptools
+import setuptools, sys
+
+if sys.version_info < (2, 7):
+    sys.exit('Sorry, Python < 2.7 is not supported for'
+             ' python-swiftclient>=3.0')
 
 setuptools.setup(
     setup_requires=['pbr'],
