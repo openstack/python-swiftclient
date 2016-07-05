@@ -494,6 +494,9 @@ class CaptureOutput(object):
     def __eq__(self, other):
         return self.out == other
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __getattr__(self, name):
         return getattr(self.out, name)
 
