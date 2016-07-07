@@ -12,7 +12,7 @@ Authentication
 --------------
 
 This section covers the various combinations of kwargs required when creating
-and instance of the ``Connection`` object for communicating with a swift
+an instance of the ``Connection`` object for communicating with a swift
 object store. The combinations of options required for each authentication
 version are detailed below, but are
 just a subset of those that can be used to successfully authenticate. These

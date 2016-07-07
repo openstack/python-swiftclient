@@ -208,7 +208,7 @@ Options
         when the source of an upload is ``None``.
 
     ``checksum``: ``True``
-        Affects uploads and downloads, and means if check md5 for downloads/uploads.
+        Affects uploads and downloads. If set check md5 sum for the transfer.
 
     ``shuffle``: ``False``
         When downloading objects, the default behaviour of the CLI is to shuffle
