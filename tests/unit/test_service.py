@@ -59,7 +59,7 @@ class TestSwiftPostObject(unittest.TestCase):
         spo = self.spo('obj_name')
 
         self.assertEqual(spo.object_name, 'obj_name')
-        self.assertEqual(spo.options, None)
+        self.assertIsNone(spo.options)
 
     def test_create_with_invalid_name(self):
         # empty strings are not allowed as names
@@ -81,10 +81,10 @@ class TestSwiftReader(unittest.TestCase):
 
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
-        self.assertEqual(sr._content_length, None)
-        self.assertEqual(sr._expected_etag, None)
+        self.assertIsNone(sr._content_length)
+        self.assertIsNone(sr._expected_etag)
 
-        self.assertNotEqual(sr._actual_md5, None)
+        self.assertIsNotNone(sr._actual_md5)
         self.assertIs(type(sr._actual_md5), self.md5_type)
 
     def test_create_with_large_object_headers(self):
@@ -92,25 +92,25 @@ class TestSwiftReader(unittest.TestCase):
         sr = self.sr('path', 'body', {'x-object-manifest': 'test'})
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
-        self.assertEqual(sr._content_length, None)
-        self.assertEqual(sr._expected_etag, None)
-        self.assertEqual(sr._actual_md5, None)
+        self.assertIsNone(sr._content_length)
+        self.assertIsNone(sr._expected_etag)
+        self.assertIsNone(sr._actual_md5)
 
         sr = self.sr('path', 'body', {'x-static-large-object': 'test'})
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
-        self.assertEqual(sr._content_length, None)
-        self.assertEqual(sr._expected_etag, None)
-        self.assertEqual(sr._actual_md5, None)
+        self.assertIsNone(sr._content_length)
+        self.assertIsNone(sr._expected_etag)
+        self.assertIsNone(sr._actual_md5)
 
     def test_create_with_ignore_checksum(self):
         # md5 should not be initialized if checksum is False
         sr = self.sr('path', 'body', {}, False)
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
-        self.assertEqual(sr._content_length, None)
-        self.assertEqual(sr._expected_etag, None)
-        self.assertEqual(sr._actual_md5, None)
+        self.assertIsNone(sr._content_length)
+        self.assertIsNone(sr._expected_etag)
+        self.assertIsNone(sr._actual_md5)
 
     def test_create_with_content_length(self):
         sr = self.sr('path', 'body', {'content-length': 5})
@@ -118,9 +118,9 @@ class TestSwiftReader(unittest.TestCase):
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
         self.assertEqual(sr._content_length, 5)
-        self.assertEqual(sr._expected_etag, None)
+        self.assertIsNone(sr._expected_etag)
 
-        self.assertNotEqual(sr._actual_md5, None)
+        self.assertIsNotNone(sr._actual_md5)
         self.assertIs(type(sr._actual_md5), self.md5_type)
 
         # Check Contentlength raises error if it isn't an integer
@@ -401,10 +401,10 @@ class TestSwiftError(unittest.TestCase):
         se = SwiftError(5)
 
         self.assertEqual(se.value, 5)
-        self.assertEqual(se.container, None)
-        self.assertEqual(se.obj, None)
-        self.assertEqual(se.segment, None)
-        self.assertEqual(se.exception, None)
+        self.assertIsNone(se.container)
+        self.assertIsNone(se.obj)
+        self.assertIsNone(se.segment)
+        self.assertIsNone(se.exception)
 
         self.assertEqual(str(se), '5')
 
@@ -526,12 +526,12 @@ class TestSwiftUploadObject(unittest.TestCase):
         suo = self.suo('source')
         self.assertEqual(suo.source, 'source')
         self.assertEqual(suo.object_name, 'source')
-        self.assertEqual(suo.options, None)
+        self.assertIsNone(suo.options)
 
         suo = self.suo('source', 'obj_name')
         self.assertEqual(suo.source, 'source')
         self.assertEqual(suo.object_name, 'obj_name')
-        self.assertEqual(suo.options, None)
+        self.assertIsNone(suo.options)
 
         suo = self.suo('source', 'obj_name', {'opt': '123'})
         self.assertEqual(suo.source, 'source')
@@ -550,7 +550,7 @@ class TestSwiftUploadObject(unittest.TestCase):
             suo = self.suo(mock_file, 'obj_name')
             self.assertEqual(suo.source, mock_file)
             self.assertEqual(suo.object_name, 'obj_name')
-            self.assertEqual(suo.options, None)
+            self.assertIsNone(suo.options)
 
             suo = self.suo(mock_file, 'obj_name', {'opt': '123'})
             self.assertEqual(suo.source, mock_file)
@@ -559,9 +559,9 @@ class TestSwiftUploadObject(unittest.TestCase):
 
     def test_create_with_no_source(self):
         suo = self.suo(None, 'obj_name')
-        self.assertEqual(suo.source, None)
+        self.assertIsNone(suo.source)
         self.assertEqual(suo.object_name, 'obj_name')
-        self.assertEqual(suo.options, None)
+        self.assertIsNone(suo.options)
 
         # Check error is raised if source is None without an object name
         self.assertRaises(SwiftError, self.suo, None)
@@ -1868,7 +1868,7 @@ class TestServiceDownload(_TestServiceBase):
         mock_down_cont.assert_not_called()
 
         next(service.download('c', options=self.opts), None)
-        self.assertEqual(True, mock_down_cont.called)
+        self.assertTrue(mock_down_cont.called)
 
     def test_download_with_output_dir(self):
         with mock.patch('swiftclient.service.Connection') as mock_conn:
