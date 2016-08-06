@@ -16,6 +16,7 @@ from __future__ import unicode_literals
 from genericpath import getmtime
 
 import hashlib
+import json
 import logging
 import mock
 import os
@@ -1283,6 +1284,21 @@ class TestShell(unittest.TestCase):
         argv = ["", "capabilities"]
         connection.return_value.get_capabilities.return_value = {'swift': None}
         swiftclient.shell.main(argv)
+        connection.return_value.get_capabilities.assert_called_with(None)
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_capabilities_json(self, connection):
+        capabilities = {
+            'slo': {'min_segment_size': 1000000},
+            'some': [{'arbitrary': 'nested'}, {'crazy': 'structure'}],
+            'swift': {'version': '2.5.0'}}
+
+        connection.return_value.get_capabilities.return_value = capabilities
+        argv = ["", "capabilities", "--json"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        expected = json.dumps(capabilities, sort_keys=True, indent=2) + '\n'
+        self.assertEqual(expected, output.out)
         connection.return_value.get_capabilities.assert_called_with(None)
 
     def test_human_readable_upload_segment_size(self):

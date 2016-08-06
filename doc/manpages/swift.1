@@ -61,8 +61,8 @@ of container or objects being listed. With the \-t or \-\-total option they only
 .RS 4
 Uploads to the given container the files and directories specified by the
 remaining args. The \-c or \-\-changed is an option that will only upload files
-that have changed since the last upload. The \-\-object-name <object\-name> is
-an option that will upload file and name object to <object-name> or upload dir
+that have changed since the last upload. The \-\-object\-name <object\-name> is
+an option that will upload file and name object to <object\-name> or upload dir
 and use <object\-name> as object prefix. The \-S <size> or \-\-segment\-size <size>
 and \-\-leave\-segments and others are options as well (see swift upload \-\-help for more).
 .RE
@@ -86,7 +86,7 @@ container, or a list of objects depending on the args given. For a single
 object download, you may use the \-o [\-\-output] <filename> option to
 redirect the output to a specific file or if "-" then just redirect to stdout or
 with \-\-no-download actually not to write anything to disk.
-The \-\-ignore-checksum is an option that turn off checksum validation.
+The \-\-ignore-checksum is an option that turns off checksum validation.
 You can specify optional headers with the repeatable cURL-like option
 \-H [\-\-header]. For more details and options see swift download \-\-help.
 .RE
@@ -100,23 +100,31 @@ will be deleted as well, unless you specify the \-\-leave\-segments option.
 For more details and options see swift delete \-\-help.
 .RE
 
-\fBcapabilities\fR [\fIproxy-url\fR]
+\fBcapabilities\fR [\fIcommand-options\fR] [\fIproxy-url\fR]
 .RS 4
-Displays cluster capabilities. The output includes the list of the activated
-Swift middlewares as well as relevant options for each one. Additionally the
-command displays relevant options for the Swift core. If the proxy-url option
-is not provided the storage-url retrieved after authentication is used as
-proxy-url.
+Displays cluster capabilities. If the proxy-url option is not provided the
+storage-url retrieved after authentication is used as proxy-url.
+
+By default, the output includes the list of the activated Swift middlewares as
+well as relevant options for each one. Additionally the command displays
+relevant options for the Swift core.
+
+The \-\-json option will print a json representation of the cluster
+capabilities. This is typically more suitable for consumption by other
+programs, such as jq.
+
+\fBExample\fR: capabilities https://swift.example.com
+         capabilities \-\-json
 .RE
 
 \fBtempurl\fR [\fIcommand-option\fR] \fImethod\fR \fIseconds\fR \fIpath\fR \fIkey\fR
 .RS 4
 Generates a temporary URL allowing unauthenticated access to the Swift object
 at the given path, using the given HTTP method, for the given number of
-seconds, using the given TempURL key. If optional --absolute argument is
+seconds, using the given TempURL key. If optional \-\-absolute argument is
 provided, seconds is instead interpreted as a Unix timestamp at which the URL
-should expire. \fBExample\fR: tempurl GET $(date -d "Jan 1 2016" +%s)
-/v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key --absolute
+should expire. \fBExample\fR: tempurl GET $(date \-d "Jan 1 2016" +%s)
+/v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key \-\-absolute
 .RE
 
 \fBauth\fR
@@ -140,7 +148,7 @@ For examples see swift auth \-\-help.
 .IP "--os-help              Show all OpenStack authentication options"
 .PD
 .RS 4
-For more options see swift \-\-help and swift \-\-os-help.
+For more options see swift \-\-help and swift \-\-os\-help.
 .RE
 
 
