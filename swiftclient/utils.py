@@ -78,15 +78,20 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
     :raises: TypeError if seconds is not an integer
     :return: the path portion of a temporary URL
     """
+    try:
+        seconds = int(seconds)
+    except ValueError:
+        raise TypeError('seconds must be an integer')
     if seconds < 0:
         raise ValueError('seconds must be a positive integer')
-    try:
-        if not absolute:
-            expiration = int(time.time() + seconds)
-        else:
-            expiration = int(seconds)
-    except TypeError:
-        raise TypeError('seconds must be an integer')
+
+    if isinstance(path, six.binary_type):
+        try:
+            path_for_body = path.decode('utf-8')
+        except UnicodeDecodeError:
+            raise ValueError('path must be representable as UTF-8')
+    else:
+        path_for_body = path
 
     standard_methods = ['GET', 'PUT', 'HEAD', 'POST', 'DELETE']
     if method.upper() not in standard_methods:
@@ -94,18 +99,24 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
         logger.warning('Non default HTTP method %s for tempurl specified, '
                        'possibly an error', method.upper())
 
-    hmac_body = '\n'.join([method.upper(), str(expiration), path])
+    if not absolute:
+        expiration = int(time.time() + seconds)
+    else:
+        expiration = seconds
+    hmac_body = u'\n'.join([method.upper(), str(expiration), path_for_body])
 
     # Encode to UTF-8 for py3 compatibility
-    sig = hmac.new(key.encode(),
-                   hmac_body.encode(),
-                   hashlib.sha1).hexdigest()
+    if not isinstance(key, six.binary_type):
+        key = key.encode('utf-8')
+    sig = hmac.new(key, hmac_body.encode('utf-8'), hashlib.sha1).hexdigest()
 
-    return ('{path}?temp_url_sig='
-            '{sig}&temp_url_expires={exp}'.format(
-                path=path,
-                sig=sig,
-                exp=expiration))
+    temp_url = u'{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
+        path=path_for_body, sig=sig, exp=expiration)
+    # Have return type match path from caller
+    if isinstance(path, six.binary_type):
+        return temp_url.encode('utf-8')
+    else:
+        return temp_url
 
 
 def parse_api_response(headers, body):
