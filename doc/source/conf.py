@@ -111,6 +111,8 @@ pygments_style = 'sphinx'
 # documentation.
 # html_theme_options = {}
 
+html_theme_options = {'show_other_versions': True}
+
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
 
