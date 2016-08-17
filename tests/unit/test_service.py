@@ -496,7 +496,7 @@ class TestServiceUtils(unittest.TestCase):
         self.assertEqual(opt_c['key'], 'key')
 
     def test_split_headers(self):
-        mock_headers = ['color:blue', 'size:large']
+        mock_headers = ['color:blue', 'SIZE: large']
         expected = {'Color': 'blue', 'Size': 'large'}
 
         actual = swiftclient.service.split_headers(mock_headers)

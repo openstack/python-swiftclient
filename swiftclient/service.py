@@ -280,7 +280,7 @@ def split_headers(options, prefix=''):
     for item in options:
         split_item = item.split(':', 1)
         if len(split_item) == 2:
-            headers[(prefix + split_item[0]).title()] = split_item[1]
+            headers[(prefix + split_item[0]).title()] = split_item[1].strip()
         else:
             raise SwiftError(
                 "Metadata parameter %s must contain a ':'.\n%s"
