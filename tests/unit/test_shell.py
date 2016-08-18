@@ -1412,6 +1412,22 @@ class TestShell(unittest.TestCase):
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', 60, 'secret_key', 'GET', absolute=True)
 
+    def test_temp_url_output(self):
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
+                "secret_key", "--absolute"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        sig = "63bc77a473a1c2ce956548cacf916f292eb9eac3"
+        expected = "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60\n" % sig
+        self.assertEqual(expected, output.out)
+
+        argv = ["", "tempurl", "GET", "60", "http://saio:8080/v1/a/c/o",
+                "secret_key", "--absolute"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        expected = "http://saio:8080%s" % expected
+        self.assertEqual(expected, output.out)
+
     @mock.patch('swiftclient.service.Connection')
     def test_capabilities(self, connection):
         argv = ["", "capabilities"]

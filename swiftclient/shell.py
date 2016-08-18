@@ -25,7 +25,7 @@ import socket
 from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
 from six import text_type, PY2
-from six.moves.urllib.parse import unquote
+from six.moves.urllib.parse import unquote, urlparse
 from sys import argv as sys_argv, exit, stderr
 from time import gmtime, strftime
 
@@ -1207,8 +1207,9 @@ Positional arguments:
   <seconds>             The amount of time in seconds the temporary URL will be
                         valid for; or, if --absolute is passed, the Unix
                         timestamp when the temporary URL will expire.
-  <path>                The full path to the Swift object. Example:
-                        /v1/AUTH_account/c/o.
+  <path>                The full path or storage URL to the Swift object.
+                        Example: /v1/AUTH_account/c/o
+                        or: http://saio:8080/v1/AUTH_account/c/o
   <key>                 The secret temporary URL key set on the Swift cluster.
                         To set a key, run \'swift post -m
                         "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"\'
@@ -1235,6 +1236,9 @@ def st_tempurl(parser, args, thread_manager):
                              st_tempurl_options, st_tempurl_help)
         return
     method, seconds, path, key = args[:4]
+
+    parsed = urlparse(path)
+
     try:
         seconds = int(seconds)
     except ValueError:
@@ -1244,8 +1248,12 @@ def st_tempurl(parser, args, thread_manager):
         thread_manager.print_msg('WARNING: Non default HTTP method %s for '
                                  'tempurl specified, possibly an error' %
                                  method.upper())
-    url = generate_temp_url(path, seconds, key, method,
-                            absolute=options['absolute_expiry'])
+    path = generate_temp_url(parsed.path, seconds, key, method,
+                             absolute=options['absolute_expiry'])
+    if parsed.scheme and parsed.netloc:
+        url = "%s://%s%s" % (parsed.scheme, parsed.netloc, path)
+    else:
+        url = path
     thread_manager.print_msg(url)
 
 
@@ -1285,16 +1293,16 @@ class HelpFormatter(argparse.HelpFormatter):
 def parse_args(parser, args, enforce_requires=True):
     options, args = parser.parse_known_args(args or ['-h'])
     options = vars(options)
-    if enforce_requires and (options['debug'] or options['info']):
+    if enforce_requires and (options.get('debug') or options.get('info')):
         logging.getLogger("swiftclient")
-        if options['debug']:
+        if options.get('debug'):
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger('iso8601').setLevel(logging.WARNING)
             client_logger_settings['redact_sensitive_headers'] = False
-        elif options['info']:
+        elif options.get('info'):
             logging.basicConfig(level=logging.INFO)
 
-    if args and options['help']:
+    if args and options.get('help'):
         _help = globals().get('st_%s_help' % args[0],
                               "no help for %s" % args[0])
         print(_help)
