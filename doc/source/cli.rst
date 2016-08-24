@@ -200,6 +200,20 @@ Delete
        of manifest objects will be deleted as well, unless you specify the
        ``--leave-segments`` option.
 
+Copy
+----
+
+    ``copy [command-options] container object``
+
+       Copies an object to a new destination or adds user metadata to an object. Depending
+       on the options supplied, you can preserve existing metadata in contrast to the post
+       command. The ``--destination`` option sets the copy target destination in the form
+       ``/container/object``. If not set, the object will be copied onto itself which is useful
+       for adding metadata. You can use the ``-M`` or ``--fresh-metadata`` option to copy
+       an object without existing user meta data, and the ``-m`` or ``--meta`` option
+       to define user meta data items to set in the form ``Name:Value``. You can repeat
+       this option. For example: ``copy -m Color:Blue -m Size:Large``.
+
 Capabilities
 ------------
 

@@ -69,6 +69,42 @@ class TestSwiftPostObject(unittest.TestCase):
         self.assertRaises(SwiftError, self.spo, 1)
 
 
+class TestSwiftCopyObject(unittest.TestCase):
+
+    def setUp(self):
+        super(TestSwiftCopyObject, self).setUp()
+        self.sco = swiftclient.service.SwiftCopyObject
+
+    def test_create(self):
+        sco = self.sco('obj_name')
+
+        self.assertEqual(sco.object_name, 'obj_name')
+        self.assertIsNone(sco.destination)
+        self.assertFalse(sco.fresh_metadata)
+
+        sco = self.sco('obj_name',
+                       {'destination': '/dest', 'fresh_metadata': True})
+
+        self.assertEqual(sco.object_name, 'obj_name')
+        self.assertEqual(sco.destination, '/dest/obj_name')
+        self.assertTrue(sco.fresh_metadata)
+
+        sco = self.sco('obj_name',
+                       {'destination': '/dest/new_obj/a',
+                        'fresh_metadata': False})
+
+        self.assertEqual(sco.object_name, 'obj_name')
+        self.assertEqual(sco.destination, '/dest/new_obj/a')
+        self.assertFalse(sco.fresh_metadata)
+
+    def test_create_with_invalid_name(self):
+        # empty strings are not allowed as names
+        self.assertRaises(SwiftError, self.sco, '')
+
+        # names cannot be anything but strings
+        self.assertRaises(SwiftError, self.sco, 1)
+
+
 class TestSwiftReader(unittest.TestCase):
 
     def setUp(self):
@@ -2353,3 +2389,73 @@ class TestServicePost(_TestServiceBase):
 
         res_iter.assert_called_with(
             [tm_instance.object_uu_pool.submit()] * len(calls))
+
+
+class TestServiceCopy(_TestServiceBase):
+
+    def setUp(self):
+        super(TestServiceCopy, self).setUp()
+        self.opts = swiftclient.service._default_local_options.copy()
+
+    @mock.patch('swiftclient.service.MultiThreadingManager')
+    @mock.patch('swiftclient.service.interruptable_as_completed')
+    def test_object_copy(self, inter_compl, thread_manager):
+        """
+        Check copy method translates strings and objects to _copy_object_job
+        calls correctly
+        """
+        tm_instance = Mock()
+        thread_manager.return_value = tm_instance
+
+        self.opts.update({'meta': ["meta1:test1"], "header": ["hdr1:test1"]})
+        sco = swiftclient.service.SwiftCopyObject(
+            "test_sco",
+            options={'meta': ["meta1:test2"], "header": ["hdr1:test2"],
+                     'destination': "/cont_new/test_sco"})
+
+        res = SwiftService().copy('test_c', ['test_o', sco], self.opts)
+        res = list(res)
+
+        calls = [
+            mock.call(
+                SwiftService._create_container_job, 'cont_new', headers={}),
+        ]
+        tm_instance.container_pool.submit.assert_has_calls(calls,
+                                                           any_order=True)
+        self.assertEqual(
+            tm_instance.container_pool.submit.call_count, len(calls))
+
+        calls = [
+            mock.call(
+                SwiftService._copy_object_job, 'test_c', 'test_o',
+                None,
+                {
+                    "X-Object-Meta-Meta1": "test1",
+                    "Hdr1": "test1"},
+                False),
+            mock.call(
+                SwiftService._copy_object_job, 'test_c', 'test_sco',
+                '/cont_new/test_sco',
+                {
+                    "X-Object-Meta-Meta1": "test2",
+                    "Hdr1": "test2"},
+                False),
+        ]
+        tm_instance.object_uu_pool.submit.assert_has_calls(calls)
+        self.assertEqual(
+            tm_instance.object_uu_pool.submit.call_count, len(calls))
+
+        inter_compl.assert_called_with(
+            [tm_instance.object_uu_pool.submit()] * len(calls))
+
+    def test_object_copy_fail_dest(self):
+        """
+        Destination in incorrect format and destination with object
+        used when multiple objects are copied raises SwiftError
+        """
+        with self.assertRaises(SwiftError):
+            list(SwiftService().copy('test_c', ['test_o'],
+                                     {'destination': 'cont'}))
+        with self.assertRaises(SwiftError):
+            list(SwiftService().copy('test_c', ['test_o', 'test_o2'],
+                                     {'destination': '/cont/obj'}))

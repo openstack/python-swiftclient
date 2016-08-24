@@ -220,6 +220,17 @@ Options
         are downloaded in lexically-sorted order. Setting this option to ``True``
         gives the same shuffling behaviour as the CLI.
 
+    ``destination``: ``None``
+        When copying objects, this specifies the destination where the object
+        will be copied to.  The default of None means copy will be the same as
+        source.
+
+    ``fresh_metadata``: ``None``
+        When copying objects, this specifies that the object metadata on the
+        source will *not* be applied to the destination object - the
+        destination object will have a new fresh set of metadata that includes
+        *only* the metadata specified in the meta option if any at all.
+
 Other available options can be found in ``swiftclient/service.py`` in the
 source code for ``python-swiftclient``. Each ``SwiftService`` method also allows
 for an optional dictionary to override those specified at init time, and the
@@ -738,11 +749,74 @@ Example
 
 The code below demonstrates the use of ``delete`` to remove a given list of
 objects from a specified container. As the objects are deleted the transaction
-id of the relevant request is printed along with the object name and number
-of attempts required. By printing the transaction id, the printed operations
+ID of the relevant request is printed along with the object name and number
+of attempts required. By printing the transaction ID, the printed operations
 can be easily linked to events in the swift server logs:
 
 .. literalinclude:: ../../examples/delete.py
+   :language: python
+
+Copy
+~~~~
+
+Copy can be called to copy an object or update the metadata on the given items.
+
+Each element of the object list may be a plain string of the object name, or a
+``SwiftCopyObject`` that allows finer control over the options applied to each
+of the individual copy operations (destination, fresh_metadata, options).
+
+Destination should be in format /container/object; if not set, the object will be
+copied onto itself. Fresh_metadata sets mode of operation on metadata. If not set,
+current object user metadata will be copied/preserved; if set, all current user
+metadata will be removed.
+
+Returns an iterator over the results generated for each object copy (and may
+also include the results of creating destination containers).
+
+When a string is given for the object name, destination and fresh metadata will
+default to None and None, which result in adding metadata to existing objects.
+
+Successful copy results are dictionaries as described below:
+
+.. code-block:: python
+
+   {
+       'action': 'copy_object',
+       'success': True,
+       'container': <container>,
+       'object': <object>,
+       'destination': <destination>,
+       'headers': {},
+       'fresh_metadata': <boolean>,
+       'response_dict': <HTTP response details>
+   }
+
+Any failure in a copy operation will return a failure dictionary as described
+below:
+
+.. code-block:: python
+
+   {
+       'action': 'copy_object',
+       'success': False,
+       'container': <container>,
+       'object': <object>,
+       'destination': <destination>,
+       'headers': {},
+       'fresh_metadata': <boolean>,
+       'response_dict': <HTTP response details>,
+       'error': <error>,
+       'traceback': <traceback>,
+       'error_timestamp': <timestamp>
+   }
+
+Example
+-------
+
+The code below demonstrates the use of ``copy`` to add new user metadata for
+objects a and b, and to copy object c to d (with added metadata).
+
+.. literalinclude:: ../../examples/copy.py
    :language: python
 
 Capabilities
@@ -767,7 +841,7 @@ returned with the contents described below:
     }
 
 The contents of the capabilities dictionary contain the core swift capabilities
-under the key ``swift``, all other keys show the configuration options for
+under the key ``swift``; all other keys show the configuration options for
 additional middlewares deployed in the proxy pipeline. An example capabilities
 dictionary is given below:
 
@@ -822,7 +896,7 @@ Example
 ^^^^^^^
 
 The code below demonstrates the use of ``capabilities`` to determine if the
-Swift cluster supports static large objects, and if so,  the maximum number of
+Swift cluster supports static large objects, and if so, the maximum number of
 segments that can be described in a single manifest file, along with the
 size restrictions on those objects:
 

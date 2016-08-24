@@ -405,6 +405,46 @@ class TestFunctional(unittest.TestCase):
         headers = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual('Something', headers.get('x-object-meta-color'))
 
+    def test_copy_object(self):
+        self.conn.put_object(
+            self.containername, self.objectname, self.test_data)
+        self.conn.copy_object(self.containername,
+                              self.objectname,
+                              headers={'x-object-meta-color': 'Something'})
+
+        headers = self.conn.head_object(self.containername, self.objectname)
+        self.assertEqual('Something', headers.get('x-object-meta-color'))
+
+        self.conn.copy_object(self.containername,
+                              self.objectname,
+                              headers={'x-object-meta-taste': 'Second'})
+
+        headers = self.conn.head_object(self.containername, self.objectname)
+        self.assertEqual('Something', headers.get('x-object-meta-color'))
+        self.assertEqual('Second', headers.get('x-object-meta-taste'))
+
+        destination = "/%s/%s" % (self.containername, self.objectname_2)
+        self.conn.copy_object(self.containername,
+                              self.objectname,
+                              destination,
+                              headers={'x-object-meta-taste': 'Second'})
+        headers, data = self.conn.get_object(self.containername,
+                                             self.objectname_2)
+        self.assertEqual(self.test_data, data)
+        self.assertEqual('Something', headers.get('x-object-meta-color'))
+        self.assertEqual('Second', headers.get('x-object-meta-taste'))
+
+        destination = "/%s/%s" % (self.containername, self.objectname_2)
+        self.conn.copy_object(self.containername,
+                              self.objectname,
+                              destination,
+                              headers={'x-object-meta-color': 'Else'},
+                              fresh_metadata=True)
+
+        headers = self.conn.head_object(self.containername, self.objectname_2)
+        self.assertEqual('Else', headers.get('x-object-meta-color'))
+        self.assertIsNone(headers.get('x-object-meta-taste'))
+
     def test_get_capabilities(self):
         resp = self.conn.get_capabilities()
         self.assertTrue(resp.get('swift'))

@@ -1330,6 +1330,70 @@ def post_object(url, token, container, name, headers, http_conn=None,
         raise ClientException.from_response(resp, 'Object POST failed', body)
 
 
+def copy_object(url, token, container, name, destination=None,
+                headers=None, fresh_metadata=None, http_conn=None,
+                response_dict=None, service_token=None):
+    """
+    Copy object
+
+    :param url: storage URL
+    :param token: auth token; if None, no token will be sent
+    :param container: container name that the source object is in
+    :param name: source object name
+    :param destination: The container and object name of the destination object
+                        in the form of /container/object; if None, the copy
+                        will use the source as the destination.
+    :param headers: additional headers to include in the request
+    :param fresh_metadata: Enables object creation that omits existing user
+                           metadata, default None
+    :param http_conn: HTTP connection object (If None, it will create the
+                      conn object)
+    :param response_dict: an optional dictionary into which to place
+                     the response - status, reason and headers
+    :param service_token: service auth token
+    :raises ClientException: HTTP COPY request failed
+    """
+    if http_conn:
+        parsed, conn = http_conn
+    else:
+        parsed, conn = http_connection(url)
+
+    path = parsed.path
+    container = quote(container)
+    name = quote(name)
+    path = '%s/%s/%s' % (path.rstrip('/'), container, name)
+
+    headers = dict(headers) if headers else {}
+
+    if destination is not None:
+        headers['Destination'] = quote(destination)
+    elif container and name:
+        headers['Destination'] = '/%s/%s' % (container, name)
+
+    if token is not None:
+        headers['X-Auth-Token'] = token
+    if service_token is not None:
+        headers['X-Service-Token'] = service_token
+
+    if fresh_metadata is not None:
+        # remove potential fresh metadata headers
+        for fresh_hdr in [hdr for hdr in headers.keys()
+                          if hdr.lower() == 'x-fresh-metadata']:
+            headers.pop(fresh_hdr)
+        headers['X-Fresh-Metadata'] = 'true' if fresh_metadata else 'false'
+
+    conn.request('COPY', path, '', headers)
+    resp = conn.getresponse()
+    body = resp.read()
+    http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'COPY',),
+             {'headers': headers}, resp, body)
+
+    store_response(resp, response_dict)
+
+    if resp.status < 200 or resp.status >= 300:
+        raise ClientException.from_response(resp, 'Object COPY failed', body)
+
+
 def delete_object(url, token=None, container=None, name=None, http_conn=None,
                   headers=None, proxy=None, query_string=None,
                   response_dict=None, service_token=None):
@@ -1725,6 +1789,13 @@ class Connection(object):
     def post_object(self, container, obj, headers, response_dict=None):
         """Wrapper for :func:`post_object`"""
         return self._retry(None, post_object, container, obj, headers,
+                           response_dict=response_dict)
+
+    def copy_object(self, container, obj, destination=None, headers=None,
+                    fresh_metadata=None, response_dict=None):
+        """Wrapper for :func:`copy_object`"""
+        return self._retry(None, copy_object, container, obj, destination,
+                           headers, fresh_metadata,
                            response_dict=response_dict)
 
     def delete_object(self, container, obj, query_string=None,
