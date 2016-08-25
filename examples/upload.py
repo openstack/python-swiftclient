@@ -1,6 +1,7 @@
 import logging
 
-from os.path import join, walk
+from os import walk
+from os.path import join
 from swiftclient.multithreading import OutputManager
 from swiftclient.service import SwiftError, SwiftService, SwiftUploadObject
 from sys import argv
