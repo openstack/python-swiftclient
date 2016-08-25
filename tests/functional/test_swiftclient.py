@@ -400,10 +400,19 @@ class TestFunctional(unittest.TestCase):
     def test_post_object(self):
         self.conn.post_object(self.containername,
                               self.objectname,
-                              {'x-object-meta-color': 'Something'})
+                              {'x-object-meta-color': 'Something',
+                               'x-object-meta-uni': b'\xd8\xaa'.decode('utf8'),
+                               'x-object-meta-int': 123,
+                               'x-object-meta-float': 45.67,
+                               'x-object-meta-bool': False})
 
         headers = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual('Something', headers.get('x-object-meta-color'))
+        self.assertEqual(b'\xd8\xaa'.decode('utf-8'),
+                         headers.get('x-object-meta-uni'))
+        self.assertEqual('123', headers.get('x-object-meta-int'))
+        self.assertEqual('45.67', headers.get('x-object-meta-float'))
+        self.assertEqual('False', headers.get('x-object-meta-bool'))
 
     def test_copy_object(self):
         self.conn.put_object(
