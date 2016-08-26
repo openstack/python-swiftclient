@@ -1619,7 +1619,7 @@ class Connection(object):
         backoff = self.starting_backoff
         caller_response_dict = kwargs.pop('response_dict', None)
         self.attempts = kwargs.pop('attempts', 0)
-        while self.attempts <= self.retries:
+        while self.attempts <= self.retries or retried_auth:
             self.attempts += 1
             try:
                 if not self.url or not self.token:
@@ -1648,9 +1648,6 @@ class Connection(object):
                 self.http_conn = None
             except ClientException as err:
                 self._add_response_dict(caller_response_dict, kwargs)
-                if self.attempts > self.retries or err.http_status is None:
-                    logger.exception(err)
-                    raise
                 if err.http_status == 401:
                     self.url = self.token = self.service_token = None
                     if retried_auth or not all((self.authurl,
@@ -1659,6 +1656,9 @@ class Connection(object):
                         logger.exception(err)
                         raise
                     retried_auth = True
+                elif self.attempts > self.retries or err.http_status is None:
+                    logger.exception(err)
+                    raise
                 elif err.http_status == 408:
                     self.http_conn = None
                 elif 500 <= err.http_status <= 599:
