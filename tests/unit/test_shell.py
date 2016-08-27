@@ -1328,8 +1328,8 @@ class TestShell(unittest.TestCase):
                 fresh_metadata=False, headers={'X-Object-Meta-Color': 'Blue'},
                 response_dict={})
         ]
-        for call in calls:
-            self.assertIn(call, connection.return_value.copy_object.mock_calls)
+        connection.return_value.copy_object.assert_has_calls(
+            calls, any_order=True)
         self.assertEqual(len(connection.return_value.copy_object.mock_calls),
                          len(calls))
 
@@ -1337,6 +1337,7 @@ class TestShell(unittest.TestCase):
     def test_copy_two_objects_destination(self, connection):
         argv = ["", "copy", "container", "object", "object2",
                 "--meta", "Color:Blue", "--destination", "/c"]
+        connection.return_value.copy_object.return_value = None
         swiftclient.shell.main(argv)
         calls = [
             mock.call(
@@ -1348,7 +1349,10 @@ class TestShell(unittest.TestCase):
                 fresh_metadata=False, headers={'X-Object-Meta-Color': 'Blue'},
                 response_dict={})
         ]
-        connection.return_value.copy_object.assert_has_calls(calls)
+        connection.return_value.copy_object.assert_has_calls(
+            calls, any_order=True)
+        self.assertEqual(len(connection.return_value.copy_object.mock_calls),
+                         len(calls))
 
     @mock.patch('swiftclient.service.Connection')
     def test_copy_two_objects_bad_destination(self, connection):
