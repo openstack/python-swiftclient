@@ -1,0 +1,38 @@
+---
+features:
+ - Added a copy object method.
+ - Arbitrary query strings can now be passed into container functions.
+ - >
+   Client certificate and key can now be specified via CLI
+   options (--os-cert/--os-key) or environment variables ($OS_CERT/$OS_KEY).
+ - >
+   A new CLI option `--ignore-checksum` can be specified to turn off
+   checksum validation. In the SDK, the new `checksum=True` parameter can
+   be used for the same purpose.
+ - Added --json option to `swift capabilities` / `swift info`
+ - Default to v3 auth if we find a (user|project)-domain-(name|id) option.
+ - Added a Python version constraint of >= Py27.
+ - >
+   `client.py` will now retry on a 401 (auth error) even if `retries` is
+   set to zero.
+ - Fixed `swift download` when `marker` was specified.
+ - Object segments uploaded via swiftclient are now given the content type
+   "application/swiftclient-segment".
+ - >
+   "Directory marker" objects are now given a "application/directory"
+   content type to match both Swift's `staticweb` feature and other
+   ecosystem tools.
+ - >
+   Strip leading/trailing whitespace from headers (otherwise, new versions
+   of the requests library will raise an InvalidHeader error). Additionally,
+   header values with standard types (integer, float, or bool) are coerced
+   to strings before being sent to a socket.
+ - >
+   Non-python dependencies are now specified in bindep.txt. Currently this
+   only lists a single dependency for testing (PyPy), but if future
+   dependencies are added, they will be included in this file.
+ - Client exceptions now include response headers. One benefit is that
+   this allows clients to see transaction IDs without needing to turn on
+   debug logging.
+ - Client connections now accept gzip-encoded responses.
+ - Various other minor bug fixes and improvements.
