@@ -225,6 +225,28 @@ Capabilities
        the ``proxy-url`` option is not provided, the storage URL retrieved after
        authentication is used as ``proxy-url``.
 
+Tempurl
+-------
+
+    ``tempurl [method] [seconds] [path] [key]``
+
+       Generates a temporary URL for a Swift object. ``method`` option sets an HTTP method to
+       allow for this temporary URL that is usually 'GET' or 'PUT'. ``seconds`` option sets
+       the amount of time in seconds the temporary URL will be valid for; or, if ``--absolute``
+       is passed, the Unix timestamp when the temporary URL will expire. ``path`` option sets
+       the full path to the Swift object. Example: ``/v1/AUTH_account/c/o``. ``key`` option is
+       the secret temporary URL key set on the Swift cluster. To set a key, run
+       ``swift post -m "Temp-URL-Key: <your secret key>"``.
+
+Auth
+----
+
+    ``auth``
+
+       Display authentication variables in shell friendly format. Command to run to export storage
+       url and auth token into ``OS_STORAGE_URL`` and ``OS_AUTH_TOKEN``: ``swift auth``.
+       Command to append to a runcom file (e.g. ``~/.bashrc``, ``/etc/profile``) for automatic
+       authentication: ``swift auth -v -U test:tester -K testing``.
 
 Examples
 ~~~~~~~~
@@ -271,6 +293,15 @@ List the contents of a container:
     > swift list TestContainer
 
     testSwift.txt
+
+Display auth related authentication variables in shell friendly format:
+
+.. code-block:: bash
+
+    > swift auth
+
+    export OS_STORAGE_URL=http://127.0.0.1:8080/v1/AUTH_bf5e63572f7a420a83fcf0aa8c72c2c7
+    export OS_AUTH_TOKEN=c597015ae19943a18438b52ef3762e79
 
 Download an object from a container:
 
@@ -347,3 +378,15 @@ For more information on large objects, see the documentation `here
     myvideo.mp4/slo/1460229233.679546/9341553868/1073741824/00000006
     myvideo.mp4/slo/1460229233.679546/9341553868/1073741824/00000007
     myvideo.mp4/slo/1460229233.679546/9341553868/1073741824/00000008
+
+Firstly, the key should be set, then generate a temporary URL for a Swift object:
+
+.. code-block:: bash
+
+    > swift post -m "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"
+
+    > swift tempurl GET 6000 /v1/AUTH_bf5e63572f7a420a83fcf0aa8c72c2c7\
+      /firstcontainer/clean.sh b3968d0207b54ece87cccc06515a89d4
+
+    /v1/AUTH_/firstcontainer/clean.sh?temp_url_sig=\
+    9218fc288cc09e5edd857b6a3d43cf2122b906dc&temp_url_expires=1472203614
