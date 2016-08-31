@@ -185,9 +185,9 @@ class TestHttpHelpers(MockHttpTest):
 
     def test_encode_meta_headers(self):
         headers = {'abc': '123',
-                   u'x-container-meta-\u0394': '123',
-                   u'x-account-meta-\u0394': '123',
-                   u'x-object-meta-\u0394': '123'}
+                   u'x-container-meta-\u0394': 123,
+                   u'x-account-meta-\u0394': 12.3,
+                   u'x-object-meta-\u0394': True}
 
         r = swiftclient.encode_meta_headers(headers)
 
@@ -199,6 +199,7 @@ class TestHttpHelpers(MockHttpTest):
         for k, v in r.items():
             self.assertIs(type(k), binary_type)
             self.assertIs(type(v), binary_type)
+            self.assertIn(v, (b'123', b'12.3', b'True'))
 
     def test_set_user_agent_default(self):
         _junk, conn = c.http_connection('http://www.example.com')

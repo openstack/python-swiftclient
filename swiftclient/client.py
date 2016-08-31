@@ -211,6 +211,13 @@ def quote(value, safe='/'):
 
 
 def encode_utf8(value):
+    if type(value) in six.integer_types + (float, bool):
+        # As of requests 2.11.0, headers must be byte- or unicode-strings.
+        # Convert some known-good types as a convenience for developers.
+        # Note that we *don't* convert subclasses, as they may have overriddden
+        # __str__ or __repr__.
+        # See https://github.com/kennethreitz/requests/pull/3366 for more info
+        value = str(value)
     if isinstance(value, six.text_type):
         value = value.encode('utf8')
     return value
