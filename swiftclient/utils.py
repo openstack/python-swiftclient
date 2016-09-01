@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
+import gzip
 import hashlib
 import hmac
 import json
@@ -120,6 +121,10 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
 
 
 def parse_api_response(headers, body):
+    if headers.get('content-encoding') == 'gzip':
+        with gzip.GzipFile(fileobj=six.BytesIO(body), mode='r') as gz:
+            body = gz.read()
+
     charset = 'utf-8'
     # Swift *should* be speaking UTF-8, but check content-type just in case
     content_type = headers.get('content-type', '')

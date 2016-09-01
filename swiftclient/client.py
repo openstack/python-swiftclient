@@ -739,7 +739,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     if end_marker:
         qs += '&end_marker=%s' % quote(end_marker)
     full_path = '%s?%s' % (parsed.path, qs)
-    headers = {'X-Auth-Token': token}
+    headers = {'X-Auth-Token': token, 'Accept-Encoding': 'gzip'}
     if service_token:
         headers['X-Service-Token'] = service_token
     method = 'GET'
@@ -866,6 +866,7 @@ def get_container(url, token, container, marker=None, limit=None,
     else:
         headers = {}
     headers['X-Auth-Token'] = token
+    headers['Accept-Encoding'] = 'gzip'
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
                            delimiter, end_marker, path, http_conn,
@@ -1464,10 +1465,11 @@ def get_capabilities(http_conn):
     :raises ClientException: HTTP Capabilities GET failed
     """
     parsed, conn = http_conn
-    conn.request('GET', parsed.path, '')
+    headers = {'Accept-Encoding': 'gzip'}
+    conn.request('GET', parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log((parsed.geturl(), 'GET',), {'headers': {}}, resp, body)
+    http_log((parsed.geturl(), 'GET',), {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException.from_response(
             resp, 'Capabilities GET failed', body)
