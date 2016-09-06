@@ -209,18 +209,18 @@ st_download_options = '''[--all] [--marker <marker>] [--prefix <prefix>]
                       [--container-threads <threads>] [--no-download]
                       [--skip-identical] [--remove-prefix]
                       [--header <header:value>] [--no-shuffle]
-                      <container> <object>
+                      [<container>] [<object>]
 '''
 
 st_download_help = '''
 Download objects from containers.
 
 Positional arguments:
-  <container>           Name of container to download from. To download a
-                        whole account, omit this and specify --all.
-  <object>              Name of object to download. Specify multiple times
-                        for multiple objects. Omit this to download all
-                        objects from the container.
+  [<container>]           Name of container to download from. To download a
+                          whole account, omit this and specify --all.
+  [<object>]              Name of object to download. Specify multiple times
+                          for multiple objects. Omit this to download all
+                          objects from the container.
 
 Optional arguments:
   -a, --all             Indicates that you really want to download
@@ -445,14 +445,14 @@ def st_download(parser, args, output_manager):
 
 
 st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
-                  [--delimiter <delimiter>] [container]
+                  [--delimiter <delimiter>] [<container>]
 '''
 
 st_list_help = '''
 Lists the containers for the account or the objects for a container.
 
 Positional arguments:
-  [container]           Name of container to list object in.
+  [<container>]           Name of container to list object in.
 
 Optional arguments:
   -l, --long            Long listing format, similar to ls -l.
@@ -581,15 +581,15 @@ def st_list(parser, args, output_manager):
 
 
 st_stat_options = '''[--lh]
-                  [container] [object]
+                  [<container>] [<object>]
 '''
 
 st_stat_help = '''
 Displays information for the account, container, or object.
 
 Positional arguments:
-  [container]           Name of container to stat from.
-  [object]              Name of object to stat.
+  [<container>]           Name of container to stat from.
+  [<object>]              Name of object to stat.
 
 Optional arguments:
   --lh                  Report sizes in human readable format similar to
@@ -655,7 +655,7 @@ def st_stat(parser, args, output_manager):
 st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to]
                   [--sync-key <sync-key>] [--meta <name:value>]
                   [--header <header>]
-                  [container] [object]
+                  [<container>] [<object>]
 '''
 
 st_post_help = '''
@@ -663,8 +663,8 @@ Updates meta information for the account, container, or object.
 If the container is not found, it will be created automatically.
 
 Positional arguments:
-  [container]           Name of container to post to.
-  [object]              Name of object to post.
+  [<container>]           Name of container to post to.
+  [<object>]              Name of object to post.
 
 Optional arguments:
   -r, --read-acl <acl>  Read ACL for containers. Quick summary of ACL syntax:
@@ -752,7 +752,8 @@ def st_post(parser, args, output_manager):
 
 
 st_copy_options = '''[--destination </container/object>] [--fresh-metadata]
-                  [--meta <name:value>] [--header <header>] container object
+                  [--meta <name:value>] [--header <header>] <container>
+                  <object> [<object>] [...]
 '''
 
 st_copy_help = '''
@@ -760,9 +761,9 @@ Copies object to new destination, optionally updates objects metadata.
 If destination is not set, will update metadata of object
 
 Positional arguments:
-  container             Name of container to copy from.
-  object                Name of object to copy. Specify multiple times
-                        for multiple objects
+  <container>             Name of container to copy from.
+  <object>                Name of object to copy. Specify multiple times
+                          for multiple objects
 
 Optional arguments:
   -d, --destination </container[/object]>
