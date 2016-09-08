@@ -1239,17 +1239,17 @@ def st_tempurl(parser, args, thread_manager):
 
     parsed = urlparse(path)
 
-    try:
-        seconds = int(seconds)
-    except ValueError:
-        thread_manager.error('Seconds must be an integer')
-        return
     if method.upper() not in ['GET', 'PUT', 'HEAD', 'POST', 'DELETE']:
         thread_manager.print_msg('WARNING: Non default HTTP method %s for '
                                  'tempurl specified, possibly an error' %
                                  method.upper())
-    path = generate_temp_url(parsed.path, seconds, key, method,
-                             absolute=options['absolute_expiry'])
+    try:
+        path = generate_temp_url(parsed.path, seconds, key, method,
+                                 absolute=options['absolute_expiry'])
+    except ValueError as err:
+        thread_manager.error(err)
+        return
+
     if parsed.scheme and parsed.netloc:
         url = "%s://%s%s" % (parsed.scheme, parsed.netloc, path)
     else:

@@ -68,14 +68,20 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
 
     :param path: The full path to the Swift object. Example:
         /v1/AUTH_account/c/o.
-    :param seconds: The amount of time in seconds the temporary URL will
-        be valid for.
+    :param seconds: If absolute is False then this specifies the amount of time
+        in seconds for which the temporary URL will be valid. If absolute is
+        True then this specifies an absolute time at which the temporary URL
+        will expire.
     :param key: The secret temporary URL key set on the Swift
         cluster. To set a key, run 'swift post -m
         "Temp-URL-Key: <substitute tempurl key here>"'
     :param method: A HTTP method, typically either GET or PUT, to allow
         for this temporary URL.
-    :raises: ValueError if seconds is not a positive integer
+    :param absolute: if True then the seconds parameter is interpreted as an
+        absolute Unix time, otherwise seconds is interpreted as a relative time
+        offset from current time.
+    :raises: ValueError if seconds is not a positive integer or path is not to
+        an object.
     :raises: TypeError if seconds is not an integer
     :return: the path portion of a temporary URL
     """
@@ -93,6 +99,10 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
             raise ValueError('path must be representable as UTF-8')
     else:
         path_for_body = path
+
+    parts = path_for_body.split('/', 4)
+    if len(parts) != 5 or parts[0] or not all(parts[1:]):
+        raise ValueError('path must be full path to an object e.g. /v1/a/c/o')
 
     standard_methods = ['GET', 'PUT', 'HEAD', 'POST', 'DELETE']
     if method.upper() not in standard_methods:
