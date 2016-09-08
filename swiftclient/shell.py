@@ -58,7 +58,7 @@ def immediate_exit(signum, frame):
 st_delete_options = '''[--all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]
-                    [<container>] [<object>] [...]
+                    [<container> [<object>] [...]]
 '''
 
 st_delete_help = '''
@@ -209,7 +209,7 @@ st_download_options = '''[--all] [--marker <marker>] [--prefix <prefix>]
                       [--container-threads <threads>] [--no-download]
                       [--skip-identical] [--remove-prefix]
                       [--header <header:value>] [--no-shuffle]
-                      [<container>] [<object>]
+                      [<container> [<object>] [...]]
 '''
 
 st_download_help = '''
@@ -581,7 +581,7 @@ def st_list(parser, args, output_manager):
 
 
 st_stat_options = '''[--lh]
-                  [<container>] [<object>]
+                  [<container> [<object>]]
 '''
 
 st_stat_help = '''
@@ -655,7 +655,7 @@ def st_stat(parser, args, output_manager):
 st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to]
                   [--sync-key <sync-key>] [--meta <name:value>]
                   [--header <header>]
-                  [<container>] [<object>]
+                  [<container> [<object>]]
 '''
 
 st_post_help = '''
