@@ -170,15 +170,30 @@ class TestTempURL(unittest.TestCase):
         self.assertEqual(url, expected_url)
 
     def test_generate_temp_url_bad_seconds(self):
-        with self.assertRaises(TypeError) as exc_manager:
+        with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, 'not_an_int', self.key, self.method)
         self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be an integer')
+                         'seconds must be a whole number')
 
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, -1, self.key, self.method)
         self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be a positive integer')
+                         'seconds must be a whole number')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url(self.url, 1.1, self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'seconds must be a whole number')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url(self.url, '-1', self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'seconds must be a whole number')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url(self.url, '1.1', self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'seconds must be a whole number')
 
     def test_generate_temp_url_bad_path(self):
         with self.assertRaises(ValueError) as exc_manager:
