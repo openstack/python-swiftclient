@@ -32,10 +32,10 @@ class TestConfigTrueValue(unittest.TestCase):
     @mock.patch.object(u, 'TRUE_VALUES', 'hello world'.split())
     def test_config_true_value(self):
         for val in 'hello world HELLO WORLD'.split():
-            self.assertIs(u.config_true_value(val), True)
-        self.assertIs(u.config_true_value(True), True)
-        self.assertIs(u.config_true_value('foo'), False)
-        self.assertIs(u.config_true_value(False), False)
+            self.assertIs(True, u.config_true_value(val))
+        self.assertIs(True, u.config_true_value(True))
+        self.assertIs(False, u.config_true_value('foo'))
+        self.assertIs(False, u.config_true_value(False))
 
 
 class TestPrtBytes(unittest.TestCase):
@@ -265,11 +265,11 @@ class TestReadableToIterable(unittest.TestCase):
         # Check creation with a real and noop md5 class
         data = u.ReadableToIterable(None, None, md5=True)
         self.assertEqual(md5().hexdigest(), data.get_md5sum())
-        self.assertIs(type(data.md5sum), type(md5()))
+        self.assertIs(type(md5()), type(data.md5sum))
 
         data = u.ReadableToIterable(None, None, md5=False)
         self.assertEqual('', data.get_md5sum())
-        self.assertIs(type(data.md5sum), u.NoopMD5)
+        self.assertIs(u.NoopMD5, type(data.md5sum))
 
     def test_unicode(self):
         # Check no errors are raised if unicode data is feed in.
