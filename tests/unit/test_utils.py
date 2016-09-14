@@ -180,6 +180,32 @@ class TestTempURL(unittest.TestCase):
         self.assertEqual(exc_manager.exception.args[0],
                          'seconds must be a positive integer')
 
+    def test_generate_temp_url_bad_path(self):
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url('/v1/a/c', 60, self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'path must be full path to an object e.g. /v1/a/c/o')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url('v1/a/c/o', 60, self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'path must be full path to an object e.g. /v1/a/c/o')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url('blah/v1/a/c/o', 60, self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'path must be full path to an object e.g. /v1/a/c/o')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url('/v1//c/o', 60, self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'path must be full path to an object e.g. /v1/a/c/o')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url('/v1/a/c/', 60, self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'path must be full path to an object e.g. /v1/a/c/o')
+
 
 class TestTempURLUnicodePathAndKey(TestTempURL):
     url = u'/v1/\u00e4/c/\u00f3'
