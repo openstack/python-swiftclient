@@ -42,7 +42,7 @@ class TestFunctional(unittest.TestCase):
     def _get_config(self):
         config_file = os.environ.get('SWIFT_TEST_CONFIG_FILE',
                                      '/etc/swift/test.conf')
-        config = configparser.SafeConfigParser({'auth_version': '1'})
+        config = configparser.ConfigParser({'auth_version': '1'})
         config.read(config_file)
         self.config = config
         if config.has_section('func_test'):
