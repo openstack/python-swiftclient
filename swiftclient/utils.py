@@ -80,17 +80,19 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
     :param absolute: if True then the seconds parameter is interpreted as an
         absolute Unix time, otherwise seconds is interpreted as a relative time
         offset from current time.
-    :raises: ValueError if seconds is not a positive integer or path is not to
+    :raises: ValueError if seconds is not a whole number or path is not to
         an object.
-    :raises: TypeError if seconds is not an integer
     :return: the path portion of a temporary URL
     """
     try:
+        seconds = float(seconds)
+        if not seconds.is_integer():
+            raise ValueError()
         seconds = int(seconds)
+        if seconds < 0:
+            raise ValueError()
     except ValueError:
-        raise TypeError('seconds must be an integer')
-    if seconds < 0:
-        raise ValueError('seconds must be a positive integer')
+        raise ValueError('seconds must be a whole number')
 
     if isinstance(path, six.binary_type):
         try:
