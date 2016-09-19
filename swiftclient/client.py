@@ -696,7 +696,7 @@ def store_response(resp, response_dict):
 
 def get_account(url, token, marker=None, limit=None, prefix=None,
                 end_marker=None, http_conn=None, full_listing=False,
-                service_token=None):
+                service_token=None, headers=None):
     """
     Get a listing of containers for the account.
 
@@ -711,20 +711,28 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     :param full_listing: if True, return a full listing, else returns a max
                          of 10000 listings
     :param service_token: service auth token
+    :param headers: additional headers to include in the request
     :returns: a tuple of (response headers, a list of containers) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
     """
+    req_headers = {'X-Auth-Token': token, 'Accept-Encoding': 'gzip'}
+    if service_token:
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
+
     if not http_conn:
         http_conn = http_connection(url)
     if full_listing:
         rv = get_account(url, token, marker, limit, prefix,
-                         end_marker, http_conn)
+                         end_marker, http_conn, headers=req_headers)
         listing = rv[1]
         while listing:
             marker = listing[-1]['name']
             listing = get_account(url, token, marker, limit, prefix,
-                                  end_marker, http_conn)[1]
+                                  end_marker, http_conn,
+                                  headers=req_headers)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
@@ -739,14 +747,12 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     if end_marker:
         qs += '&end_marker=%s' % quote(end_marker)
     full_path = '%s?%s' % (parsed.path, qs)
-    headers = {'X-Auth-Token': token, 'Accept-Encoding': 'gzip'}
-    if service_token:
-        headers['X-Service-Token'] = service_token
     method = 'GET'
-    conn.request(method, full_path, '', headers)
+    conn.request(method, full_path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log(("%s?%s" % (url, qs), method,), {'headers': headers}, resp, body)
+    http_log(("%s?%s" % (url, qs), method,), {'headers': req_headers},
+             resp, body)
 
     resp_headers = resp_header_dict(resp)
     if resp.status < 200 or resp.status >= 300:
@@ -756,7 +762,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     return resp_headers, parse_api_response(resp_headers, body)
 
 
-def head_account(url, token, http_conn=None, service_token=None):
+def head_account(url, token, http_conn=None, headers=None,
+                 service_token=None):
     """
     Get account stats.
 
@@ -764,6 +771,7 @@ def head_account(url, token, http_conn=None, service_token=None):
     :param token: auth token
     :param http_conn: a tuple of (parsed url, HTTPConnection object),
                       (If None, it will create the conn object)
+    :param headers: additional headers to include in the request
     :param service_token: service auth token
     :returns: a dict containing the response's headers (all header names will
               be lowercase)
@@ -774,13 +782,16 @@ def head_account(url, token, http_conn=None, service_token=None):
     else:
         parsed, conn = http_connection(url)
     method = "HEAD"
-    headers = {'X-Auth-Token': token}
+    req_headers = {'X-Auth-Token': token}
     if service_token:
-        headers['X-Service-Token'] = service_token
-    conn.request(method, parsed.path, '', headers)
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
+
+    conn.request(method, parsed.path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log((url, method,), {'headers': headers}, resp, body)
+    http_log((url, method,), {'headers': req_headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException.from_response(resp, 'Account HEAD failed', body)
     resp_headers = resp_header_dict(resp)
@@ -1047,7 +1058,7 @@ def post_container(url, token, container, headers, http_conn=None,
 
 def delete_container(url, token, container, http_conn=None,
                      response_dict=None, service_token=None,
-                     query_string=None):
+                     query_string=None, headers=None):
     """
     Delete a container
 
@@ -1060,6 +1071,7 @@ def delete_container(url, token, container, http_conn=None,
                      the response - status, reason and headers
     :param service_token: service auth token
     :param query_string: if set will be appended with '?' to generated path
+    :param headers: additional headers to include in the request
     :raises ClientException: HTTP DELETE request failed
     """
     if http_conn:
@@ -1067,7 +1079,12 @@ def delete_container(url, token, container, http_conn=None,
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
-    headers = {'X-Auth-Token': token}
+    if headers:
+        headers = dict(headers)
+    else:
+        headers = {}
+
+    headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     if query_string:
@@ -1682,19 +1699,19 @@ class Connection(object):
             if reset_func:
                 reset_func(func, *args, **kwargs)
 
-    def head_account(self):
+    def head_account(self, headers=None):
         """Wrapper for :func:`head_account`"""
-        return self._retry(None, head_account)
+        return self._retry(None, head_account, headers=headers)
 
     def get_account(self, marker=None, limit=None, prefix=None,
-                    end_marker=None, full_listing=False):
+                    end_marker=None, full_listing=False, headers=None):
         """Wrapper for :func:`get_account`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
         # retries where it left off.
         return self._retry(None, get_account, marker=marker, limit=limit,
                            prefix=prefix, end_marker=end_marker,
-                           full_listing=full_listing)
+                           full_listing=full_listing, headers=headers)
 
     def post_account(self, headers, response_dict=None,
                      query_string=None, data=None):
@@ -1733,11 +1750,12 @@ class Connection(object):
                            response_dict=response_dict)
 
     def delete_container(self, container, response_dict=None,
-                         query_string=None):
+                         query_string=None, headers={}):
         """Wrapper for :func:`delete_container`"""
         return self._retry(None, delete_container, container,
                            response_dict=response_dict,
-                           query_string=query_string)
+                           query_string=query_string,
+                           headers=headers)
 
     def head_object(self, container, obj, headers=None):
         """Wrapper for :func:`head_object`"""
@@ -1808,11 +1826,12 @@ class Connection(object):
                            response_dict=response_dict)
 
     def delete_object(self, container, obj, query_string=None,
-                      response_dict=None):
+                      response_dict=None, headers=None):
         """Wrapper for :func:`delete_object`"""
         return self._retry(None, delete_object, container, obj,
                            query_string=query_string,
-                           response_dict=response_dict)
+                           response_dict=response_dict,
+                           headers=headers)
 
     def get_capabilities(self, url=None):
         url = url or self.url

@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from swiftclient.utils import prt_bytes
+from swiftclient.utils import prt_bytes, split_request_headers
 
 
 POLICY_HEADER_PREFIX = 'x-account-storage-policy-'
@@ -19,8 +19,9 @@ POLICY_HEADER_PREFIX = 'x-account-storage-policy-'
 
 def stat_account(conn, options):
     items = []
+    req_headers = split_request_headers(options.get('header', []))
 
-    headers = conn.head_account()
+    headers = conn.head_account(headers=req_headers)
     if options['verbose'] > 1:
         items.extend([
             ('StorageURL', conn.url),
@@ -91,8 +92,11 @@ def print_account_stats(items, headers, output_manager):
 
 
 def stat_container(conn, options, container):
-    headers = conn.head_container(container)
+    req_headers = split_request_headers(options.get('header', []))
+
+    headers = conn.head_container(container, headers=req_headers)
     items = []
+
     if options['verbose'] > 1:
         path = '%s/%s' % (conn.url, container)
         items.extend([
@@ -137,7 +141,9 @@ def print_container_stats(items, headers, output_manager):
 
 
 def stat_object(conn, options, container, obj):
-    headers = conn.head_object(container, obj)
+    req_headers = split_request_headers(options.get('header', []))
+
+    headers = conn.head_object(container, obj, headers=req_headers)
     items = []
     if options['verbose'] > 1:
         path = '%s/%s/%s' % (conn.url, container, obj)

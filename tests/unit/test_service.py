@@ -291,9 +291,33 @@ class TestServiceDelete(_TestServiceBase):
         s = SwiftService()
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
 
-        mock_conn.head_object.assert_called_once_with('test_c', 'test_o')
+        mock_conn.head_object.assert_called_once_with('test_c', 'test_o',
+                                                      headers={})
         mock_conn.delete_object.assert_called_once_with(
-            'test_c', 'test_o', query_string=None, response_dict={}
+            'test_c', 'test_o', query_string=None, response_dict={},
+            headers={}
+        )
+        self.assertEqual(expected_r, r)
+
+    def test_delete_object_with_headers(self):
+        mock_q = Queue()
+        mock_conn = self._get_mock_connection()
+        mock_conn.head_object = Mock(return_value={})
+        expected_r = self._get_expected({
+            'action': 'delete_object',
+            'success': True
+        })
+        opt_c = self.opts.copy()
+        opt_c['header'] = ['Skip-Middleware: Test']
+
+        s = SwiftService()
+        r = s._delete_object(mock_conn, 'test_c', 'test_o', opt_c, mock_q)
+
+        mock_conn.head_object.assert_called_once_with(
+            'test_c', 'test_o', headers={'Skip-Middleware': 'Test'})
+        mock_conn.delete_object.assert_called_once_with(
+            'test_c', 'test_o', query_string=None, response_dict={},
+            headers={'Skip-Middleware': 'Test'}
         )
         self.assertEqual(expected_r, r)
 
@@ -317,9 +341,11 @@ class TestServiceDelete(_TestServiceBase):
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
         after = time.time()
 
-        mock_conn.head_object.assert_called_once_with('test_c', 'test_o')
+        mock_conn.head_object.assert_called_once_with('test_c', 'test_o',
+                                                      headers={})
         mock_conn.delete_object.assert_called_once_with(
-            'test_c', 'test_o', query_string=None, response_dict={}
+            'test_c', 'test_o', query_string=None, response_dict={},
+            headers={}
         )
         self.assertEqual(expected_r, r)
         self.assertGreaterEqual(r['error_timestamp'], before)
@@ -342,11 +368,13 @@ class TestServiceDelete(_TestServiceBase):
         s = SwiftService()
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
 
-        mock_conn.head_object.assert_called_once_with('test_c', 'test_o')
+        mock_conn.head_object.assert_called_once_with('test_c', 'test_o',
+                                                      headers={})
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o',
             query_string='multipart-manifest=delete',
-            response_dict={}
+            response_dict={},
+            headers={}
         )
         self.assertEqual(expected_r, r)
 
@@ -381,7 +409,8 @@ class TestServiceDelete(_TestServiceBase):
 
         self.assertEqual(expected_r, r)
         expected = [
-            mock.call('test_c', 'test_o', query_string=None, response_dict={}),
+            mock.call('test_c', 'test_o', query_string=None, response_dict={},
+                      headers={}),
             mock.call('manifest_c', 'test_seg_1', response_dict={}),
             mock.call('manifest_c', 'test_seg_2', response_dict={})]
         mock_conn.delete_object.assert_has_calls(expected, any_order=True)
@@ -394,10 +423,28 @@ class TestServiceDelete(_TestServiceBase):
             'object': None
         })
 
-        r = SwiftService._delete_empty_container(mock_conn, 'test_c')
+        r = SwiftService._delete_empty_container(mock_conn, 'test_c',
+                                                 self.opts)
 
         mock_conn.delete_container.assert_called_once_with(
-            'test_c', response_dict={}
+            'test_c', response_dict={}, headers={}
+        )
+        self.assertEqual(expected_r, r)
+
+    def test_delete_empty_container_with_headers(self):
+        mock_conn = self._get_mock_connection()
+        expected_r = self._get_expected({
+            'action': 'delete_container',
+            'success': True,
+            'object': None
+        })
+        opt_c = self.opts.copy()
+        opt_c['header'] = ['Skip-Middleware: Test']
+
+        r = SwiftService._delete_empty_container(mock_conn, 'test_c', opt_c)
+
+        mock_conn.delete_container.assert_called_once_with(
+            'test_c', response_dict={}, headers={'Skip-Middleware': 'Test'}
         )
         self.assertEqual(expected_r, r)
 
@@ -415,11 +462,11 @@ class TestServiceDelete(_TestServiceBase):
 
         before = time.time()
         s = SwiftService()
-        r = s._delete_empty_container(mock_conn, 'test_c')
+        r = s._delete_empty_container(mock_conn, 'test_c', {})
         after = time.time()
 
         mock_conn.delete_container.assert_called_once_with(
-            'test_c', response_dict={}
+            'test_c', response_dict={}, headers={}
         )
         self.assertEqual(expected_r, r)
         self.assertGreaterEqual(r['error_timestamp'], before)
@@ -665,6 +712,34 @@ class TestServiceList(_TestServiceBase):
         self.assertEqual(expected_r_long, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
 
+    def test_list_account_with_headers(self):
+        mock_q = Queue()
+        mock_conn = self._get_mock_connection()
+        get_account_returns = [
+            (None, [{'name': 'test_c'}]),
+            (None, [])
+        ]
+        mock_conn.get_account = Mock(side_effect=get_account_returns)
+
+        expected_r = self._get_expected({
+            'action': 'list_account_part',
+            'success': True,
+            'listing': [{'name': 'test_c'}],
+            'marker': ''
+        })
+        opt_c = self.opts.copy()
+        opt_c['header'] = ['Skip-Middleware: True']
+        SwiftService._list_account_job(
+            mock_conn, opt_c, mock_q
+        )
+        self.assertEqual(expected_r, self._get_queue(mock_q))
+        self.assertIsNone(self._get_queue(mock_q))
+        self.assertEqual(mock_conn.get_account.mock_calls, [
+            mock.call(headers={'Skip-Middleware': 'True'}, marker='',
+                      prefix=None),
+            mock.call(headers={'Skip-Middleware': 'True'}, marker='test_c',
+                      prefix=None)])
+
     def test_list_account_exception(self):
         mock_q = Queue()
         mock_conn = self._get_mock_connection()
@@ -682,7 +757,7 @@ class TestServiceList(_TestServiceBase):
             mock_conn, self.opts, mock_q)
 
         mock_conn.get_account.assert_called_once_with(
-            marker='', prefix=None
+            marker='', prefix=None, headers={}
         )
         self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
@@ -767,6 +842,37 @@ class TestServiceList(_TestServiceBase):
 
         self.assertIsNone(self._get_queue(mock_q))
 
+    def test_list_container_with_headers(self):
+        mock_q = Queue()
+        mock_conn = self._get_mock_connection()
+        get_container_returns = [
+            (None, [{'name': 'test_o'}]),
+            (None, [])
+        ]
+        mock_conn.get_container = Mock(side_effect=get_container_returns)
+
+        expected_r = self._get_expected({
+            'action': 'list_container_part',
+            'container': 'test_c',
+            'success': True,
+            'listing': [{'name': 'test_o'}],
+            'marker': ''
+        })
+
+        opt_c = self.opts.copy()
+        opt_c['header'] = ['Skip-Middleware: Test']
+
+        SwiftService._list_container_job(
+            mock_conn, 'test_c', opt_c, mock_q
+        )
+        self.assertEqual(expected_r, self._get_queue(mock_q))
+        self.assertIsNone(self._get_queue(mock_q))
+        self.assertEqual(mock_conn.get_container.mock_calls, [
+            mock.call('test_c', headers={'Skip-Middleware': 'Test'},
+                      delimiter='', marker='', prefix=None),
+            mock.call('test_c', headers={'Skip-Middleware': 'Test'},
+                      delimiter='', marker='test_o', prefix=None)])
+
     def test_list_container_exception(self):
         mock_q = Queue()
         mock_conn = self._get_mock_connection()
@@ -786,7 +892,7 @@ class TestServiceList(_TestServiceBase):
         )
 
         mock_conn.get_container.assert_called_once_with(
-            'test_c', marker='', delimiter='', prefix=None
+            'test_c', marker='', delimiter='', prefix=None, headers={}
         )
         self.assertEqual(expected_r, self._get_queue(mock_q))
         self.assertIsNone(self._get_queue(mock_q))
@@ -1397,11 +1503,13 @@ class TestServiceUpload(_TestServiceBase):
             mock_conn.head_object.assert_called_with('test_c', 'test_o')
             expected = [
                 mock.call('test_c_segments', prefix='test_o/prefix',
-                          marker='', delimiter=None),
+                          marker='', delimiter=None, headers={}),
                 mock.call('test_c_segments', prefix='test_o/prefix',
-                          marker="test_o/prefix/01", delimiter=None),
+                          marker="test_o/prefix/01", delimiter=None,
+                          headers={}),
                 mock.call('test_c_segments', prefix='test_o/prefix',
-                          marker="test_o/prefix/02", delimiter=None),
+                          marker="test_o/prefix/02", delimiter=None,
+                          headers={}),
             ]
             mock_conn.get_container.assert_has_calls(expected)
 
@@ -2102,15 +2210,18 @@ class TestServiceDownload(_TestServiceBase):
                 mock.call('test_c_segments',
                           delimiter=None,
                           prefix='test_o/prefix',
-                          marker=''),
+                          marker='',
+                          headers={}),
                 mock.call('test_c_segments',
                           delimiter=None,
                           prefix='test_o/prefix',
-                          marker='test_o/prefix/2'),
+                          marker='test_o/prefix/2',
+                          headers={}),
                 mock.call('test_c_segments',
                           delimiter=None,
                           prefix='test_o/prefix',
-                          marker='test_o/prefix/3')])
+                          marker='test_o/prefix/3',
+                          headers={})])
 
     def test_download_object_job_skip_identical_nested_slo(self):
         with tempfile.NamedTemporaryFile() as f:
@@ -2243,15 +2354,18 @@ class TestServiceDownload(_TestServiceBase):
                 mock.call('test_c_segments',
                           delimiter=None,
                           prefix='test_o/prefix',
-                          marker=''),
+                          marker='',
+                          headers={}),
                 mock.call('test_c_segments',
                           delimiter=None,
                           prefix='test_o/prefix',
-                          marker='test_o/prefix/2'),
+                          marker='test_o/prefix/2',
+                          headers={}),
                 mock.call('test_c_segments',
                           delimiter=None,
                           prefix='test_o/prefix',
-                          marker='test_o/prefix/3')])
+                          marker='test_o/prefix/3',
+                          headers={})])
             self.assertEqual(mock_conn.get_object.mock_calls, [
                 mock.call('test_c',
                           'test_o',

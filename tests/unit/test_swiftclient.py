@@ -3003,7 +3003,7 @@ class TestServiceToken(MockHttpTest):
         with mock.patch('swiftclient.client.http_connection',
                         self.fake_http_connection(202)):
             conn = self.get_connection()
-            conn.delete_object('container1', 'obj1', 'a_string')
+            conn.delete_object('container1', 'obj1', query_string='a_string')
         self.assertEqual(1, len(self.request_log), self.request_log)
         for actual in self.iter_request_log():
             self.assertEqual('DELETE', actual['method'])
