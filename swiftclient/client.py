@@ -607,8 +607,8 @@ def get_auth(auth_url, user, key, **kwargs):
     :returns: a tuple, (storage_url, token)
 
     N.B. if the optional os_options parameter includes a non-empty
-    'object_storage_url' key it will override the the default storage url
-    returned by the auth service.
+    'object_storage_url' key it will override the default storage url returned
+    by the auth service.
 
     The snet parameter is used for Rackspace's ServiceNet internal network
     implementation. In this function, it simply adds *snet-* to the beginning

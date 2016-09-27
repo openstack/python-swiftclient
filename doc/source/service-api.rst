@@ -315,7 +315,7 @@ Valid calls for this method are as follows:
 * ``stat([options])``: Returns stats for the configured account.
 * ``stat(<container>, [options])``: Returns stats for the given container.
 * ``stat(<container>, <object_list>, [options])``: Returns stats for each
-  of the given objects in the the given container (through the returned
+  of the given objects in the given container (through the returned
   iterator).
 
 Results from stat are dictionaries indicating the success or failure of each
