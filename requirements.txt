@@ -1,3 +1,3 @@
-futures>=2.1.3
+futures>=3.0;python_version=='2.7' or python_version=='2.6' # BSD
 requests>=1.1
 six>=1.5.2
