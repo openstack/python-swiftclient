@@ -416,11 +416,11 @@ class HTTPConnection(object):
             self.requests_args['timeout'] = timeout
 
     def _request(self, *arg, **kwarg):
-        """ Final wrapper before requests call, to be patched in tests """
+        """Final wrapper before requests call, to be patched in tests"""
         return self.request_session.request(*arg, **kwarg)
 
     def request(self, method, full_path, data=None, headers=None, files=None):
-        """ Encode url and header, then call requests.request """
+        """Encode url and header, then call requests.request"""
         if headers is None:
             headers = {}
         else:
@@ -447,7 +447,7 @@ class HTTPConnection(object):
         return self.request('PUT', full_path, data, headers, files)
 
     def getresponse(self):
-        """ Adapt requests response to httplib interface """
+        """Adapt requests response to httplib interface"""
         self.resp.status = self.resp.status_code
         old_getheader = self.resp.raw.getheader
 
@@ -476,7 +476,7 @@ class HTTPConnection(object):
 
 
 def http_connection(*arg, **kwarg):
-    """ :returns: tuple of (parsed url, connection object) """
+    """:returns: tuple of (parsed url, connection object)"""
     conn = HTTPConnection(*arg, **kwarg)
     return conn.parsed_url, conn
 
