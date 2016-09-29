@@ -2,6 +2,6 @@ hacking>=0.10.0,<0.11
 
 coverage>=3.6
 mock>=1.2
-oslosphinx
+oslosphinx>=4.7.0  # Apache-2.0
 sphinx>=1.1.2,<1.2
 testrepository>=0.0.18
