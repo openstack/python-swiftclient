@@ -2138,7 +2138,7 @@ class TestKeystoneOptions(MockHttpTest):
                              'Expected %s for key %s, found %s'
                              % (expected, key, actual_args[key]))
         for flag in flags:
-            self.assertTrue(flag in actual_args)
+            self.assertIn(flag, actual_args)
             self.assertTrue(actual_args[flag])
 
         check_attr = True
@@ -2647,7 +2647,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assert_request(('PUT', segment_path_0))
         self.assert_request(('PUT', segment_path_1))
         self.assert_request(('PUT', self.obj_path))
-        self.assertTrue(self.obj[1:] in out.out)
+        self.assertIn(self.obj[1:], out.out)
         expected_err = "Warning: failed to create container '%s': 403 Fake" \
                        % self.cont
         self.assertEqual(expected_err, out.err.strip())
@@ -2693,7 +2693,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assert_request(('PUT', segment_path_0))
         self.assert_request(('PUT', segment_path_1))
         self.assert_request(('PUT', self.obj_path))
-        self.assertTrue(self.obj[1:] in out.out)
+        self.assertIn(self.obj[1:], out.out)
         expected_err = ("Warning: failed to create container '%s': 403 Fake\n"
                         "Warning: failed to create container '%s': 403 Fake"
                         ) % (self.cont, self.cont + '_segments')
@@ -2719,7 +2719,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
                              ('PUT', self.obj_path)])
         expected_err = 'Object PUT failed: http://1.2.3.4%s 403 Fake' \
                        % self.obj_path
-        self.assertTrue(expected_err in out.err)
+        self.assertIn(expected_err, out.err)
         self.assertEqual('', out)
 
     @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
