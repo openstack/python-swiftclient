@@ -1545,18 +1545,21 @@ class TestSubcommandHelp(unittest.TestCase):
     def test_subcommand_help(self):
         for command in swiftclient.shell.commands:
             help_var = 'st_%s_help' % command
+            options_var = 'st_%s_options' % command
             self.assertTrue(hasattr(swiftclient.shell, help_var))
             with CaptureOutput() as out:
                 argv = ['', command, '--help']
                 self.assertRaises(SystemExit, swiftclient.shell.main, argv)
-            expected = vars(swiftclient.shell)[help_var]
+            expected = 'Usage: swift %s %s\n%s' % (
+                command, vars(swiftclient.shell).get(options_var, "\n"),
+                vars(swiftclient.shell)[help_var])
             self.assertEqual(out.strip('\n'), expected)
 
     def test_no_help(self):
         with CaptureOutput() as out:
             argv = ['', 'bad_command', '--help']
             self.assertRaises(SystemExit, swiftclient.shell.main, argv)
-        expected = 'no help for bad_command'
+        expected = 'no such command: bad_command'
         self.assertEqual(out.strip('\n'), expected)
 
 

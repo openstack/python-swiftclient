@@ -861,7 +861,8 @@ st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     <container> <file_or_directory> [<file_or_directory>] [...]
 '''
 
-st_upload_help = ''' Uploads specified files and directories to the given container.
+st_upload_help = '''
+Uploads specified files and directories to the given container.
 
 Positional arguments:
   <container>           Name of container to upload to.
@@ -1098,7 +1099,8 @@ def st_upload(parser, args, output_manager):
             output_manager.error(e.value)
 
 
-st_capabilities_options = "[--json] [<proxy_url>]"
+st_capabilities_options = '''[--json] [<proxy_url>]
+'''
 st_info_options = st_capabilities_options
 st_capabilities_help = '''
 Retrieve capability of the proxy.
@@ -1198,7 +1200,8 @@ def st_auth(parser, args, thread_manager):
 
 
 st_tempurl_options = '''[--absolute]
-                     <method> <seconds> <path> <key>'''
+                     <method> <seconds> <path> <key>
+'''
 
 
 st_tempurl_help = '''
@@ -1306,9 +1309,12 @@ def parse_args(parser, args, enforce_requires=True):
             logging.basicConfig(level=logging.INFO)
 
     if args and options.get('help'):
-        _help = globals().get('st_%s_help' % args[0],
-                              "no help for %s" % args[0])
-        print(_help)
+        _help = globals().get('st_%s_help' % args[0])
+        _options = globals().get('st_%s_options' % args[0], "\n")
+        if _help:
+            print("Usage: %s %s %s\n%s" % (BASENAME, args[0], _options, _help))
+        else:
+            print("no such command: %s" % args[0])
         exit()
 
     # Short circuit for tempurl, which doesn't need auth
