@@ -18,6 +18,28 @@ version are detailed below, but are
 just a subset of those that can be used to successfully authenticate. These
 are the most common and recommended combinations.
 
+Keystone Session
+~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    from keystoneauth1 import session
+    from keystoneauth1 import v3
+
+    # Create a password auth plugin
+    auth = v3.Password(auth_url='http://127.0.0.1:5000/v3/',
+                       username='tester',
+                       password='testing',
+                       user_domain_name='Default',
+                       project_name='Default',
+                       project_domain_name='Default')
+
+    # Create session
+    session = session.Session(auth=auth)
+
+    # Create swiftclient Connection
+    swift_conn = Connection(session=session)
+
 Keystone v3
 ~~~~~~~~~~~
 

@@ -573,6 +573,15 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)
 
+    def test_auth_with_session(self):
+        mock_session = mock.MagicMock()
+        mock_session.get_endpoint.return_value = 'http://storagehost/v1/acct'
+        mock_session.get_token.return_value = 'token'
+        url, token = c.get_auth('http://www.test.com', 'asdf', 'asdf',
+                                session=mock_session)
+        self.assertEqual(url, 'http://storagehost/v1/acct')
+        self.assertTrue(token)
+
 
 class TestGetAccount(MockHttpTest):
 
@@ -2027,6 +2036,39 @@ class TestConnection(MockHttpTest):
             ('HEAD', '/v1/AUTH_test', '', {'x-auth-token': 'expired'}),
             ('HEAD', '/v1/AUTH_test', '', {'x-auth-token': 'token'}),
         ])
+
+    def test_session_no_invalidate(self):
+        mock_session = mock.MagicMock()
+        mock_session.get_endpoint.return_value = 'http://storagehost/v1/acct'
+        mock_session.get_token.return_value = 'expired'
+        mock_session.invalidate.return_value = False
+        conn = c.Connection(session=mock_session)
+        fake_conn = self.fake_http_connection(401)
+        with mock.patch.multiple('swiftclient.client',
+                                 http_connection=fake_conn,
+                                 sleep=mock.DEFAULT):
+            self.assertRaises(c.ClientException, conn.head_account)
+        self.assertEqual(mock_session.get_token.mock_calls, [mock.call()])
+        self.assertEqual(mock_session.invalidate.mock_calls, [mock.call()])
+
+    def test_session_can_invalidate(self):
+        mock_session = mock.MagicMock()
+        mock_session.get_endpoint.return_value = 'http://storagehost/v1/acct'
+        mock_session.get_token.side_effect = ['expired', 'token']
+        mock_session.invalidate.return_value = True
+        conn = c.Connection(session=mock_session)
+        fake_conn = self.fake_http_connection(401, 200)
+        with mock.patch.multiple('swiftclient.client',
+                                 http_connection=fake_conn,
+                                 sleep=mock.DEFAULT):
+            conn.head_account()
+        self.assertRequests([
+            ('HEAD', '/v1/acct', '', {'x-auth-token': 'expired'}),
+            ('HEAD', '/v1/acct', '', {'x-auth-token': 'token'}),
+        ])
+        self.assertEqual(mock_session.get_token.mock_calls, [
+            mock.call(), mock.call()])
+        self.assertEqual(mock_session.invalidate.mock_calls, [mock.call()])
 
     def test_preauth_token_with_no_storage_url_requires_auth(self):
         conn = c.Connection(
