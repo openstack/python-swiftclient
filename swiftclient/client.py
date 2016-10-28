@@ -307,9 +307,8 @@ class _RetryBody(_ObjectBody):
         try:
             buf = self.resp.read(length)
             self.bytes_read += len(buf)
-        except (socket.error, RequestException) as e:
+        except (socket.error, RequestException):
             if self.conn.attempts > self.conn.retries:
-                logger.exception(e)
                 raise
         if (not buf and self.bytes_read < self.expected_length and
                 self.conn.attempts <= self.conn.retries):
@@ -1659,10 +1658,9 @@ class Connection(object):
                 return rv
             except SSLError:
                 raise
-            except (socket.error, RequestException) as e:
+            except (socket.error, RequestException):
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:
-                    logger.exception(e)
                     raise
                 self.http_conn = None
             except ClientException as err:
@@ -1677,11 +1675,9 @@ class Connection(object):
                     self.url = self.token = self.service_token = None
 
                     if retried_auth or not should_retry:
-                        logger.exception(err)
                         raise
                     retried_auth = True
                 elif self.attempts > self.retries or err.http_status is None:
-                    logger.exception(err)
                     raise
                 elif err.http_status == 408:
                     self.http_conn = None
@@ -1690,7 +1686,6 @@ class Connection(object):
                 elif self.retry_on_ratelimit and err.http_status == 498:
                     pass
                 else:
-                    logger.exception(err)
                     raise
             sleep(backoff)
             backoff = min(backoff * 2, self.max_backoff)
