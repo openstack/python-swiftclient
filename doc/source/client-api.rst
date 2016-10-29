@@ -24,7 +24,7 @@ Keystone Session
 .. code-block:: python
 
     from keystoneauth1 import session
-    from keystoneauth1 import v3
+    from keystoneauth1.identity import v3
 
     # Create a password auth plugin
     auth = v3.Password(auth_url='http://127.0.0.1:5000/v3/',
