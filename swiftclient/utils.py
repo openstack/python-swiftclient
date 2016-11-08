@@ -146,6 +146,20 @@ def parse_api_response(headers, body):
     return json.loads(body.decode(charset))
 
 
+def split_request_headers(options, prefix=''):
+    headers = {}
+    for item in options:
+        split_item = item.split(':', 1)
+        if len(split_item) == 2:
+            headers[(prefix + split_item[0]).title()] = split_item[1].strip()
+        else:
+            raise ValueError(
+                "Metadata parameter %s must contain a ':'.\n%s"
+                % (item, "Example: 'Color:Blue' or 'Size:Large'")
+            )
+    return headers
+
+
 def report_traceback():
     """
     Reports a timestamp and full traceback for a given exception.

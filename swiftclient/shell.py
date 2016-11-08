@@ -58,6 +58,7 @@ def immediate_exit(signum, frame):
 st_delete_options = '''[--all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]
+                    [--header <header:value>]
                     [<container> [<object>] [...]]
 '''
 
@@ -72,6 +73,9 @@ Positional arguments:
 Optional arguments:
   -a, --all             Delete all containers and objects.
   --leave-segments      Do not delete segments of manifest objects.
+  -H, --header <header:value>
+                        Adds a custom request header to use for deleting
+                        objects or an entire container .
   --object-threads <threads>
                         Number of threads to use for deleting objects.
                         Default is 10.
@@ -88,6 +92,11 @@ def st_delete(parser, args, output_manager):
     parser.add_argument(
         '-p', '--prefix', dest='prefix',
         help='Only delete items beginning with the <prefix>.')
+    parser.add_argument(
+        '-H', '--header', action='append', dest='header',
+        default=[],
+        help='Adds a custom request header to use for deleting objects '
+        'or an entire container.')
     parser.add_argument(
         '--leave-segments', action='store_true',
         dest='leave_segments', default=False,
@@ -445,7 +454,8 @@ def st_download(parser, args, output_manager):
 
 
 st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
-                  [--delimiter <delimiter>] [<container>]
+                  [--delimiter <delimiter>] [--header <header:value>]
+                  [<container>]
 '''
 
 st_list_help = '''
@@ -465,6 +475,8 @@ Optional arguments:
                         Roll up items with the given delimiter. For containers
                         only. See OpenStack Swift API documentation for what
                         this means.
+  -H, --header <header:value>
+                        Adds a custom request header to use for listing.
 '''.strip('\n')
 
 
@@ -541,6 +553,10 @@ def st_list(parser, args, output_manager):
         help='Roll up items with the given delimiter. For containers '
              'only. See OpenStack Swift API documentation for '
              'what this means.')
+    parser.add_argument(
+        '-H', '--header', action='append', dest='header',
+        default=[],
+        help='Adds a custom request header to use for listing.')
     options, args = parse_args(parser, args)
     args = args[1:]
     if options['delimiter'] and not args:
@@ -580,7 +596,7 @@ def st_list(parser, args, output_manager):
             output_manager.error(e.value)
 
 
-st_stat_options = '''[--lh]
+st_stat_options = '''[--lh] [--header <header:value>]
                   [<container> [<object>]]
 '''
 
@@ -594,6 +610,8 @@ Positional arguments:
 Optional arguments:
   --lh                  Report sizes in human readable format similar to
                         ls -lh.
+  -H, --header <header:value>
+                        Adds a custom request header to use for stat.
 '''.strip('\n')
 
 
@@ -601,6 +619,11 @@ def st_stat(parser, args, output_manager):
     parser.add_argument(
         '--lh', dest='human', action='store_true', default=False,
         help='Report sizes in human readable format similar to ls -lh.')
+    parser.add_argument(
+        '-H', '--header', action='append', dest='header',
+        default=[],
+        help='Adds a custom request header to use for stat.')
+
     options, args = parse_args(parser, args)
     args = args[1:]
 

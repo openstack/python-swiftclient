@@ -143,6 +143,28 @@ class TestShell(unittest.TestCase):
                              '     Bytes: 3\n')
 
     @mock.patch('swiftclient.service.Connection')
+    def test_stat_account_with_headers(self, connection):
+        argv = ["", "stat", "-H", "Skip-Middleware: Test"]
+        return_headers = {
+            'x-account-container-count': '1',
+            'x-account-object-count': '2',
+            'x-account-bytes-used': '3',
+            'content-length': 0,
+            'date': ''}
+        connection.return_value.head_account.return_value = return_headers
+        connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+
+            self.assertEqual(output.out,
+                             '   Account: AUTH_account\n'
+                             'Containers: 1\n'
+                             '   Objects: 2\n'
+                             '     Bytes: 3\n')
+        self.assertEqual(connection.return_value.head_account.mock_calls, [
+            mock.call(headers={'Skip-Middleware': 'Test'})])
+
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_container(self, connection):
         return_headers = {
             'x-container-object-count': '1',
@@ -167,6 +189,34 @@ class TestShell(unittest.TestCase):
                              'Write ACL: test3:tester3\n'
                              '  Sync To: other\n'
                              ' Sync Key: secret\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_stat_container_with_headers(self, connection):
+        return_headers = {
+            'x-container-object-count': '1',
+            'x-container-bytes-used': '2',
+            'x-container-read': 'test2:tester2',
+            'x-container-write': 'test3:tester3',
+            'x-container-sync-to': 'other',
+            'x-container-sync-key': 'secret',
+        }
+        argv = ["", "stat", "container", "-H", "Skip-Middleware: Test"]
+        connection.return_value.head_container.return_value = return_headers
+        connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+
+            self.assertEqual(output.out,
+                             '  Account: AUTH_account\n'
+                             'Container: container\n'
+                             '  Objects: 1\n'
+                             '    Bytes: 2\n'
+                             ' Read ACL: test2:tester2\n'
+                             'Write ACL: test3:tester3\n'
+                             '  Sync To: other\n'
+                             ' Sync Key: secret\n')
+        self.assertEqual(connection.return_value.head_container.mock_calls, [
+            mock.call('container', headers={'Skip-Middleware': 'Test'})])
 
     @mock.patch('swiftclient.service.Connection')
     def test_stat_object(self, connection):
@@ -195,6 +245,36 @@ class TestShell(unittest.TestCase):
                              '      Manifest: manifest\n')
 
     @mock.patch('swiftclient.service.Connection')
+    def test_stat_object_with_headers(self, connection):
+        return_headers = {
+            'x-object-manifest': 'manifest',
+            'etag': 'md5',
+            'last-modified': 'yesterday',
+            'content-type': 'text/plain',
+            'content-length': 42,
+        }
+        argv = ["", "stat", "container", "object",
+                "-H", "Skip-Middleware: Test"]
+        connection.return_value.head_object.return_value = return_headers
+        connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
+
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+
+            self.assertEqual(output.out,
+                             '       Account: AUTH_account\n'
+                             '     Container: container\n'
+                             '        Object: object\n'
+                             '  Content Type: text/plain\n'
+                             'Content Length: 42\n'
+                             ' Last Modified: yesterday\n'
+                             '          ETag: md5\n'
+                             '      Manifest: manifest\n')
+        self.assertEqual(connection.return_value.head_object.mock_calls, [
+            mock.call('container', 'object',
+                      headers={'Skip-Middleware': 'Test'})])
+
+    @mock.patch('swiftclient.service.Connection')
     def test_list_account(self, connection):
         # Test account listing
         connection.return_value.get_account.side_effect = [
@@ -206,8 +286,28 @@ class TestShell(unittest.TestCase):
 
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
-            calls = [mock.call(marker='', prefix=None),
-                     mock.call(marker='container', prefix=None)]
+            calls = [mock.call(marker='', prefix=None, headers={}),
+                     mock.call(marker='container', prefix=None, headers={})]
+            connection.return_value.get_account.assert_has_calls(calls)
+
+            self.assertEqual(output.out, 'container\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_list_account_with_headers(self, connection):
+        # Test account listing
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container'}]],
+            [None, []],
+        ]
+
+        argv = ["", "list", '-H', 'Skip-Custom-Middleware: True']
+
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [mock.call(marker='', prefix=None,
+                               headers={'Skip-Custom-Middleware': 'True'}),
+                     mock.call(marker='container', prefix=None,
+                               headers={'Skip-Custom-Middleware': 'True'})]
             connection.return_value.get_account.assert_has_calls(calls)
 
             self.assertEqual(output.out, 'container\n')
@@ -223,8 +323,8 @@ class TestShell(unittest.TestCase):
         argv = ["", "list", "--lh"]
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
-            calls = [mock.call(marker='', prefix=None),
-                     mock.call(marker='container', prefix=None)]
+            calls = [mock.call(marker='', prefix=None, headers={}),
+                     mock.call(marker='container', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
 
             self.assertEqual(output.out,
@@ -243,8 +343,8 @@ class TestShell(unittest.TestCase):
         argv = ["", "list", "--lh"]
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
-            calls = [mock.call(marker='', prefix=None),
-                     mock.call(marker='container', prefix=None)]
+            calls = [mock.call(marker='', prefix=None, headers={}),
+                     mock.call(marker='container', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
 
             self.assertEqual(output.out,
@@ -273,7 +373,7 @@ class TestShell(unittest.TestCase):
         argv = ["", "list", "--lh", "--totals"]
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
-            calls = [mock.call(marker='', prefix=None)]
+            calls = [mock.call(marker='', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
             self.assertEqual(output.out, '    6    3\n')
 
@@ -287,9 +387,10 @@ class TestShell(unittest.TestCase):
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
             calls = [
-                mock.call('container', marker='', delimiter=None, prefix=None),
+                mock.call('container', marker='',
+                          delimiter=None, prefix=None, headers={}),
                 mock.call('container', marker='object_a',
-                          delimiter=None, prefix=None)]
+                          delimiter=None, prefix=None, headers={})]
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out, 'object_a\n')
@@ -305,15 +406,36 @@ class TestShell(unittest.TestCase):
         with CaptureOutput() as output:
             swiftclient.shell.main(argv)
             calls = [
-                mock.call('container', marker='', delimiter=None, prefix=None),
+                mock.call('container', marker='',
+                          delimiter=None, prefix=None, headers={}),
                 mock.call('container', marker='object_a',
-                          delimiter=None, prefix=None)]
+                          delimiter=None, prefix=None, headers={})]
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out,
                              '           0        123      456'
                              '             type/content object_a\n'
                              '           0\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_list_container_with_headers(self, connection):
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object_a'}]],
+            [None, []],
+        ]
+        argv = ["", "list", "container", "-H", "Skip-Middleware: Test"]
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+            calls = [
+                mock.call('container', marker='',
+                          delimiter=None, prefix=None,
+                          headers={'Skip-Middleware': 'Test'}),
+                mock.call('container', marker='object_a',
+                          delimiter=None, prefix=None,
+                          headers={'Skip-Middleware': 'Test'})]
+            connection.return_value.get_container.assert_has_calls(calls)
+
+            self.assertEqual(output.out, 'object_a\n')
 
     @mock.patch('swiftclient.service.makedirs')
     @mock.patch('swiftclient.service.Connection')
@@ -835,19 +957,19 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_has_calls([
             mock.call('container', 'object', query_string=None,
-                      response_dict={}),
+                      response_dict={}, headers={}),
             mock.call('container', 'obj\xe9ct2', query_string=None,
-                      response_dict={}),
+                      response_dict={}, headers={}),
             mock.call('container2', 'object', query_string=None,
-                      response_dict={})], any_order=True)
+                      response_dict={}, headers={})], any_order=True)
         self.assertEqual(3, connection.return_value.delete_object.call_count,
                          'Expected 3 calls but found\n%r'
                          % connection.return_value.delete_object.mock_calls)
         self.assertEqual(
             connection.return_value.delete_container.mock_calls, [
-                mock.call('container', response_dict={}),
-                mock.call('container2', response_dict={}),
-                mock.call('empty_container', response_dict={})])
+                mock.call('container', response_dict={}, headers={}),
+                mock.call('container2', response_dict={}, headers={}),
+                mock.call('empty_container', response_dict={}, headers={})])
 
     @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
                        lambda *a: True)
@@ -900,9 +1022,9 @@ class TestShell(unittest.TestCase):
             connection.return_value.post_account.mock_calls[2])
         self.assertEqual(
             connection.return_value.delete_container.mock_calls, [
-                mock.call('container', response_dict={}),
-                mock.call('container2', response_dict={}),
-                mock.call('empty_container', response_dict={})])
+                mock.call('container', response_dict={}, headers={}),
+                mock.call('container2', response_dict={}, headers={}),
+                mock.call('empty_container', response_dict={}, headers={})])
 
     @mock.patch('swiftclient.service.Connection')
     def test_delete_bulk_account_with_capabilities(self, connection):
@@ -957,9 +1079,9 @@ class TestShell(unittest.TestCase):
                           response_dict={})])
         self.assertEqual(
             connection.return_value.delete_container.mock_calls, [
-                mock.call('container', response_dict={}),
-                mock.call('container2', response_dict={}),
-                mock.call('empty_container', response_dict={})])
+                mock.call('container', response_dict={}, headers={}),
+                mock.call('container2', response_dict={}, headers={}),
+                mock.call('empty_container', response_dict={}, headers={})])
         self.assertEqual(connection.return_value.get_capabilities.mock_calls,
                          [mock.call(None)])  # only one /info request
 
@@ -976,9 +1098,29 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.delete_container.assert_called_with(
-            'container', response_dict={})
+            'container', response_dict={}, headers={})
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None, response_dict={})
+            'container', 'object', query_string=None, response_dict={},
+            headers={})
+
+    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
+                       lambda *a: False)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_container_headers(self, connection):
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}]],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "container", "-H", "Skip-Middleware: Test"]
+        connection.return_value.head_object.return_value = {}
+        swiftclient.shell.main(argv)
+        connection.return_value.delete_container.assert_called_with(
+            'container', response_dict={},
+            headers={'Skip-Middleware': 'Test'})
+        connection.return_value.delete_object.assert_called_with(
+            'container', 'object', query_string=None, response_dict={},
+            headers={'Skip-Middleware': 'Test'})
 
     @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
                        lambda *a: True)
@@ -1000,7 +1142,7 @@ class TestShell(unittest.TestCase):
                      'Accept': 'application/json'},
             response_dict={})
         connection.return_value.delete_container.assert_called_with(
-            'container', response_dict={})
+            'container', response_dict={}, headers={})
 
     def test_delete_verbose_output_utf8(self):
         container = 't\u00e9st_c'
@@ -1043,7 +1185,8 @@ class TestShell(unittest.TestCase):
         connection.return_value.attempts = 0
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None, response_dict={})
+            'container', 'object', query_string=None, response_dict={},
+            headers={})
 
     @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
                        lambda *a: True)
