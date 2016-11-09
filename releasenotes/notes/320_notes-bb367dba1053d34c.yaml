@@ -1,0 +1,12 @@
+features:
+  - >
+    Added Keystone session support and a "v1password" plugin for Keystone.
+    This plugin provides a way for Keystone sessions (and clients that
+    use them, like python-openstackclient) to communicate with old auth
+    endpoints that still use this mechanism.
+
+  - >
+    HEAD, GET, and DELETE now support sending additional headers to match
+    existing functionality on PUT requests.
+
+  - Various other minor bug fixes and improvements.
