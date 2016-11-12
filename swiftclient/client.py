@@ -1673,8 +1673,12 @@ class Connection(object):
                           service_token=self.service_token, **kwargs)
                 self._add_response_dict(caller_response_dict, kwargs)
                 return rv
-            except SSLError:
-                raise
+            except SSLError as err:
+                if self.insecure is True:
+                    logger.warning('caught SSLError: ' + err)
+                    pass
+                else:
+                    raise
             except (socket.error, RequestException):
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:
