@@ -174,7 +174,7 @@ class TestPlugin(TestDataNoAccount, unittest.TestCase):
         auth_plugin = authv1.PasswordPlugin(**self.options)
         self.mock_response.headers['X-Auth-Token-Expires'] = 'foo'
         access = auth_plugin.get_access(self.mock_session)
-        self.assertEqual(None, access.expires)
+        self.assertIsNone(access.expires)
 
         self.assertIs(False, access.will_expire_soon(60))
         self.assertIs(False, access.will_expire_soon(1e20))
