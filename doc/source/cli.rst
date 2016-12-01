@@ -244,7 +244,7 @@ Auth
     ``auth``
 
        Display authentication variables in shell friendly format. Command to run to export storage
-       url and auth token into ``OS_STORAGE_URL`` and ``OS_AUTH_TOKEN``: ``swift auth``.
+       URL and auth token into ``OS_STORAGE_URL`` and ``OS_AUTH_TOKEN``: ``swift auth``.
        Command to append to a runcom file (e.g. ``~/.bashrc``, ``/etc/profile``) for automatic
        authentication: ``swift auth -v -U test:tester -K testing``.
 
