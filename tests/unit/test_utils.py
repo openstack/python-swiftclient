@@ -150,6 +150,35 @@ class TestTempURL(unittest.TestCase):
         ])
         self.assertIsInstance(url, type(self.url))
 
+    @mock.patch('hmac.HMAC')
+    @mock.patch('time.time', return_value=1400000000)
+    def test_generate_temp_url_prefix(self, time_mock, hmac_mock):
+        hmac_mock().hexdigest.return_value = 'temp_url_signature'
+        prefixes = ['', 'o', 'p0/p1/']
+        for p in prefixes:
+            hmac_mock.reset_mock()
+            path = '/v1/AUTH_account/c/' + p
+            expected_url = path + ('?temp_url_sig=temp_url_signature'
+                                   '&temp_url_expires=1400003600'
+                                   '&temp_url_prefix=' + p)
+            expected_body = '\n'.join([
+                self.method,
+                '1400003600',
+                'prefix:' + path,
+            ]).encode('utf-8')
+            url = u.generate_temp_url(path, self.seconds,
+                                      self.key, self.method, prefix=True)
+            key = self.key
+            if not isinstance(key, six.binary_type):
+                key = key.encode('utf-8')
+            self.assertEqual(url, expected_url)
+            self.assertEqual(hmac_mock.mock_calls, [
+                mock.call(key, expected_body, sha1),
+                mock.call().hexdigest(),
+            ])
+
+            self.assertIsInstance(url, type(path))
+
     def test_generate_temp_url_invalid_path(self):
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(b'/v1/a/c/\xff', self.seconds, self.key,
@@ -220,6 +249,12 @@ class TestTempURL(unittest.TestCase):
             u.generate_temp_url('/v1/a/c/', 60, self.key, self.method)
         self.assertEqual(exc_manager.exception.args[0],
                          'path must be full path to an object e.g. /v1/a/c/o')
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url('/v1/a/c', 60, self.key, self.method,
+                                prefix=True)
+        self.assertEqual(exc_manager.exception.args[0],
+                         'path must at least contain /v1/a/c/')
 
 
 class TestTempURLUnicodePathAndKey(TestTempURL):

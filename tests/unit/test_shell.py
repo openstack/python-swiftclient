@@ -1549,7 +1549,17 @@ class TestShell(unittest.TestCase):
                 "secret_key"]
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
-            '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False)
+            '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
+            prefix=False)
+
+    @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
+    def test_temp_url_prefix_based(self, temp_url):
+        argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/",
+                "secret_key", "--prefix-based"]
+        swiftclient.shell.main(argv)
+        temp_url.assert_called_with(
+            '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
+            prefix=True)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_absolute_expiry_temp_url(self, temp_url):
@@ -1557,7 +1567,8 @@ class TestShell(unittest.TestCase):
                 "secret_key", "--absolute"]
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
-            '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=True)
+            '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=True,
+            prefix=False)
 
     def test_temp_url_output(self):
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
@@ -1575,6 +1586,15 @@ class TestShell(unittest.TestCase):
         expected = "http://saio:8080%s" % expected
         self.assertEqual(expected, output.out)
 
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/",
+                "secret_key", "--absolute", "--prefix"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        sig = '00008c4be1573ba74fc2ab9bce02e3a93d04b349'
+        expected = ("/v1/a/c/?temp_url_sig=%s&temp_url_expires=60"
+                    "&temp_url_prefix=\n" % sig)
+        self.assertEqual(expected, output.out)
+
     def test_temp_url_error_output(self):
         expected = 'path must be full path to an object e.g. /v1/a/c/o\n'
         for bad_path in ('/v1/a/c', 'v1/a/c/o', '/v1/a/c/', '/v1/a//o',
@@ -1586,6 +1606,15 @@ class TestShell(unittest.TestCase):
             self.assertEqual(expected, output.err,
                              'Expected %r but got %r for path %r' %
                              (expected, output.err, bad_path))
+
+        expected = 'path must at least contain /v1/a/c/\n'
+        argv = ["", "tempurl", "GET", "60", '/v1/a/c',
+                    "secret_key", "--absolute", '--prefix-based']
+        with CaptureOutput(suppress_systemexit=True) as output:
+                swiftclient.shell.main(argv)
+        self.assertEqual(expected, output.err,
+                         'Expected %r but got %r for path %r' %
+                         (expected, output.err, bad_path))
 
     @mock.patch('swiftclient.service.Connection')
     def test_capabilities(self, connection):

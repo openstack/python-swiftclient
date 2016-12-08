@@ -228,7 +228,7 @@ Capabilities
 Tempurl
 -------
 
-    ``tempurl [method] [seconds] [path] [key]``
+    ``tempurl [command-options] [method] [seconds] [path] [key]``
 
        Generates a temporary URL for a Swift object. ``method`` option sets an HTTP method to
        allow for this temporary URL that is usually 'GET' or 'PUT'. ``seconds`` option sets
@@ -236,7 +236,10 @@ Tempurl
        is passed, the Unix timestamp when the temporary URL will expire. ``path`` option sets
        the full path to the Swift object. Example: ``/v1/AUTH_account/c/o``. ``key`` option is
        the secret temporary URL key set on the Swift cluster. To set a key, run
-       ``swift post -m "Temp-URL-Key: <your secret key>"``.
+       ``swift post -m "Temp-URL-Key: <your secret key>"``. To generate a prefix-based temporary
+       URL use the ``--prefix-based`` option. This URL will contain the path to the prefix. Do not
+       forget to append the desired objectname at the end of the path portion (and before the
+       query portion) before sharing the URL.
 
 Auth
 ----

@@ -1222,9 +1222,8 @@ def st_auth(parser, args, thread_manager):
         print('export OS_AUTH_TOKEN=%s' % sh_quote(token))
 
 
-st_tempurl_options = '''[--absolute]
-                     <method> <seconds> <path> <key>
-'''
+st_tempurl_options = '''[--absolute] [--prefix-based]
+                     <method> <seconds> <path> <key>'''
 
 
 st_tempurl_help = '''
@@ -1247,6 +1246,7 @@ Optional arguments:
   --absolute            Interpret the <seconds> positional argument as a Unix
                         timestamp rather than a number of seconds in the
                         future.
+  --prefix-based	If present, a prefix-based tempURL will be generated.
 '''.strip('\n')
 
 
@@ -1256,8 +1256,14 @@ def st_tempurl(parser, args, thread_manager):
         dest='absolute_expiry', default=False,
         help=("If present, seconds argument will be interpreted as a Unix "
               "timestamp representing when the tempURL should expire, rather "
-              "than an offset from the current time")
+              "than an offset from the current time"),
     )
+    parser.add_argument(
+        '--prefix-based', action='store_true',
+        default=False,
+        help=("If present, a prefix-based tempURL will be generated."),
+    )
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if len(args) < 4:
@@ -1274,7 +1280,8 @@ def st_tempurl(parser, args, thread_manager):
                                  method.upper())
     try:
         path = generate_temp_url(parsed.path, seconds, key, method,
-                                 absolute=options['absolute_expiry'])
+                                 absolute=options['absolute_expiry'],
+                                 prefix=options['prefix_based'],)
     except ValueError as err:
         thread_manager.error(err)
         return

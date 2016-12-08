@@ -62,12 +62,14 @@ def prt_bytes(num_bytes, human_flag):
         return '%.1f%s' % (num, suffix)
 
 
-def generate_temp_url(path, seconds, key, method, absolute=False):
+def generate_temp_url(path, seconds, key, method, absolute=False,
+                      prefix=False):
     """Generates a temporary URL that gives unauthenticated access to the
     Swift object.
 
-    :param path: The full path to the Swift object. Example:
-        /v1/AUTH_account/c/o.
+    :param path: The full path to the Swift object or prefix if
+         a prefix-based temporary URL should be generated. Example:
+        /v1/AUTH_account/c/o or /v1/AUTH_account/c/prefix.
     :param seconds: If absolute is False then this specifies the amount of time
         in seconds for which the temporary URL will be valid. If absolute is
         True then this specifies an absolute time at which the temporary URL
@@ -80,6 +82,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
     :param absolute: if True then the seconds parameter is interpreted as an
         absolute Unix time, otherwise seconds is interpreted as a relative time
         offset from current time.
+    :param prefix: if True then a prefix-based temporary URL will be generated.
     :raises: ValueError if seconds is not a whole number or path is not to
         an object.
     :return: the path portion of a temporary URL
@@ -103,8 +106,12 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
         path_for_body = path
 
     parts = path_for_body.split('/', 4)
-    if len(parts) != 5 or parts[0] or not all(parts[1:]):
-        raise ValueError('path must be full path to an object e.g. /v1/a/c/o')
+    if len(parts) != 5 or parts[0] or not all(parts[1:(4 if prefix else 5)]):
+        if prefix:
+            raise ValueError('path must at least contain /v1/a/c/')
+        else:
+            raise ValueError('path must be full path to an object'
+                             ' e.g. /v1/a/c/o')
 
     standard_methods = ['GET', 'PUT', 'HEAD', 'POST', 'DELETE']
     if method.upper() not in standard_methods:
@@ -116,7 +123,8 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
         expiration = int(time.time() + seconds)
     else:
         expiration = seconds
-    hmac_body = u'\n'.join([method.upper(), str(expiration), path_for_body])
+    hmac_body = u'\n'.join([method.upper(), str(expiration),
+                            ('prefix:' if prefix else '') + path_for_body])
 
     # Encode to UTF-8 for py3 compatibility
     if not isinstance(key, six.binary_type):
@@ -125,6 +133,8 @@ def generate_temp_url(path, seconds, key, method, absolute=False):
 
     temp_url = u'{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
         path=path_for_body, sig=sig, exp=expiration)
+    if prefix:
+        temp_url += u'&temp_url_prefix={}'.format(parts[4])
     # Have return type match path from caller
     if isinstance(path, six.binary_type):
         return temp_url.encode('utf-8')

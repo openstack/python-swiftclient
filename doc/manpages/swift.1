@@ -134,10 +134,12 @@ programs, such as jq.
 .RS 4
 Generates a temporary URL allowing unauthenticated access to the Swift object
 at the given path, using the given HTTP method, for the given number of
-seconds, using the given TempURL key. If optional \-\-absolute argument is
+seconds, using the given TempURL key. With the optional \-\-prefix\-based option a
+prefix-based URL is generated. If optional \-\-absolute argument is
 provided, seconds is instead interpreted as a Unix timestamp at which the URL
 should expire. \fBExample\fR: tempurl GET $(date \-d "Jan 1 2016" +%s)
 /v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key \-\-absolute
+
 .RE
 
 \fBauth\fR
