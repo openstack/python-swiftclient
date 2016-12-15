@@ -294,6 +294,30 @@ List the contents of a container:
 
     testSwift.txt
 
+Copy an object to new destination:
+
+.. code-block:: bash
+
+    > swift copy -d /DestContainer/testSwift.txt SourceContainer testSwift.txt
+
+    SourceContainer/testSwift.txt copied to /DestContainer/testSwift.txt
+
+Delete an object from a container:
+
+.. code-block:: bash
+
+    > swift delete TestContainer testSwift.txt
+
+    testSwift.txt
+
+Delete a container:
+
+.. code-block:: bash
+
+    > swift delete TestContainer
+
+    TestContainer
+
 Display auth related authentication variables in shell friendly format:
 
 .. code-block:: bash
@@ -318,8 +342,10 @@ Download an object from a container:
 
      To upload an object to a container, your current working directory must be
      where the file is located or you must provide the complete path to the file.
-     In the case that you provide the complete path of the file, that complete
-     path will be the name of the uploaded object.
+     In other words, the --object-name <object-name> is an option that will upload
+     file and name object to <object-name> or upload directory and use <object-name> as
+     object prefix. In the case that you provide the complete path of the file,
+     that complete path will be the name of the uploaded object.
 
 For example:
 
