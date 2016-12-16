@@ -793,7 +793,7 @@ Positional arguments:
 Optional arguments:
   -d, --destination </container[/object]>
                         The container and name of the destination object. Name
-                        of destination object can be ommited, then will be
+                        of destination object can be omitted, then will be
                         same as name of source object. Supplying multiple
                         objects and destination with object name is invalid.
   -M, --fresh-metadata  Copy the object without any existing metadata,
