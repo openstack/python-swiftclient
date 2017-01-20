@@ -1224,8 +1224,8 @@ def st_auth(parser, args, thread_manager):
         print('export OS_AUTH_TOKEN=%s' % sh_quote(token))
 
 
-st_tempurl_options = '''[--absolute] [--prefix-based]
-                     <method> <seconds> <path> <key>'''
+st_tempurl_options = '''[--absolute] [--prefix-based] [--iso8601]
+                     <method> <time> <path> <key>'''
 
 
 st_tempurl_help = '''
@@ -1234,9 +1234,35 @@ Generates a temporary URL for a Swift object.
 Positional arguments:
   <method>              An HTTP method to allow for this temporary URL.
                         Usually 'GET' or 'PUT'.
-  <seconds>             The amount of time in seconds the temporary URL will be
-                        valid for; or, if --absolute is passed, the Unix
-                        timestamp when the temporary URL will expire.
+  <time>                The amount of time the temporary URL will be
+                        valid. The time can be specified in two ways:
+                        an integer representing the time in seconds or an
+                        ISO 8601 timestamp in a specific format.
+                        If --absolute is passed and time
+                        is an integer, the seconds are intepreted as the Unix
+                        timestamp when the temporary URL will expire. The ISO
+                        8601 timestamp can be specified in one of following
+                        formats:
+
+                        i) Complete date: YYYY-MM-DD (eg 1997-07-16)
+
+                        ii) Complete date plus hours, minutes and seconds:
+
+                            YYYY-MM-DDThh:mm:ss
+
+                           (eg 1997-07-16T19:20:30)
+
+                        iii) Complete date plus hours, minutes and seconds with
+                             UTC designator:
+
+                             YYYY-MM-DDThh:mm:ssZ
+
+                             (eg 1997-07-16T19:20:30Z)
+
+                        Please be aware that if you don't provide the UTC
+                        designator (i.e., Z) the timestamp is generated using
+                        your local timezone. If only a date is specified,
+                        the time part used will equal to 00:00:00.
   <path>                The full path or storage URL to the Swift object.
                         Example: /v1/AUTH_account/c/o
                         or: http://saio:8080/v1/AUTH_account/c/o
@@ -1245,10 +1271,14 @@ Positional arguments:
                         "Temp-URL-Key:b3968d0207b54ece87cccc06515a89d4"\'
 
 Optional arguments:
-  --absolute            Interpret the <seconds> positional argument as a Unix
+  --absolute            Interpret the <time> positional argument as a Unix
                         timestamp rather than a number of seconds in the
-                        future.
-  --prefix-based	If present, a prefix-based tempURL will be generated.
+                        future. If an ISO 8601 timestamp is passed for <time>,
+                        this argument is ignored.
+  --prefix-based        If present, a prefix-based temporary URL will be
+                        generated.
+  --iso8601             If present, the generated temporary URL will contain an
+                        ISO 8601 UTC timestamp instead of a Unix timestamp.
 '''.strip('\n')
 
 
@@ -1256,14 +1286,21 @@ def st_tempurl(parser, args, thread_manager):
     parser.add_argument(
         '--absolute', action='store_true',
         dest='absolute_expiry', default=False,
-        help=("If present, seconds argument will be interpreted as a Unix "
-              "timestamp representing when the tempURL should expire, rather "
-              "than an offset from the current time"),
+        help=("If present, and time argument is an integer, "
+              "time argument will be interpreted as a Unix "
+              "timestamp representing when the temporary URL should expire, "
+              "rather than an offset from the current time."),
     )
     parser.add_argument(
         '--prefix-based', action='store_true',
         default=False,
-        help=("If present, a prefix-based tempURL will be generated."),
+        help=("If present, a prefix-based temporary URL will be generated."),
+    )
+    parser.add_argument(
+        '--iso8601', action='store_true',
+        default=False,
+        help=("If present, the temporary URL will contain an ISO 8601 UTC "
+              "timestamp instead of a Unix timestamp."),
     )
 
     (options, args) = parse_args(parser, args)
@@ -1272,7 +1309,7 @@ def st_tempurl(parser, args, thread_manager):
         thread_manager.error('Usage: %s tempurl %s\n%s', BASENAME,
                              st_tempurl_options, st_tempurl_help)
         return
-    method, seconds, path, key = args[:4]
+    method, timestamp, path, key = args[:4]
 
     parsed = urlparse(path)
 
@@ -1281,9 +1318,10 @@ def st_tempurl(parser, args, thread_manager):
                                  'tempurl specified, possibly an error' %
                                  method.upper())
     try:
-        path = generate_temp_url(parsed.path, seconds, key, method,
+        path = generate_temp_url(parsed.path, timestamp, key, method,
                                  absolute=options['absolute_expiry'],
-                                 prefix=options['prefix_based'],)
+                                 iso8601=options['iso8601'],
+                                 prefix=options['prefix_based'])
     except ValueError as err:
         thread_manager.error(err)
         return

@@ -18,6 +18,7 @@ import unittest
 import mock
 import six
 import tempfile
+from time import gmtime, localtime, mktime, strftime, strptime
 from hashlib import md5, sha1
 
 from swiftclient import utils as u
@@ -151,6 +152,67 @@ class TestTempURL(unittest.TestCase):
         self.assertIsInstance(url, type(self.url))
 
     @mock.patch('hmac.HMAC')
+    def test_generate_temp_url_iso8601_argument(self, hmac_mock):
+        hmac_mock().hexdigest.return_value = 'temp_url_signature'
+        url = u.generate_temp_url(self.url, '2014-05-13T17:53:20Z',
+                                  self.key, self.method)
+        self.assertEqual(url, self.expected_url)
+
+        # Don't care about absolute arg.
+        url = u.generate_temp_url(self.url, '2014-05-13T17:53:20Z',
+                                  self.key, self.method, absolute=True)
+        self.assertEqual(url, self.expected_url)
+
+        lt = localtime()
+        expires = strftime(u.EXPIRES_ISO8601_FORMAT[:-1], lt)
+
+        if not isinstance(self.expected_url, six.string_types):
+            expected_url = self.expected_url.replace(
+                b'1400003600', bytes(str(int(mktime(lt))), encoding='ascii'))
+        else:
+            expected_url = self.expected_url.replace(
+                '1400003600', str(int(mktime(lt))))
+        url = u.generate_temp_url(self.url, expires,
+                                  self.key, self.method)
+        self.assertEqual(url, expected_url)
+
+        expires = strftime(u.SHORT_EXPIRES_ISO8601_FORMAT, lt)
+        lt = strptime(expires, u.SHORT_EXPIRES_ISO8601_FORMAT)
+
+        if not isinstance(self.expected_url, six.string_types):
+            expected_url = self.expected_url.replace(
+                b'1400003600', bytes(str(int(mktime(lt))), encoding='ascii'))
+        else:
+            expected_url = self.expected_url.replace(
+                '1400003600', str(int(mktime(lt))))
+        url = u.generate_temp_url(self.url, expires,
+                                  self.key, self.method)
+        self.assertEqual(url, expected_url)
+
+    @mock.patch('hmac.HMAC')
+    @mock.patch('time.time', return_value=1400000000)
+    def test_generate_temp_url_iso8601_output(self, time_mock, hmac_mock):
+        hmac_mock().hexdigest.return_value = 'temp_url_signature'
+        url = u.generate_temp_url(self.url, self.seconds,
+                                  self.key, self.method,
+                                  iso8601=True)
+        key = self.key
+        if not isinstance(key, six.binary_type):
+            key = key.encode('utf-8')
+
+        expires = strftime(u.EXPIRES_ISO8601_FORMAT, gmtime(1400003600))
+        if not isinstance(self.url, six.string_types):
+            self.assertTrue(url.endswith(bytes(expires, 'utf-8')))
+        else:
+            self.assertTrue(url.endswith(expires))
+        self.assertEqual(hmac_mock.mock_calls, [
+            mock.call(),
+            mock.call(key, self.expected_body, sha1),
+            mock.call().hexdigest(),
+        ])
+        self.assertIsInstance(url, type(self.url))
+
+    @mock.patch('hmac.HMAC')
     @mock.patch('time.time', return_value=1400000000)
     def test_generate_temp_url_prefix(self, time_mock, hmac_mock):
         hmac_mock().hexdigest.return_value = 'temp_url_signature'
@@ -198,31 +260,34 @@ class TestTempURL(unittest.TestCase):
                                   absolute=True)
         self.assertEqual(url, expected_url)
 
-    def test_generate_temp_url_bad_seconds(self):
+    def test_generate_temp_url_bad_time(self):
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, 'not_an_int', self.key, self.method)
-        self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be a whole number')
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
 
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, -1, self.key, self.method)
-        self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be a whole number')
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
 
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, 1.1, self.key, self.method)
-        self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be a whole number')
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
 
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, '-1', self.key, self.method)
-        self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be a whole number')
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
 
         with self.assertRaises(ValueError) as exc_manager:
             u.generate_temp_url(self.url, '1.1', self.key, self.method)
-        self.assertEqual(exc_manager.exception.args[0],
-                         'seconds must be a whole number')
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url(self.url, '2015-05', self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
+
+        with self.assertRaises(ValueError) as exc_manager:
+            u.generate_temp_url(
+                self.url, '2015-05-01T01:00', self.key, self.method)
+        self.assertEqual(exc_manager.exception.args[0], u.TIME_ERRMSG)
 
     def test_generate_temp_url_bad_path(self):
         with self.assertRaises(ValueError) as exc_manager:

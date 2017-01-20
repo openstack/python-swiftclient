@@ -130,14 +130,33 @@ programs, such as jq.
          capabilities \-\-json
 .RE
 
-\fBtempurl\fR [\fIcommand-option\fR] \fImethod\fR \fIseconds\fR \fIpath\fR \fIkey\fR
+\fBtempurl\fR [\fIcommand-option\fR] \fImethod\fR \fItime\fR \fIpath\fR \fIkey\fR
 .RS 4
 Generates a temporary URL allowing unauthenticated access to the Swift object
-at the given path, using the given HTTP method, for the given number of
-seconds, using the given TempURL key. With the optional \-\-prefix\-based option a
-prefix-based URL is generated. If optional \-\-absolute argument is
-provided, seconds is instead interpreted as a Unix timestamp at which the URL
-should expire. \fBExample\fR: tempurl GET $(date \-d "Jan 1 2016" +%s)
+at the given path, using the given HTTP method, for the given time,
+using the given TempURL key.
+
+The time can be specified either as an integer
+denoting the amount of seconds the temporary URL is valid, or as an ISO 8601
+timestamp in one of following formats:  Complete date: YYYY\-MM\-DD (eg 1997\-07\-16),
+complete date plus hours, minutes and seconds: YYYY\-MM\-DDThh:mm:ss
+(eg 1997\-07\-16T19:20:30) or complete date plus hours, minutes and seconds with
+UTC designator: YYYY\-MM\-DDThh:mm:ssZ (eg 1997\-07\-16T19:20:30Z). Be aware that
+if you do not use the latter format, the timestamp is generated using your locale
+timezone. If the first format is used, the time part used will equal to 00:00:00.
+
+With the \-\-prefix\-based option a
+prefix-based URL is generated.
+
+The option \-\-iso8601 provides ISO 8601 UTC timestamps
+instead of Unix timestamps inside the generated URL.
+
+If optional \-\-absolute argument is
+provided and the time argument is specified in seconds, the seconds are
+interpreted as a Unix timestamp at which the URL
+should expire.
+
+\fBExample\fR: tempurl GET $(date \-d "Jan 1 2016" +%s)
 /v1/AUTH_foo/bar_container/quux.md my_secret_tempurl_key \-\-absolute
 
 .RE
