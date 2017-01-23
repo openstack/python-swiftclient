@@ -346,7 +346,7 @@ class _RetryBody(_ObjectBody):
 class HTTPConnection(object):
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
                  cert=None, cert_key=None, ssl_compression=False,
-                 default_user_agent=None, timeout=None):
+                 default_user_agent=None, timeout=None, kerberos=False):
         """
         Make an HTTPConnection or HTTPSConnection
 
@@ -371,6 +371,7 @@ class HTTPConnection(object):
                                    a call to request().
         :param timeout: socket read timeout value, passed directly to
                         the requests library.
+        :param kerberos: use kerberos authentication.
         :raises ClientException: Unable to handle protocol scheme
         """
         self.url = url
@@ -381,6 +382,12 @@ class HTTPConnection(object):
         self.request_session = requests.Session()
         # Don't use requests's default headers
         self.request_session.headers = None
+        if kerberos:
+            try:
+                from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+                self.request_session.auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+            except ImportError:
+                raise ClientException('''Kerberos authentication requires requests-kerberos package.''')
         if self.parsed_url.scheme not in ('http', 'https'):
             raise ClientException('Unsupported scheme "%s" in url "%s"'
                                   % (self.parsed_url.scheme, url))
@@ -486,9 +493,10 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
     cert = kwargs.get('cert')
     cert_key = kwargs.get('cert_key')
     timeout = kwargs.get('timeout', None)
+    kerberos = kwargs.get('kerberos', False)
     parsed, conn = http_connection(url, cacert=cacert, insecure=insecure,
                                    cert=cert, cert_key=cert_key,
-                                   timeout=timeout)
+                                   timeout=timeout, kerberos=kerberos)
     method = 'GET'
     headers = {'X-Auth-User': user, 'X-Auth-Key': key}
     conn.request(method, parsed.path, '', headers)
@@ -624,6 +632,7 @@ def get_auth(auth_url, user, key, **kwargs):
     cert = kwargs.get('cert')
     cert_key = kwargs.get('cert_key')
     timeout = kwargs.get('timeout', None)
+    kerberos = kwargs.get('kerberos', False)
 
     if session:
         service_type = os_options.get('service_type', 'object-store')
@@ -640,7 +649,8 @@ def get_auth(auth_url, user, key, **kwargs):
                                           insecure=insecure,
                                           cert=cert,
                                           cert_key=cert_key,
-                                          timeout=timeout)
+                                          timeout=timeout,
+                                          kerberos=kerberos)
     elif auth_version in AUTH_VERSIONS_V2 + AUTH_VERSIONS_V3:
         # We are handling a special use case here where the user argument
         # specifies both the user name and tenant name in the form tenant:user
@@ -1522,7 +1532,7 @@ class Connection(object):
                  os_options=None, auth_version="1", cacert=None,
                  insecure=False, cert=None, cert_key=None,
                  ssl_compression=True, retry_on_ratelimit=False,
-                 timeout=None, session=None):
+                 timeout=None, session=None, kerberos=False):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1558,6 +1568,7 @@ class Connection(object):
                                    after a backoff.
         :param timeout: The connect timeout for the HTTP connection.
         :param session: A keystoneauth session object.
+        :param kerberos: Use kerberos authentication.
         """
         self.session = session
         self.authurl = authurl
@@ -1590,6 +1601,7 @@ class Connection(object):
         self.auth_end_time = 0
         self.retry_on_ratelimit = retry_on_ratelimit
         self.timeout = timeout
+        self.kerberos = kerberos
 
     def close(self):
         if (self.http_conn and isinstance(self.http_conn, tuple)
@@ -1610,7 +1622,8 @@ class Connection(object):
                                         insecure=self.insecure,
                                         cert=self.cert,
                                         cert_key=self.cert_key,
-                                        timeout=self.timeout)
+                                        timeout=self.timeout,
+                                        kerberos=self.kerberos)
         return self.url, self.token
 
     def get_service_auth(self):
@@ -1629,7 +1642,8 @@ class Connection(object):
                         os_options=service_options,
                         cacert=self.cacert,
                         insecure=self.insecure,
-                        timeout=self.timeout)
+                        timeout=self.timeout,
+                        kerberos=self.kerberos)
 
     def http_connection(self, url=None):
         return http_connection(url if url else self.url,
@@ -1638,7 +1652,8 @@ class Connection(object):
                                cert=self.cert,
                                cert_key=self.cert_key,
                                ssl_compression=self.ssl_compression,
-                               timeout=self.timeout)
+                               timeout=self.timeout,
+                               kerberos=self.kerberos)
 
     def _add_response_dict(self, target_dict, kwargs):
         if target_dict is not None and 'response_dict' in kwargs:

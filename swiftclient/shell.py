@@ -1399,6 +1399,7 @@ def main(arguments=None):
                  --os-identity-api-version <auth_version> ]
              [--user <username>]
              [--key <api_key>] [--retries <num_retries>]
+             [--kerberos]
              [--os-username <auth-user-name>] [--os-password <auth-password>]
              [--os-user-id <auth-user-id>]
              [--os-user-domain-id <auth-user-domain-id>]
@@ -1512,6 +1513,8 @@ Examples:
     parser.add_argument('-R', '--retries', type=int, default=5, dest='retries',
                         help='The number of times to retry a failed '
                              'connection.')
+    parser.add_argument('--kerberos', action='store_true', dest='kerberos',
+                        default=False, help='Use kerberos authentication.')
     default_val = config_true_value(environ.get('SWIFTCLIENT_INSECURE'))
     parser.add_argument('--insecure',
                         action="store_true", dest="insecure",
