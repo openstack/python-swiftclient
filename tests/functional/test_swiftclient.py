@@ -110,15 +110,20 @@ class TestFunctional(unittest.TestCase):
                 pass
 
     def _check_account_headers(self, headers):
-        self.assertTrue(headers.get('content-length'))
-        self.assertTrue(headers.get('x-account-object-count'))
-        self.assertTrue(headers.get('x-timestamp'))
-        self.assertTrue(headers.get('x-trans-id'))
-        self.assertTrue(headers.get('date'))
-        self.assertTrue(headers.get('x-account-bytes-used'))
-        self.assertTrue(headers.get('x-account-container-count'))
-        self.assertTrue(headers.get('content-type'))
-        self.assertTrue(headers.get('accept-ranges'))
+        headers_to_check = [
+            'content-length',
+            'x-account-object-count',
+            'x-timestamp',
+            'x-trans-id',
+            'date',
+            'x-account-bytes-used',
+            'x-account-container-count',
+            'content-type',
+            'accept-ranges',
+        ]
+        for h in headers_to_check:
+            self.assertIn(h, headers)
+            self.assertTrue(headers[h])
 
     def test_stat_account(self):
         headers = self.conn.head_account()
@@ -322,16 +327,16 @@ class TestFunctional(unittest.TestCase):
         # verify that put using a generator yielding empty strings does not
         # cause connection to be closed
         def data():
-            yield "should"
-            yield ""
-            yield " tolerate"
-            yield ""
-            yield " empty chunks"
+            yield b"should"
+            yield b""
+            yield b" tolerate"
+            yield b""
+            yield b" empty chunks"
 
         self.conn.put_object(
             self.containername, self.objectname, data())
         hdrs, body = self.conn.get_object(self.containername, self.objectname)
-        self.assertEqual("should tolerate empty chunks", body)
+        self.assertEqual(b"should tolerate empty chunks", body)
 
     def test_download_object_retry_chunked(self):
         resp_chunk_size = 2
