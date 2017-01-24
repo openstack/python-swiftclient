@@ -29,11 +29,10 @@ from posixpath import join as urljoin
 from random import shuffle
 from time import time
 from threading import Thread
-from six import StringIO, text_type
+from six import Iterator, StringIO, string_types, text_type
 from six.moves.queue import Queue
 from six.moves.queue import Empty as QueueEmpty
 from six.moves.urllib.parse import quote
-from six import Iterator, string_types
 
 import json
 
@@ -274,7 +273,10 @@ def split_headers(options, prefix=''):
     """
     Splits 'Key: Value' strings and returns them as a dictionary.
 
-    :param options: An array of 'Key: Value' strings
+    :param options: Must be one of:
+        * an iterable of 'Key: Value' strings
+        * an iterable of ('Key', 'Value') pairs
+        * a dict of {'Key': 'Value'} pairs
     :param prefix: String to prepend to all of the keys in the dictionary.
         reporting.
     """

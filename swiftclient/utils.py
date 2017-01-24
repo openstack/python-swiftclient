@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
+import collections
 import gzip
 import hashlib
 import hmac
@@ -158,15 +159,24 @@ def parse_api_response(headers, body):
 
 def split_request_headers(options, prefix=''):
     headers = {}
+    if isinstance(options, collections.Mapping):
+        options = options.items()
     for item in options:
-        split_item = item.split(':', 1)
-        if len(split_item) == 2:
-            headers[(prefix + split_item[0]).title()] = split_item[1].strip()
-        else:
+        if isinstance(item, six.string_types):
+            if ':' not in item:
+                raise ValueError(
+                    "Metadata parameter %s must contain a ':'.\n"
+                    "Example: 'Color:Blue' or 'Size:Large'"
+                    % item
+                )
+            item = item.split(':', 1)
+        if len(item) != 2:
             raise ValueError(
-                "Metadata parameter %s must contain a ':'.\n%s"
-                % (item, "Example: 'Color:Blue' or 'Size:Large'")
+                "Metadata parameter %r must have exactly two items.\n"
+                "Example: ('Color', 'Blue') or ['Size', 'Large']"
+                % (item, )
             )
+        headers[(prefix + item[0]).title()] = item[1].strip()
     return headers
 
 

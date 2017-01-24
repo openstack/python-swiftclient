@@ -592,11 +592,24 @@ class TestServiceUtils(unittest.TestCase):
         actual = swiftclient.service.split_headers(mock_headers, 'prefix-')
         self.assertEqual(expected, actual)
 
-    def test_split_headers_error(self):
-        mock_headers = ['notvalid']
+    def test_split_headers_list_of_tuples(self):
+        mock_headers = [('color', 'blue'), ('size', 'large')]
+        expected = {'Prefix-Color': 'blue', 'Prefix-Size': 'large'}
 
+        actual = swiftclient.service.split_headers(mock_headers, 'prefix-')
+        self.assertEqual(expected, actual)
+
+    def test_split_headers_dict(self):
+        expected = {'Color': 'blue', 'Size': 'large'}
+
+        actual = swiftclient.service.split_headers(expected)
+        self.assertEqual(expected, actual)
+
+    def test_split_headers_error(self):
         self.assertRaises(SwiftError, swiftclient.service.split_headers,
-                          mock_headers)
+                          ['notvalid'])
+        self.assertRaises(SwiftError, swiftclient.service.split_headers,
+                          [('also', 'not', 'valid')])
 
 
 class TestSwiftUploadObject(unittest.TestCase):
