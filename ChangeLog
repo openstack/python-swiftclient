@@ -1,3 +1,18 @@
+3.3.0
+-----
+
+* Added support for prefix-based tempurls. This allows you to create a
+  tempurl that is valid for all objects which share a given prefix and
+  matches the feature in Swift 2.12.0 and later.
+
+* In the SDK, we previously only accepted iterables of strings like
+  'Header: Value'. Now, we'll also accept lists of tuples like
+  ('Header', 'Value') as well as dictionaries like {'Header': 'Value'}.
+
+* Improved help message strings
+
+* Various other minor bug fixes and improvements.
+
 3.2.0
 -----
 
