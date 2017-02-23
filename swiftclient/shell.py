@@ -59,6 +59,7 @@ st_delete_options = '''[--all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]
                     [--header <header:value>]
+                    [--prefix <prefix>]
                     [<container> [<object>] [...]]
 '''
 
@@ -82,6 +83,7 @@ Optional arguments:
   --container-threads <threads>
                         Number of threads to use for deleting containers.
                         Default is 10.
+  --prefix <prefix>     Only delete objects beginning with <prefix>.
 '''.strip("\n")
 
 
@@ -91,7 +93,7 @@ def st_delete(parser, args, output_manager):
         default=False, help='Delete all containers and objects.')
     parser.add_argument(
         '-p', '--prefix', dest='prefix',
-        help='Only delete items beginning with the <prefix>.')
+        help='Only delete items beginning with <prefix>.')
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[],
