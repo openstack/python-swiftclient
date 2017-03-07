@@ -32,7 +32,8 @@ import six
 from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
 from swiftclient.utils import (
-    iter_wrapper, LengthWrapper, ReadableToIterable, parse_api_response)
+    iter_wrapper, LengthWrapper, ReadableToIterable, parse_api_response,
+    get_body)
 
 # Default is 100, increase to 256
 http_client._MAXHEADERS = 256
@@ -165,7 +166,9 @@ def http_log(args, kwargs, resp, body):
     log_method("RESP STATUS: %s %s", resp.status, resp.reason)
     log_method("RESP HEADERS: %s", scrub_headers(resp.getheaders()))
     if body:
-        log_method("RESP BODY: %s", body)
+        resp_headers = resp_header_dict(resp)
+        nbody = get_body(resp_headers, body)
+        log_method("RESP BODY: %s", nbody)
 
 
 def parse_header_string(data):

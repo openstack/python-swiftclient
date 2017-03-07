@@ -143,11 +143,16 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         return temp_url
 
 
-def parse_api_response(headers, body):
+def get_body(headers, body):
     if headers.get('content-encoding') == 'gzip':
         with gzip.GzipFile(fileobj=six.BytesIO(body), mode='r') as gz:
-            body = gz.read()
+            nbody = gz.read()
+        return nbody
+    return body
 
+
+def parse_api_response(headers, body):
+    body = get_body(headers, body)
     charset = 'utf-8'
     # Swift *should* be speaking UTF-8, but check content-type just in case
     content_type = headers.get('content-type', '')

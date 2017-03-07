@@ -507,3 +507,21 @@ class TestApiResponeParser(unittest.TestCase):
             {'content-encoding': 'gzip'},
             buf.getvalue())
         self.assertEqual({'test': u'\u2603'}, result)
+
+
+class TestGetBody(unittest.TestCase):
+
+    def test_not_gzipped(self):
+        result = u.parse_api_response(
+            {}, u'{"test": "\\u2603"}'.encode('utf8'))
+        self.assertEqual({'test': u'\u2603'}, result)
+
+    def test_gzipped_body(self):
+        buf = six.BytesIO()
+        gz = gzip.GzipFile(fileobj=buf, mode='w')
+        gz.write(u'{"test": "\u2603"}'.encode('utf8'))
+        gz.close()
+        result = u.parse_api_response(
+            {'content-encoding': 'gzip'},
+            buf.getvalue())
+        self.assertEqual({'test': u'\u2603'}, result)
