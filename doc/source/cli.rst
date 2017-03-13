@@ -85,7 +85,7 @@ below:
 
 .. code-block:: bash
 
-    swift -A https://auth.api.rackspacecloud.com/v1.0 -U user -K api_key list
+    swift -A https://api.example.com/v1.0 -U user -K api_key list
 
 Specifying the options above manually on the command line can be avoided by
 setting the following environment variables:
@@ -93,7 +93,7 @@ setting the following environment variables:
 .. code-block:: bash
 
     ST_AUTH_VERSION=1.0
-    ST_AUTH=https://auth.api.rackspacecloud.com/v1.0
+    ST_AUTH=https://api.example.com/v1.0
     ST_USER=user
     ST_KEY=key
 

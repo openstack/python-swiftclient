@@ -1442,7 +1442,7 @@ Positional arguments:
 Examples:
   %(prog)s download --help
 
-  %(prog)s -A https://auth.api.rackspacecloud.com/v1.0 \\
+  %(prog)s -A https://api.example.com/v1.0 \\
       -U user -K api_key stat -v
 
   %(prog)s --os-auth-url https://api.example.com/v2.0 \\
