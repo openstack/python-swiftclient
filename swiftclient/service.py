@@ -1714,6 +1714,7 @@ class SwiftService(object):
                                             segment_name),
             'log_line': '%s segment %s' % (obj_name, segment_index),
         }
+        fp = None
         try:
             fp = open(path, 'rb')
             fp.seek(segment_start)
@@ -1761,6 +1762,9 @@ class SwiftService(object):
             if results_queue is not None:
                 results_queue.put(res)
             return res
+        finally:
+            if fp is not None:
+                fp.close()
 
     def _get_chunk_data(self, conn, container, obj, headers, manifest=None):
         chunks = []
@@ -2008,29 +2012,36 @@ class SwiftService(object):
             else:
                 res['large_object'] = False
                 obr = {}
-                if path is not None:
-                    content_length = getsize(path)
-                    contents = LengthWrapper(open(path, 'rb'),
-                                             content_length,
-                                             md5=options['checksum'])
-                else:
-                    content_length = None
-                    contents = ReadableToIterable(stream,
-                                                  md5=options['checksum'])
+                fp = None
+                try:
+                    if path is not None:
+                        content_length = getsize(path)
+                        fp = open(path, 'rb')
+                        contents = LengthWrapper(fp,
+                                                 content_length,
+                                                 md5=options['checksum'])
+                    else:
+                        content_length = None
+                        contents = ReadableToIterable(stream,
+                                                      md5=options['checksum'])
 
-                etag = conn.put_object(
-                    container, obj, contents,
-                    content_length=content_length, headers=put_headers,
-                    response_dict=obr
-                )
-                res['response_dict'] = obr
+                    etag = conn.put_object(
+                        container, obj, contents,
+                        content_length=content_length, headers=put_headers,
+                        response_dict=obr
+                    )
+                    res['response_dict'] = obr
 
-                if (options['checksum'] and
-                        etag and etag != contents.get_md5sum()):
-                    raise SwiftError('Object upload verification failed: '
-                                     'md5 mismatch, local {0} != remote {1} '
-                                     '(remote object has not been removed)'
-                                     .format(contents.get_md5sum(), etag))
+                    if (options['checksum'] and
+                            etag and etag != contents.get_md5sum()):
+                        raise SwiftError(
+                            'Object upload verification failed: '
+                            'md5 mismatch, local {0} != remote {1} '
+                            '(remote object has not been removed)'
+                            .format(contents.get_md5sum(), etag))
+                finally:
+                    if fp is not None:
+                        fp.close()
 
             if old_manifest or old_slo_manifest_paths:
                 drs = []
