@@ -1951,7 +1951,7 @@ class TestServiceDownload(_TestServiceBase):
                     'headers_receipt': 3
                 }
             )
-            mock_open.assert_called_once_with('test_o', 'wb')
+            mock_open.assert_called_once_with('test_o', 'wb', 65536)
             written_content.write.assert_called_once_with(b'objcontent')
 
         mock_conn.get_object.assert_called_once_with(
@@ -1995,7 +1995,7 @@ class TestServiceDownload(_TestServiceBase):
                     'headers_receipt': 3
                 }
             )
-            mock_open.assert_called_once_with('test_o', 'wb')
+            mock_open.assert_called_once_with('test_o', 'wb', 65536)
             mock_utime.assert_called_once_with(
                 'test_o', (1454113727.682512, 1454113727.682512))
             written_content.write.assert_called_once_with(b'objcontent')
@@ -2041,7 +2041,7 @@ class TestServiceDownload(_TestServiceBase):
                     'headers_receipt': 3
                 }
             )
-            mock_open.assert_called_once_with('test_o', 'wb')
+            mock_open.assert_called_once_with('test_o', 'wb', 65536)
             self.assertEqual(0, len(mock_utime.mock_calls))
             written_content.write.assert_called_once_with(b'objcontent')
 
@@ -2087,7 +2087,7 @@ class TestServiceDownload(_TestServiceBase):
                     'headers_receipt': 3
                 }
             )
-            mock_open.assert_called_once_with('test_o', 'wb')
+            mock_open.assert_called_once_with('test_o', 'wb', 65536)
             self.assertEqual([], mock_utime.mock_calls)
             written_content.write.assert_called_once_with(b'objcontent')
 

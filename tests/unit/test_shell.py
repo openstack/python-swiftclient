@@ -473,7 +473,7 @@ class TestShell(unittest.TestCase):
                            response_dict={})]
         connection.return_value.get_object.assert_has_calls(
             calls, any_order=True)
-        mock_open.assert_called_once_with('object', 'wb')
+        mock_open.assert_called_once_with('object', 'wb', 65536)
         self.assertEqual([mock.call('pseudo')], makedirs.mock_calls)
         makedirs.reset_mock()
 
@@ -490,7 +490,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.get_object.assert_called_with(
             'container', 'object', headers={}, resp_chunk_size=65536,
             response_dict={})
-        mock_open.assert_called_with('object', 'wb')
+        mock_open.assert_called_with('object', 'wb', 65536)
         self.assertEqual([], makedirs.mock_calls)
 
         # Test downloading without md5 checks
@@ -507,7 +507,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.get_object.assert_called_with(
             'container', 'object', headers={}, resp_chunk_size=65536,
             response_dict={})
-        mock_open.assert_called_with('object', 'wb')
+        mock_open.assert_called_with('object', 'wb', 65536)
         sr.assert_called_once_with('object', mock.ANY, mock.ANY, False)
         self.assertEqual([], makedirs.mock_calls)
 
@@ -553,7 +553,7 @@ class TestShell(unittest.TestCase):
         mock_shuffle.assert_any_call(['container'])
         mock_shuffle.assert_any_call(['object'])
         mock_shuffle.assert_any_call(['pseudo/'])
-        mock_open.assert_called_once_with('container/object', 'wb')
+        mock_open.assert_called_once_with('container/object', 'wb', 65536)
         self.assertEqual([
             mock.call('container'),
             mock.call('container/pseudo'),
@@ -577,7 +577,7 @@ class TestShell(unittest.TestCase):
                 argv = ["", "download", "--all", "--no-shuffle"]
                 swiftclient.shell.main(argv)
         self.assertEqual(0, mock_shuffle.call_count)
-        mock_open.assert_called_once_with('container/object', 'wb')
+        mock_open.assert_called_once_with('container/object', 'wb', 65536)
         self.assertEqual([
             mock.call('container'),
             mock.call('container/pseudo'),
@@ -610,7 +610,7 @@ class TestShell(unittest.TestCase):
                            response_dict={})]
         connection.return_value.get_object.assert_has_calls(
             calls, any_order=True)
-        mock_open.assert_called_once_with('object', 'wb')
+        mock_open.assert_called_once_with('object', 'wb', 65536)
         self.assertEqual([
             mock.call('pseudo'),
         ], mock_mkdir.mock_calls)

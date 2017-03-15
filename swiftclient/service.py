@@ -50,6 +50,7 @@ from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
 
 
+DISK_BUFFER = 2 ** 16
 logger = logging.getLogger("swiftclient.service")
 
 
@@ -1126,14 +1127,14 @@ class SwiftService(object):
         if options['skip_identical']:
             filename = out_file if out_file else path
             try:
-                fp = open(filename, 'rb')
+                fp = open(filename, 'rb', DISK_BUFFER)
             except IOError:
                 pass
             else:
                 with fp:
                     md5sum = md5()
                     while True:
-                        data = fp.read(65536)
+                        data = fp.read(DISK_BUFFER)
                         if not data:
                             break
                         md5sum.update(data)
@@ -1141,7 +1142,7 @@ class SwiftService(object):
 
         try:
             start_time = time()
-            get_args = {'resp_chunk_size': 65536,
+            get_args = {'resp_chunk_size': DISK_BUFFER,
                         'headers': req_headers,
                         'response_dict': results_dict}
             if options['skip_identical']:
@@ -1224,10 +1225,10 @@ class SwiftService(object):
 
                     if not no_file:
                         if out_file:
-                            fp = open(out_file, 'wb')
+                            fp = open(out_file, 'wb', DISK_BUFFER)
                         else:
                             if basename(path):
-                                fp = open(path, 'wb')
+                                fp = open(path, 'wb', DISK_BUFFER)
                             else:
                                 pseudodir = True
 
@@ -1733,7 +1734,7 @@ class SwiftService(object):
         }
         fp = None
         try:
-            fp = open(path, 'rb')
+            fp = open(path, 'rb', DISK_BUFFER)
             fp.seek(segment_start)
 
             contents = LengthWrapper(fp, segment_size, md5=options['checksum'])
@@ -1811,7 +1812,7 @@ class SwiftService(object):
 
     def _is_identical(self, chunk_data, path):
         try:
-            fp = open(path, 'rb')
+            fp = open(path, 'rb', DISK_BUFFER)
         except IOError:
             return False
 
@@ -1820,7 +1821,7 @@ class SwiftService(object):
                 to_read = chunk['bytes']
                 md5sum = md5()
                 while to_read:
-                    data = fp.read(min(65536, to_read))
+                    data = fp.read(min(DISK_BUFFER, to_read))
                     if not data:
                         return False
                     md5sum.update(data)
@@ -2032,7 +2033,7 @@ class SwiftService(object):
                 try:
                     if path is not None:
                         content_length = getsize(path)
-                        fp = open(path, 'rb')
+                        fp = open(path, 'rb', DISK_BUFFER)
                         contents = LengthWrapper(fp,
                                                  content_length,
                                                  md5=options['checksum'])
