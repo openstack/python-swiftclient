@@ -35,10 +35,10 @@ Keystone Session
                        project_domain_name='Default')
 
     # Create session
-    session = session.Session(auth=auth)
+    keystone_session = session.Session(auth=auth)
 
     # Create swiftclient Connection
-    swift_conn = Connection(session=session)
+    swift_conn = Connection(session=keystone_session)
 
 Keystone v3
 ~~~~~~~~~~~
