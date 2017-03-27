@@ -63,26 +63,6 @@ Keystone v3
         auth_version=_auth_version
     )
 
-.. code-block:: python
-
-    _authurl = 'http://127.0.0.1:5000/v3/'
-    _auth_version = '3'
-    _user = 'tester'
-    _key = 'testing'
-    _os_options = {
-        'user_domain_id': 'Default',
-        'project_domain_id': 'Default',
-        'project_id': 'Default'
-    }
-
-    conn = Connection(
-        authurl=_authurl,
-        user=_user,
-        key=_key,
-        os_options=_os_options,
-        auth_version=_auth_version
-    )
-
 Keystone v2
 ~~~~~~~~~~~
 
