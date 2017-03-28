@@ -84,7 +84,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         absolute Unix time, otherwise seconds is interpreted as a relative time
         offset from current time.
     :param prefix: if True then a prefix-based temporary URL will be generated.
-    :raises: ValueError if seconds is not a whole number or path is not to
+    :raises ValueError: if seconds is not a whole number or path is not to
         an object.
     :return: the path portion of a temporary URL
     """

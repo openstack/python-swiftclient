@@ -473,7 +473,7 @@ class SwiftService(object):
                   or container, or an iterator for returning the results of the
                   stat operations on a list of objects.
 
-        :raises: SwiftError
+        :raises SwiftError:
         """
         if options is not None:
             options = dict(self._options, **options)
@@ -637,7 +637,7 @@ class SwiftService(object):
                   container/account, or an iterator for returning the results
                   of posts to a list of objects.
 
-        :raises: SwiftError
+        :raises SwiftError:
         """
         if options is not None:
             options = dict(self._options, **options)
@@ -1031,8 +1031,8 @@ class SwiftService(object):
                   'download_object' dictionary containing the results of an
                   individual file download.
 
-        :raises: ClientException
-        :raises: SwiftError
+        :raises ClientException:
+        :raises SwiftError:
         """
         if options is not None:
             options = dict(self._options, **options)
@@ -1396,8 +1396,8 @@ class SwiftService(object):
 
         :returns: A generator for returning the results of the uploads.
 
-        :raises: SwiftError
-        :raises: ClientException
+        :raises SwiftError:
+        :raises ClientException:
         """
         if options is not None:
             options = dict(self._options, **options)
@@ -2135,8 +2135,8 @@ class SwiftService(object):
                   'bulk_delete' dictionary containing the results of an
                   individual delete operation.
 
-        :raises: ClientException
-        :raises: SwiftError
+        :raises ClientException:
+        :raises SwiftError:
         """
         if options is not None:
             options = dict(self._options, **options)
@@ -2504,7 +2504,7 @@ class SwiftService(object):
         :returns: A generator returning the results of copying the given list
                   of objects.
 
-        :raises: SwiftError
+        :raises SwiftError:
         """
         if options is not None:
             options = dict(self._options, **options)
@@ -2646,7 +2646,7 @@ class SwiftService(object):
 
         :returns: A dictionary containing the capabilities of the cluster.
 
-        :raises: ClientException
+        :raises ClientException:
         """
         if not refresh_cache and url in self.capabilities_cache:
             return self.capabilities_cache[url]
