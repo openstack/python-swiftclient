@@ -474,6 +474,40 @@ class TestServiceDelete(_TestServiceBase):
         self.assertLessEqual(r['error_timestamp'], after)
         self.assertIn('Traceback', r['traceback'])
 
+    @mock.patch.object(swiftclient.service.SwiftService, 'capabilities',
+                       lambda *a: {'action': 'capabilities',
+                                   'timestamp': time.time(),
+                                   'success': True,
+                                   'capabilities': {
+                                       'bulk_delete':
+                                       {'max_deletes_per_request': 10}}
+                                   })
+    def test_bulk_delete_page_size(self):
+        # make a list of 100 objects
+        obj_list = ['x%02d' % i for i in range(100)]
+        errors = []
+
+        # _bulk_delete_page_size uses 2x the number of threads to determine
+        # if if there are "many" object to delete or not
+
+        # format is: [(thread_count, expected result), ...]
+        obj_threads_exp = [
+            (10, 10),  # something small
+            (49, 10),  # just under the bounds
+            (50, 1),  # cutover point
+            (51, 1),  # just over bounds
+            (100, 1),  # something big
+        ]
+        for thread_count, exp in obj_threads_exp:
+            s = SwiftService(options={'object_dd_threads': thread_count})
+            res = s._bulk_delete_page_size(obj_list)
+            if res != exp:
+                msg = 'failed for thread_count %d: got %r expected %r' % \
+                    (thread_count, res, exp)
+                errors.append(msg)
+        if errors:
+            self.fail('_bulk_delete_page_size() failed\n' + '\n'.join(errors))
+
 
 class TestSwiftError(unittest.TestCase):
 

@@ -43,7 +43,8 @@ from swiftclient.command_helpers import (
 )
 from swiftclient.utils import (
     config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG,
-    parse_api_response, report_traceback, n_groups, split_request_headers
+    parse_api_response, report_traceback, n_groups, split_request_headers,
+    n_at_a_time
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
@@ -2151,11 +2152,15 @@ class SwiftService(object):
                 rq = Queue()
                 obj_dels = {}
 
-                if self._should_bulk_delete(objects):
-                    for obj_slice in n_groups(
-                            objects, self._options['object_dd_threads']):
-                        self._bulk_delete(container, obj_slice, options,
-                                          obj_dels)
+                bulk_page_size = self._bulk_delete_page_size(objects)
+                if bulk_page_size > 1:
+                    page_at_a_time = n_at_a_time(objects, bulk_page_size)
+                    for page_slice in page_at_a_time:
+                        for obj_slice in n_groups(
+                                page_slice,
+                                self._options['object_dd_threads']):
+                            self._bulk_delete(container, obj_slice, options,
+                                              obj_dels)
                 else:
                     self._per_item_delete(container, objects, options,
                                           obj_dels, rq)
@@ -2208,23 +2213,36 @@ class SwiftService(object):
                                     and not res['success']):
                                 cancelled = True
 
-    def _should_bulk_delete(self, objects):
-        if len(objects) < 2 * self._options['object_dd_threads']:
+    def _bulk_delete_page_size(self, objects):
+        '''
+        Given the iterable 'objects', will return how many items should be
+        deleted at a time.
+
+        :param objects: An iterable that supports 'len()'
+        :returns: The bulk delete page size (i.e. the max number of
+                  objects that can be bulk deleted at once, as reported by
+                  the cluster). If bulk delete is disabled, return 1
+        '''
+        if len(objects) <= 2 * self._options['object_dd_threads']:
             # Not many objects; may as well delete one-by-one
-            return False
+            return 1
 
         try:
             cap_result = self.capabilities()
             if not cap_result['success']:
                 # This shouldn't actually happen, but just in case we start
                 # being more nuanced about our capabilities result...
-                return False
+                return 1
         except ClientException:
             # Old swift, presumably; assume no bulk middleware
-            return False
+            return 1
 
         swift_info = cap_result['capabilities']
-        return 'bulk_delete' in swift_info
+        if 'bulk_delete' in swift_info:
+            return swift_info['bulk_delete'].get(
+                'max_deletes_per_request', 10000)
+        else:
+            return 1
 
     def _per_item_delete(self, container, objects, options, rdict, rq):
         for obj in objects:

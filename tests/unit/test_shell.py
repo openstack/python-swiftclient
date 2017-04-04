@@ -903,8 +903,8 @@ class TestShell(unittest.TestCase):
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 0)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_bad_threads(self, mock_connection):
         mock_connection.return_value.get_container.return_value = (None, [])
@@ -934,8 +934,8 @@ class TestShell(unittest.TestCase):
         check_good(["--object-threads", "1"])
         check_good(["--container-threads", "1"])
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_account(self, connection):
         connection.return_value.get_account.side_effect = [
@@ -971,8 +971,8 @@ class TestShell(unittest.TestCase):
                 mock.call('container2', response_dict={}, headers={}),
                 mock.call('empty_container', response_dict={}, headers={})])
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: True)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 10)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_bulk_account(self, connection):
         connection.return_value.get_account.side_effect = [
@@ -1085,8 +1085,80 @@ class TestShell(unittest.TestCase):
         self.assertEqual(connection.return_value.get_capabilities.mock_calls,
                          [mock.call(None)])  # only one /info request
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_bulk_account_with_capabilities_and_pages(self, connection):
+        connection.return_value.get_capabilities.return_value = {
+            'bulk_delete': {
+                'max_deletes_per_request': 2,
+                'max_failed_deletes': 1000,
+            },
+        }
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container'}]],
+            [None, [{'name': 'container2'}]],
+            [None, [{'name': 'empty_container'}]],
+            [None, []],
+        ]
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'},
+                    {'name': 'z_object'}, {'name': 'z_obj\xe9ct2'}]],
+            [None, []],
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'},
+                    {'name': 'z_object'}, {'name': 'z_obj\xe9ct2'}]],
+            [None, []],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "--all", "--object-threads", "1"]
+        connection.return_value.post_account.return_value = {}, (
+            b'{"Number Not Found": 0, "Response Status": "200 OK", '
+            b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
+        swiftclient.shell.main(argv)
+        # check that each bulk call was only called with 2 objects
+        self.assertEqual(
+            connection.return_value.post_account.mock_calls, [
+                mock.call(query_string='bulk-delete',
+                          data=b''.join([
+                              b'/container/object\n',
+                              b'/container/obj%C3%A9ct2\n',
+                          ]),
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={}),
+                mock.call(query_string='bulk-delete',
+                          data=b''.join([
+                              b'/container/z_object\n',
+                              b'/container/z_obj%C3%A9ct2\n'
+                          ]),
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={}),
+                mock.call(query_string='bulk-delete',
+                          data=b''.join([
+                              b'/container2/object\n',
+                              b'/container2/obj%C3%A9ct2\n',
+                          ]),
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={}),
+                mock.call(query_string='bulk-delete',
+                          data=b''.join([
+                              b'/container2/z_object\n',
+                              b'/container2/z_obj%C3%A9ct2\n'
+                          ]),
+                          headers={'Content-Type': 'text/plain',
+                                   'Accept': 'application/json'},
+                          response_dict={})])
+        self.assertEqual(
+            connection.return_value.delete_container.mock_calls, [
+                mock.call('container', response_dict={}, headers={}),
+                mock.call('container2', response_dict={}, headers={}),
+                mock.call('empty_container', response_dict={}, headers={})])
+        self.assertEqual(connection.return_value.get_capabilities.mock_calls,
+                         [mock.call(None)])  # only one /info request
+
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_container(self, connection):
         connection.return_value.get_container.side_effect = [
@@ -1103,8 +1175,8 @@ class TestShell(unittest.TestCase):
             'container', 'object', query_string=None, response_dict={},
             headers={})
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_container_headers(self, connection):
         connection.return_value.get_container.side_effect = [
@@ -1122,8 +1194,8 @@ class TestShell(unittest.TestCase):
             'container', 'object', query_string=None, response_dict={},
             headers={'Skip-Middleware': 'Test'})
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: True)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 10)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_bulk_container(self, connection):
         connection.return_value.get_container.side_effect = [
@@ -1176,8 +1248,8 @@ class TestShell(unittest.TestCase):
                 self.assertTrue(out.out.find(
                     't\u00e9st_c [after 2 attempts]') >= 0, out)
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_per_object(self, connection):
         argv = ["", "delete", "container", "object"]
@@ -1188,8 +1260,8 @@ class TestShell(unittest.TestCase):
             'container', 'object', query_string=None, response_dict={},
             headers={})
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: True)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 10)
     @mock.patch('swiftclient.service.Connection')
     def test_delete_bulk_object(self, connection):
         argv = ["", "delete", "container", "object"]
@@ -2714,8 +2786,8 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
             return status
         return on_request
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
     def test_upload_bad_threads(self, mock_connection):
         mock_connection.return_value.put_object.return_value = EMPTY_ETAG
@@ -2897,8 +2969,8 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.assertIn(expected_err, out.err)
         self.assertEqual('', out)
 
-    @mock.patch.object(swiftclient.service.SwiftService, '_should_bulk_delete',
-                       lambda *a: False)
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
     def test_download_bad_threads(self, mock_connection):
         mock_connection.return_value.get_object.return_value = [{}, '']
