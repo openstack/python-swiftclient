@@ -1983,7 +1983,6 @@ class SwiftService(object):
                         } for d in segment_results
                     ])
 
-                    put_headers['x-static-large-object'] = 'true'
                     mr = {}
                     conn.put_object(
                         container, obj, manifest_data,
