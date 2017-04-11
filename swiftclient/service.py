@@ -377,10 +377,23 @@ class _SwiftReader(object):
         self._actual_read = 0
         self._content_length = None
         self._actual_md5 = None
-        self._expected_etag = headers.get('etag')
+        self._expected_md5 = headers.get('etag', '')
 
-        if ('x-object-manifest' not in headers
-                and 'x-static-large-object' not in headers and checksum):
+        if len(self._expected_md5) > 1 and self._expected_md5[0] == '"' \
+                and self._expected_md5[-1] == '"':
+            self._expected_md5 = self._expected_md5[1:-1]
+
+        # Some headers indicate the MD5 of the response
+        # definitely *won't* match the ETag
+        bad_md5_headers = set([
+            'x-object-manifest',
+            'x-static-large-object',
+        ])
+        if bad_md5_headers.intersection(headers):
+            # This isn't a useful checksum
+            self._expected_md5 = ''
+
+        if self._expected_md5 and checksum:
             self._actual_md5 = md5()
 
         if 'content-length' in headers:
@@ -398,12 +411,12 @@ class _SwiftReader(object):
         self._check_contents()
 
     def _check_contents(self):
-        if self._actual_md5 and self._expected_etag:
+        if self._actual_md5 and self._expected_md5:
             etag = self._actual_md5.hexdigest()
-            if etag != self._expected_etag:
+            if etag != self._expected_md5:
                 raise SwiftError('Error downloading {0}: md5sum != etag, '
                                  '{1} != {2}'.format(
-                                     self._path, etag, self._expected_etag))
+                                     self._path, etag, self._expected_md5))
 
         if (self._content_length is not None
                 and self._actual_read != self._content_length):
