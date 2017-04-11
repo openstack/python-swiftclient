@@ -141,6 +141,16 @@ class TestSwiftReader(unittest.TestCase):
         self.assertFalse(sr._expected_md5)
         self.assertIsNone(sr._actual_md5)
 
+    def test_create_with_content_range_header(self):
+        # md5 should not be initialized if large object headers are present
+        sr = self.sr('path', 'body', {'content-range': 'bytes 0-3/10',
+                                      'etag': '"%s"' % ('0' * 32)})
+        self.assertEqual(sr._path, 'path')
+        self.assertEqual(sr._body, 'body')
+        self.assertIsNone(sr._content_length)
+        self.assertFalse(sr._expected_md5)
+        self.assertIsNone(sr._actual_md5)
+
     def test_create_with_ignore_checksum(self):
         # md5 should not be initialized if checksum is False
         sr = self.sr('path', 'body', {}, False)
