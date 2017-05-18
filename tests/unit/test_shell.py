@@ -23,6 +23,7 @@ import os
 import tempfile
 import unittest
 import textwrap
+from time import localtime, mktime, strftime, strptime
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import six
@@ -36,7 +37,9 @@ from os.path import basename, dirname
 from .utils import (
     CaptureOutput, fake_get_auth_keystone, _make_fake_import_keystone_client,
     FakeKeystone, StubResponse, MockHttpTest)
-from swiftclient.utils import EMPTY_ETAG
+from swiftclient.utils import (
+    EMPTY_ETAG, EXPIRES_ISO8601_FORMAT,
+    SHORT_EXPIRES_ISO8601_FORMAT, TIME_ERRMSG)
 
 
 if six.PY2:
@@ -1622,7 +1625,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
-            prefix=False)
+            iso8601=False, prefix=False)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_prefix_based(self, temp_url):
@@ -1631,7 +1634,28 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
-            prefix=True)
+            iso8601=False, prefix=True)
+
+    @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
+    def test_temp_url_iso8601_in(self, temp_url):
+        dates = ('1970-01-01T00:01:00Z', '1970-01-01T00:01:00',
+                 '1970-01-01')
+        for d in dates:
+            argv = ["", "tempurl", "GET", d, "/v1/AUTH_account/c/",
+                    "secret_key"]
+            swiftclient.shell.main(argv)
+            temp_url.assert_called_with(
+                '/v1/AUTH_account/c/', d, 'secret_key', 'GET', absolute=False,
+                iso8601=False, prefix=False)
+
+    @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
+    def test_temp_url_iso8601_out(self, temp_url):
+        argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/",
+                "secret_key", "--iso8601"]
+        swiftclient.shell.main(argv)
+        temp_url.assert_called_with(
+            '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
+            iso8601=True, prefix=False)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_absolute_expiry_temp_url(self, temp_url):
@@ -1640,7 +1664,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=True,
-            prefix=False)
+            iso8601=False, prefix=False)
 
     def test_temp_url_output(self):
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
@@ -1667,6 +1691,42 @@ class TestShell(unittest.TestCase):
                     "&temp_url_prefix=\n" % sig)
         self.assertEqual(expected, output.out)
 
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/",
+                "secret_key", "--absolute", "--prefix", '--iso8601']
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        sig = '00008c4be1573ba74fc2ab9bce02e3a93d04b349'
+        expires = '1970-01-01T00:01:00Z'
+        expected = ("/v1/a/c/?temp_url_sig=%s&temp_url_expires=%s"
+                    "&temp_url_prefix=\n" % (sig, expires))
+        self.assertEqual(expected, output.out)
+
+        dates = ("1970-01-01T00:01:00Z",
+                 strftime(EXPIRES_ISO8601_FORMAT[:-1], localtime(60)))
+        for d in dates:
+            argv = ["", "tempurl", "GET", d, "/v1/a/c/o",
+                    "secret_key"]
+            with CaptureOutput(suppress_systemexit=True) as output:
+                swiftclient.shell.main(argv)
+            sig = "63bc77a473a1c2ce956548cacf916f292eb9eac3"
+            expected = "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60\n" % sig
+            self.assertEqual(expected, output.out)
+
+        ts = str(int(
+            mktime(strptime('2005-05-01', SHORT_EXPIRES_ISO8601_FORMAT))))
+
+        argv = ["", "tempurl", "GET", ts, "/v1/a/c/",
+                "secret_key", "--absolute"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+            expected = output.out
+
+        argv = ["", "tempurl", "GET", '2005-05-01', "/v1/a/c/",
+                "secret_key", "--absolute"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+            self.assertEqual(expected, output.out)
+
     def test_temp_url_error_output(self):
         expected = 'path must be full path to an object e.g. /v1/a/c/o\n'
         for bad_path in ('/v1/a/c', 'v1/a/c/o', '/v1/a/c/', '/v1/a//o',
@@ -1686,7 +1746,17 @@ class TestShell(unittest.TestCase):
                 swiftclient.shell.main(argv)
         self.assertEqual(expected, output.err,
                          'Expected %r but got %r for path %r' %
-                         (expected, output.err, bad_path))
+                         (expected, output.err, '/v1/a/c'))
+
+        expected = TIME_ERRMSG + '\n'
+        for bad_time in ('not_an_int', '-1', '2015-05', '2015-05-01T01:00'):
+            argv = ["", "tempurl", "GET", bad_time, '/v1/a/c/o',
+                        "secret_key", "--absolute"]
+            with CaptureOutput(suppress_systemexit=True) as output:
+                    swiftclient.shell.main(argv)
+            self.assertEqual(expected, output.err,
+                             'Expected %r but got %r for time %r' %
+                             (expected, output.err, bad_time))
 
     @mock.patch('swiftclient.service.Connection')
     def test_capabilities(self, connection):

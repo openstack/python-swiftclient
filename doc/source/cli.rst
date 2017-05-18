@@ -228,18 +228,39 @@ Capabilities
 Tempurl
 -------
 
-    ``tempurl [command-options] [method] [seconds] [path] [key]``
+    ``tempurl [command-options] [method] [time] [path] [key]``
 
        Generates a temporary URL for a Swift object. ``method`` option sets an HTTP method to
-       allow for this temporary URL that is usually 'GET' or 'PUT'. ``seconds`` option sets
-       the amount of time in seconds the temporary URL will be valid for; or, if ``--absolute``
-       is passed, the Unix timestamp when the temporary URL will expire. ``path`` option sets
-       the full path to the Swift object. Example: ``/v1/AUTH_account/c/o``. ``key`` option is
+       allow for this temporary URL that is usually ``GET` or ``PUT``. ``time`` option sets
+       the amount of time the temporary URL will be valid for.
+       ``time`` can be specified as an integer, denoting the number of seconds
+       from now on until the URL shall be valid; or, if ``--absolute``
+       is passed, the Unix timestamp when the temporary URL will expire.
+       But beyond that, ``time`` can also be specified as an ISO 8601 timestamp
+       in one of following formats:
+
+        i) Complete date: YYYY-MM-DD (eg 1997-07-16)
+
+        ii) Complete date plus hours, minutes and seconds:
+           YYYY-MM-DDThh:mm:ss
+         (eg 1997-07-16T19:20:30)
+
+        iii) Complete date plus hours, minutes and seconds with UTC designator:
+            YYYY-MM-DDThh:mm:ssZ
+         (eg 1997-07-16T19:20:30Z)
+
+       Please be aware that if you don't provide the UTC designator (i.e., Z)
+       the timestamp is generated using your local timezone. If only a date is
+       specified, the time part used will equal to ``00:00:00``.
+
+       ``path`` option sets the full path to the Swift object.
+       Example: ``/v1/AUTH_account/c/o``. ``key`` option is
        the secret temporary URL key set on the Swift cluster. To set a key, run
        ``swift post -m "Temp-URL-Key: <your secret key>"``. To generate a prefix-based temporary
        URL use the ``--prefix-based`` option. This URL will contain the path to the prefix. Do not
        forget to append the desired objectname at the end of the path portion (and before the
-       query portion) before sharing the URL.
+       query portion) before sharing the URL. It is possible to use ISO 8601 UTC timestamps within the
+       URL by using the ``--iso8601`` option.
 
 Auth
 ----

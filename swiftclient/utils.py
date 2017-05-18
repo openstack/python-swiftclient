@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
+from calendar import timegm
 import collections
 import gzip
 import hashlib
@@ -25,6 +26,10 @@ import traceback
 
 TRUE_VALUES = set(('true', '1', 'yes', 'on', 't', 'y'))
 EMPTY_ETAG = 'd41d8cd98f00b204e9800998ecf8427e'
+EXPIRES_ISO8601_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+SHORT_EXPIRES_ISO8601_FORMAT = '%Y-%m-%d'
+TIME_ERRMSG = ('time must either be a whole number or in specific '
+               'ISO 8601 format.')
 
 
 def config_true_value(value):
@@ -64,39 +69,65 @@ def prt_bytes(num_bytes, human_flag):
 
 
 def generate_temp_url(path, seconds, key, method, absolute=False,
-                      prefix=False):
+                      prefix=False, iso8601=False):
     """Generates a temporary URL that gives unauthenticated access to the
     Swift object.
 
     :param path: The full path to the Swift object or prefix if
          a prefix-based temporary URL should be generated. Example:
         /v1/AUTH_account/c/o or /v1/AUTH_account/c/prefix.
-    :param seconds: If absolute is False then this specifies the amount of time
-        in seconds for which the temporary URL will be valid. If absolute is
-        True then this specifies an absolute time at which the temporary URL
-        will expire.
+    :param seconds: time in seconds or ISO 8601 timestamp.
+        If absolute is False and this is the string representation of an
+        integer, then this specifies the amount of time in seconds for which
+        the temporary URL will be valid.
+        If absolute is True then this specifies an absolute time at which the
+        temporary URL will expire.
     :param key: The secret temporary URL key set on the Swift
         cluster. To set a key, run 'swift post -m
         "Temp-URL-Key: <substitute tempurl key here>"'
     :param method: A HTTP method, typically either GET or PUT, to allow
         for this temporary URL.
-    :param absolute: if True then the seconds parameter is interpreted as an
-        absolute Unix time, otherwise seconds is interpreted as a relative time
-        offset from current time.
+    :param absolute: if True then the seconds parameter is interpreted as a
+        Unix timestamp, if seconds represents an integer.
     :param prefix: if True then a prefix-based temporary URL will be generated.
-    :raises ValueError: if seconds is not a whole number or path is not to
-        an object.
+    :param iso8601: if True, a URL containing an ISO 8601 UTC timestamp
+        instead of a UNIX timestamp will be created.
+    :raises ValueError: if timestamp or path is not in valid format.
     :return: the path portion of a temporary URL
     """
     try:
-        seconds = float(seconds)
-        if not seconds.is_integer():
-            raise ValueError()
-        seconds = int(seconds)
-        if seconds < 0:
-            raise ValueError()
+        try:
+            timestamp = float(seconds)
+        except ValueError:
+            formats = (
+                EXPIRES_ISO8601_FORMAT,
+                EXPIRES_ISO8601_FORMAT[:-1],
+                SHORT_EXPIRES_ISO8601_FORMAT)
+            for f in formats:
+                try:
+                    t = time.strptime(seconds, f)
+                except ValueError:
+                    t = None
+                else:
+                    if f == EXPIRES_ISO8601_FORMAT:
+                        timestamp = timegm(t)
+                    else:
+                        # Use local time if UTC designator is missing.
+                        timestamp = int(time.mktime(t))
+
+                    absolute = True
+                    break
+
+            if t is None:
+                raise ValueError()
+        else:
+            if not timestamp.is_integer():
+                raise ValueError()
+            timestamp = int(timestamp)
+            if timestamp < 0:
+                raise ValueError()
     except ValueError:
-        raise ValueError('seconds must be a whole number')
+        raise ValueError(TIME_ERRMSG)
 
     if isinstance(path, six.binary_type):
         try:
@@ -121,9 +152,9 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
                        'possibly an error', method.upper())
 
     if not absolute:
-        expiration = int(time.time() + seconds)
+        expiration = int(time.time() + timestamp)
     else:
-        expiration = seconds
+        expiration = timestamp
     hmac_body = u'\n'.join([method.upper(), str(expiration),
                             ('prefix:' if prefix else '') + path_for_body])
 
@@ -131,6 +162,10 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     if not isinstance(key, six.binary_type):
         key = key.encode('utf-8')
     sig = hmac.new(key, hmac_body.encode('utf-8'), hashlib.sha1).hexdigest()
+
+    if iso8601:
+        expiration = time.strftime(
+            EXPIRES_ISO8601_FORMAT, time.gmtime(expiration))
 
     temp_url = u'{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
         path=path_for_body, sig=sig, exp=expiration)
