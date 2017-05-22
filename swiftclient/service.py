@@ -252,6 +252,7 @@ def get_conn(options):
                       options['user'],
                       options['key'],
                       options['retries'],
+                      kerberos=options['kerberos'],
                       auth_version=options['auth_version'],
                       os_options=options['os_options'],
                       snet=options['snet'],
