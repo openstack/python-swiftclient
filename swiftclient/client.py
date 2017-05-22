@@ -726,7 +726,9 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
     """
-    req_headers = {'X-Auth-Token': token, 'Accept-Encoding': 'gzip'}
+    req_headers = {'Accept-Encoding': 'gzip'}
+    if token:
+        req_headers['X-Auth-Token'] = token
     if service_token:
         req_headers['X-Service-Token'] = service_token
     if headers:
@@ -792,7 +794,9 @@ def head_account(url, token, http_conn=None, headers=None,
     else:
         parsed, conn = http_connection(url)
     method = "HEAD"
-    req_headers = {'X-Auth-Token': token}
+    req_headers = {}
+    if token:
+        req_headers = {'X-Auth-Token': token}
     if service_token:
         req_headers['X-Service-Token'] = service_token
     if headers:
@@ -834,7 +838,8 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     path = parsed.path
     if query_string:
         path += '?' + query_string
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     conn.request(method, path, data, headers)
@@ -886,7 +891,8 @@ def get_container(url, token, container, marker=None, limit=None,
         headers = dict(headers)
     else:
         headers = {}
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     headers['Accept-Encoding'] = 'gzip'
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
@@ -964,7 +970,9 @@ def head_container(url, token, container, http_conn=None, headers=None,
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'HEAD'
-    req_headers = {'X-Auth-Token': token}
+    req_headers = {}
+    if token:
+        req_headers = {'X-Auth-Token': token}
     if service_token:
         req_headers['X-Service-Token'] = service_token
     if headers:
@@ -1007,7 +1015,8 @@ def put_container(url, token, container, headers=None, http_conn=None,
     method = 'PUT'
     if not headers:
         headers = {}
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     if 'content-length' not in (k.lower() for k in headers):
@@ -1048,7 +1057,10 @@ def post_container(url, token, container, headers, http_conn=None,
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'POST'
-    headers['X-Auth-Token'] = token
+    if headers is None:
+        headers = {}
+    if token:
+        headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     if 'content-length' not in (k.lower() for k in headers):
@@ -1094,7 +1106,8 @@ def delete_container(url, token, container, http_conn=None,
     else:
         headers = {}
 
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     if query_string:
@@ -1148,7 +1161,8 @@ def get_object(url, token, container, name, http_conn=None,
         path += '?' + query_string
     method = 'GET'
     headers = headers.copy() if headers else {}
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     conn.request(method, path, '', headers)
@@ -1200,7 +1214,8 @@ def head_object(url, token, container, name, http_conn=None,
         headers = dict(headers)
     else:
         headers = {}
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     method = 'HEAD'
     if service_token:
         headers['X-Service-Token'] = service_token
@@ -1350,7 +1365,8 @@ def post_object(url, token, container, name, headers, http_conn=None,
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
-    headers['X-Auth-Token'] = token
+    if token:
+        headers['X-Auth-Token'] = token
     if service_token:
         headers['X-Service-Token'] = service_token
     conn.request('POST', path, '', headers)
