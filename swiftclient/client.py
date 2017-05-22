@@ -1604,6 +1604,14 @@ class Connection(object):
                 conn.close()
                 self.http_conn = None
 
+    def close(self):
+        if self.http_conn and type(self.http_conn) is tuple\
+                and len(self.http_conn) > 1:
+            conn = self.http_conn[1]
+            if hasattr(conn, 'close') and callable(conn.close):
+                conn.close()
+                self.http_conn = None
+
     def get_auth(self):
         self.url, self.token = get_auth(self.authurl, self.user, self.key,
                                         session=self.session, snet=self.snet,
