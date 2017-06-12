@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import gzip
+import json
 import logging
 import mock
 import six
@@ -83,7 +84,7 @@ class TestClientException(unittest.TestCase):
 
 
 class MockHttpResponse(object):
-    def __init__(self, status=0, headers=None, verify=False, need_items=None):
+    def __init__(self, status=0, headers=None, verify=False):
         self.status = status
         self.status_code = status
         self.reason = "OK"
@@ -92,7 +93,6 @@ class MockHttpResponse(object):
         self.verify = verify
         self.md5sum = md5()
         self.headers = {'etag': '"%s"' % EMPTY_ETAG}
-        self.need_items = need_items
         if headers:
             self.headers.update(headers)
         self.closed = False
@@ -119,9 +119,7 @@ class MockHttpResponse(object):
         return self.headers.get(name, default)
 
     def getheaders(self):
-        if self.need_items:
-            return dict(self.headers).items()
-        return dict(self.headers)
+        return dict(self.headers).items()
 
     def fake_response(self):
         return self
@@ -2319,7 +2317,7 @@ class TestConnection(MockHttpTest):
                 return 'header'
 
             def getheaders(self):
-                return {"key1": "value1", "key2": "value2"}
+                return [('key1', 'value1'), ('key2', 'value2')]
 
             def read(self, *args, **kwargs):
                 return ''
@@ -2569,6 +2567,33 @@ class TestLogging(MockHttpTest):
             c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
         self.assertEqual(exc_context.exception.http_status, 404)
 
+    def test_content_encoding_gzip_body_is_logged_decoded(self):
+        buf = six.BytesIO()
+        gz = gzip.GzipFile(fileobj=buf, mode='w')
+        data = {"test": u"\u2603"}
+        decoded_body = json.dumps(data).encode('utf-8')
+        gz.write(decoded_body)
+        gz.close()
+        # stub a gzip encoded body
+        body = buf.getvalue()
+        headers = {'content-encoding': 'gzip'}
+        # ... and make a content-encoding gzip error response
+        stub_response = StubResponse(500, body, headers)
+        with mock.patch('swiftclient.client.logger.info') as mock_log:
+            # ... if the client gets such a response
+            c.http_connection = self.fake_http_connection(stub_response)
+            with self.assertRaises(c.ClientException) as exc_context:
+                c.get_object('http://www.test.com', 'asdf', 'asdf', 'asdf')
+            self.assertEqual(exc_context.exception.http_status, 500)
+        # it will log the decoded body
+        self.assertEqual([
+            mock.call('REQ: %s', u'curl -i http://www.test.com/asdf/asdf '
+                      '-X GET -H "X-Auth-Token: ..."'),
+            mock.call('RESP STATUS: %s %s', 500, 'Fake'),
+            mock.call('RESP HEADERS: %s', {'content-encoding': 'gzip'}),
+            mock.call('RESP BODY: %s', decoded_body)
+        ], mock_log.mock_calls)
+
     def test_redact_token(self):
         with mock.patch('swiftclient.client.logger.debug') as mock_log:
             token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
@@ -2610,44 +2635,6 @@ class TestLogging(MockHttpTest):
             self.assertNotIn(token_value, output)
             self.assertNotIn(unicode_token_value, output)
             self.assertNotIn(set_cookie_value, output)
-
-    def test_logging_body(self):
-        with mock.patch('swiftclient.client.logger.debug') as mock_log:
-            token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
-            token_encoded = token_value.encode('utf8')
-            unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
-                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
-                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
-            unicode_token_encoded = unicode_token_value.encode('utf8')
-            set_cookie_value = 'X-Auth-Token=%s' % token_value
-            set_cookie_encoded = set_cookie_value.encode('utf8')
-            buf = six.BytesIO()
-            gz = gzip.GzipFile(fileobj=buf, mode='w')
-            gz.write(u'{"test": "\u2603"}'.encode('utf8'))
-            gz.close()
-            c.http_log(
-                ['GET'],
-                {'headers': {
-                    'X-Auth-Token': token_encoded,
-                    'X-Storage-Token': unicode_token_encoded
-                }},
-                MockHttpResponse(
-                    status=200,
-                    headers={
-                        'X-Auth-Token': token_encoded,
-                        'X-Storage-Token': unicode_token_encoded,
-                        'content-encoding': 'gzip',
-                        'Etag': b'mock_etag',
-                        'Set-Cookie': set_cookie_encoded
-                    },
-                    need_items=True,
-                ),
-                buf.getvalue(),
-            )
-            self.assertEqual(
-                mock.call(
-                    'RESP BODY: %s', u'{"test": "\u2603"}'.encode('utf8')),
-                mock_log.mock_calls[3])
 
     def test_show_token(self):
         with mock.patch('swiftclient.client.logger.debug') as mock_log:
