@@ -575,6 +575,26 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)
 
+    def test_get_auth_keystone_versionless(self):
+        fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
+
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth_keystone('http://authurl', 'user', 'key', {})
+        self.assertEqual(1, len(fake_ks.calls))
+        self.assertEqual('http://authurl/v3', fake_ks.calls[0].get('auth_url'))
+
+    def test_get_auth_keystone_versionless_auth_version_set(self):
+        fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
+
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth_keystone('http://auth_url', 'user', 'key',
+                                {}, auth_version='2.0')
+        self.assertEqual(1, len(fake_ks.calls))
+        self.assertEqual('http://auth_url/v2.0',
+                         fake_ks.calls[0].get('auth_url'))
+
     def test_auth_with_session(self):
         mock_session = mock.MagicMock()
         mock_session.get_endpoint.return_value = 'http://storagehost/v1/acct'
