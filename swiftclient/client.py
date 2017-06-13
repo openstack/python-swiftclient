@@ -1286,8 +1286,10 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     if content_type is not None:
         headers['Content-Type'] = content_type
     elif 'Content-Type' not in headers:
-        # python-requests sets application/x-www-form-urlencoded otherwise
-        headers['Content-Type'] = ''
+        if StrictVersion(requests.__version__) < StrictVersion('2.4.0'):
+            # python-requests sets application/x-www-form-urlencoded otherwise
+            # if using python3.
+            headers['Content-Type'] = ''
     if not contents:
         headers['Content-Length'] = '0'
 

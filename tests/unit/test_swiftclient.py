@@ -1163,6 +1163,7 @@ class TestHeadObject(MockHttpTest):
 
 class TestPutObject(MockHttpTest):
 
+    @mock.patch('swiftclient.requests.__version__', '2.2.0')
     def test_ok(self):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'TOKEN', 'container', 'obj', 'body', 4)
@@ -1220,6 +1221,7 @@ class TestPutObject(MockHttpTest):
             self.assertEqual(len(w), 1)
             self.assertTrue(issubclass(w[-1].category, UserWarning))
 
+    @mock.patch('swiftclient.requests.__version__', '2.2.0')
     def test_server_error(self):
         body = 'c' * 60
         headers = {'foo': 'bar'}
@@ -1234,7 +1236,8 @@ class TestPutObject(MockHttpTest):
         self.assertEqual(e.http_status, 500)
         self.assertRequests([
             ('PUT', '/asdf/asdf', 'asdf', {
-                'x-auth-token': 'asdf', 'content-type': ''}),
+                'x-auth-token': 'asdf',
+                'content-type': ''}),
         ])
 
     def test_query_string(self):
@@ -1375,7 +1378,8 @@ class TestPutObject(MockHttpTest):
         self.assertEqual(request_header['etag'], b'1234-5678')
         self.assertEqual(request_header['content-type'], b'text/plain')
 
-    def test_no_content_type(self):
+    @mock.patch('swiftclient.requests.__version__', '2.2.0')
+    def test_no_content_type_old_requests(self):
         conn = c.http_connection(u'http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
@@ -1384,6 +1388,17 @@ class TestPutObject(MockHttpTest):
         c.put_object(url='http://www.test.com', http_conn=conn)
         request_header = resp.requests_params['headers']
         self.assertEqual(request_header['content-type'], b'')
+
+    @mock.patch('swiftclient.requests.__version__', '2.4.0')
+    def test_no_content_type_new_requests(self):
+        conn = c.http_connection(u'http://www.test.com/')
+        resp = MockHttpResponse(status=200)
+        conn[1].getresponse = resp.fake_response
+        conn[1]._request = resp._fake_request
+
+        c.put_object(url='http://www.test.com', http_conn=conn)
+        request_header = resp.requests_params['headers']
+        self.assertNotIn('content-type', request_header)
 
     def test_content_type_in_headers(self):
         conn = c.http_connection(u'http://www.test.com/')
