@@ -20,6 +20,7 @@ from time import sleep
 import unittest
 import mock
 import six
+import os
 from six.moves import reload_module
 from six.moves.urllib.parse import urlparse, ParseResult
 from swiftclient import client as c
@@ -206,7 +207,19 @@ class MockHttpTest(unittest.TestCase):
         # won't cover the references to sys.stdout/sys.stderr in
         # swiftclient.multithreading
         self.capture_output = CaptureOutput()
-        self.capture_output.__enter__()
+        if 'SWIFTCLIENT_DEBUG' not in os.environ:
+            self.capture_output.__enter__()
+            self.addCleanup(self.capture_output.__exit__)
+
+            # since we're going to steal all stderr output globally; we should
+            # give the developer an escape hatch or risk scorn
+            def blowup_but_with_the_helpful(*args, **kwargs):
+                raise Exception(
+                    "You tried to enter a debugger while stderr is "
+                    "patched, you need to set SWIFTCLIENT_DEBUG=1 "
+                    "and try again")
+            import pdb
+            pdb.set_trace = blowup_but_with_the_helpful
 
         def fake_http_connection(*args, **kwargs):
             self.validateMockedRequestsConsumed()
@@ -384,7 +397,6 @@ class MockHttpTest(unittest.TestCase):
         # un-hygienic mocking on the swiftclient.client module; which may lead
         # to some unfortunate test order dependency bugs by way of the broken
         # window theory if any other modules are similarly patched
-        self.capture_output.__exit__()
         reload_module(c)
 
 
