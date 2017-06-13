@@ -17,6 +17,7 @@
 OpenStack Swift client library used internally
 """
 import socket
+import re
 import requests
 import logging
 import warnings
@@ -38,6 +39,7 @@ from swiftclient.utils import (
 # Default is 100, increase to 256
 http_client._MAXHEADERS = 256
 
+VERSIONFUL_AUTH_PATH = re.compile('v[2-3](?:\.0)?$')
 AUTH_VERSIONS_V1 = ('1.0', '1', 1)
 AUTH_VERSIONS_V2 = ('2.0', '2', 2)
 AUTH_VERSIONS_V3 = ('3.0', '3', 3)
@@ -555,7 +557,10 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
 
     # Add the version suffix in case of versionless Keystone endpoints. If
     # auth_version is also unset it is likely that it is v3
-    if len(urlparse(auth_url).path) <= 1:
+    if not VERSIONFUL_AUTH_PATH.match(
+            urlparse(auth_url).path.rstrip('/').rsplit('/', 1)[-1]):
+        # Normalize auth_url to end in a slash because urljoin
+        auth_url = auth_url.rstrip('/') + '/'
         if auth_version and auth_version in AUTH_VERSIONS_V2:
             auth_url = urljoin(auth_url, "v2.0")
         else:

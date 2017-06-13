@@ -597,6 +597,53 @@ class TestGetAuth(MockHttpTest):
         self.assertEqual('http://auth_url/v2.0',
                          fake_ks.calls[0].get('auth_url'))
 
+    def test_get_auth_keystone_versionful(self):
+        fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
+
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth_keystone('http://auth_url/v3', 'user', 'key',
+                                {}, auth_version='3')
+        self.assertEqual(1, len(fake_ks.calls))
+        self.assertEqual('http://auth_url/v3',
+                         fake_ks.calls[0].get('auth_url'))
+
+    def test_get_auth_keystone_devstack_versionful(self):
+        fake_ks = FakeKeystone(
+            endpoint='http://storage.example.com/v1/AUTH_user', token='secret')
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth_keystone('https://192.168.8.8/identity/v3',
+                                'user', 'key', {}, auth_version='3')
+        self.assertEqual(1, len(fake_ks.calls))
+        self.assertEqual('https://192.168.8.8/identity/v3',
+                         fake_ks.calls[0].get('auth_url'))
+
+    def test_get_auth_keystone_devstack_versionless(self):
+        fake_ks = FakeKeystone(
+            endpoint='http://storage.example.com/v1/AUTH_user', token='secret')
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth_keystone('https://192.168.8.8/identity',
+                                'user', 'key', {}, auth_version='3')
+        self.assertEqual(1, len(fake_ks.calls))
+        self.assertEqual('https://192.168.8.8/identity/v3',
+                         fake_ks.calls[0].get('auth_url'))
+
+    def test_auth_keystone_url_some_junk_nonsense(self):
+        fake_ks = FakeKeystone(
+            endpoint='http://storage.example.com/v1/AUTH_user',
+            token='secret')
+        with mock.patch('swiftclient.client._import_keystone_client',
+                        _make_fake_import_keystone_client(fake_ks)):
+            c.get_auth_keystone('http://blah.example.com/v2moo',
+                                'user', 'key', {}, auth_version='3')
+        self.assertEqual(1, len(fake_ks.calls))
+        # v2 looks sorta version-y, but it's not an exact match, so this is
+        # probably about just as bad as anything else we might guess at
+        self.assertEqual('http://blah.example.com/v2moo/v3',
+                         fake_ks.calls[0].get('auth_url'))
+
     def test_auth_with_session(self):
         mock_session = mock.MagicMock()
         mock_session.get_endpoint.return_value = 'http://storagehost/v1/acct'
