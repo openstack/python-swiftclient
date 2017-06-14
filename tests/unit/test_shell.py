@@ -717,7 +717,6 @@ class TestShell(unittest.TestCase):
             mock.ANY,
             headers={
                 'x-object-meta-mtime': mock.ANY,
-                'x-static-large-object': 'true'
             },
             query_string='multipart-manifest=put',
             response_dict={})
