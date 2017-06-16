@@ -27,6 +27,7 @@ from time import localtime, mktime, strftime, strptime
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import six
+import sys
 
 import swiftclient
 from swiftclient.service import SwiftError
@@ -719,7 +720,7 @@ class TestShell(unittest.TestCase):
                 'x-object-meta-mtime': mock.ANY,
             },
             query_string='multipart-manifest=put',
-            response_dict={})
+            response_dict=mock.ANY)
 
     @mock.patch('swiftclient.service.SwiftService.upload')
     def test_upload_object_with_account_readonly(self, upload):
@@ -904,6 +905,44 @@ class TestShell(unittest.TestCase):
             headers={'x-object-manifest': mock.ANY,
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
+
+    @mock.patch('swiftclient.shell.io.open')
+    @mock.patch('swiftclient.service.SwiftService.upload')
+    def test_upload_from_stdin(self, upload_mock, io_open_mock):
+        def fake_open(fd, mode):
+            mock_io = mock.Mock()
+            mock_io.fileno.return_value = fd
+            return mock_io
+
+        io_open_mock.side_effect = fake_open
+
+        argv = ["", "upload", "container", "-", "--object-name", "foo"]
+        swiftclient.shell.main(argv)
+        upload_mock.assert_called_once_with("container", mock.ANY)
+        # This is a little convoluted: we want to examine the first call ([0]),
+        # the argv list([1]), the second parameter ([1]), and the first
+        # element.  This is because the upload method takes a container and a
+        # list of SwiftUploadObjects.
+        swift_upload_obj = upload_mock.mock_calls[0][1][1][0]
+        self.assertEqual(sys.stdin.fileno(), swift_upload_obj.source.fileno())
+        io_open_mock.assert_called_once_with(sys.stdin.fileno(), mode='rb')
+
+    @mock.patch('swiftclient.service.SwiftService.upload')
+    def test_upload_from_stdin_no_name(self, upload_mock):
+        argv = ["", "upload", "container", "-"]
+        with CaptureOutput() as out:
+            self.assertRaises(SystemExit, swiftclient.shell.main, argv)
+            self.assertEqual(0, len(upload_mock.mock_calls))
+            self.assertTrue(out.err.find('object-name must be specified') >= 0)
+
+    @mock.patch('swiftclient.service.SwiftService.upload')
+    def test_upload_from_stdin_and_others(self, upload_mock):
+        argv = ["", "upload", "container", "-", "foo", "--object-name", "bar"]
+        with CaptureOutput() as out:
+            self.assertRaises(SystemExit, swiftclient.shell.main, argv)
+            self.assertEqual(0, len(upload_mock.mock_calls))
+            self.assertTrue(out.err.find(
+                'upload from stdin cannot be used') >= 0)
 
     @mock.patch.object(swiftclient.service.SwiftService,
                        '_bulk_delete_page_size', lambda *a: 0)

@@ -17,6 +17,7 @@
 from __future__ import print_function, unicode_literals
 
 import argparse
+import io
 import json
 import logging
 import signal
@@ -26,7 +27,7 @@ from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
 from six import text_type, PY2
 from six.moves.urllib.parse import unquote, urlparse
-from sys import argv as sys_argv, exit, stderr
+from sys import argv as sys_argv, exit, stderr, stdin
 from time import gmtime, strftime
 
 from swiftclient import RequestException
@@ -901,7 +902,9 @@ Uploads specified files and directories to the given container.
 Positional arguments:
   <container>           Name of container to upload to.
   <file_or_directory>   Name of file or directory to upload. Specify multiple
-                        times for multiple uploads.
+                        times for multiple uploads. If "-" is specified, reads
+                        content from standard input (--object-name is required
+                        in this case).
 
 Optional arguments:
   -c, --changed         Only upload files that have changed since the last
@@ -1002,6 +1005,11 @@ def st_upload(parser, args, output_manager):
     else:
         container = args[0]
         files = args[1:]
+        from_stdin = '-' in files
+        if from_stdin and len(files) > 1:
+            output_manager.error(
+                'upload from stdin cannot be used along with other files')
+            return
 
     if options['object_name'] is not None:
         if len(files) > 1:
@@ -1009,6 +1017,10 @@ def st_upload(parser, args, output_manager):
             return
         else:
             orig_path = files[0]
+    elif from_stdin:
+        output_manager.error(
+            'object-name must be specified with uploads from stdin')
+        return
 
     if options['segment_size']:
         try:
@@ -1047,6 +1059,14 @@ def st_upload(parser, args, output_manager):
             objs = []
             dir_markers = []
             for f in files:
+                if f == '-':
+                    fd = io.open(stdin.fileno(), mode='rb')
+                    objs.append(SwiftUploadObject(
+                        fd, object_name=options['object_name']))
+                    # We ensure that there is exactly one "file" to upload in
+                    # this case -- stdin
+                    break
+
                 if isfile(f):
                     objs.append(f)
                 elif isdir(f):
@@ -1060,7 +1080,7 @@ def st_upload(parser, args, output_manager):
 
             # Now that we've collected all the required files and dir markers
             # build the tuples for the call to upload
-            if options['object_name'] is not None:
+            if options['object_name'] is not None and not from_stdin:
                 objs = [
                     SwiftUploadObject(
                         o, object_name=o.replace(

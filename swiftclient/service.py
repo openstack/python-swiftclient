@@ -1811,6 +1811,8 @@ class SwiftService(object):
         return chunks
 
     def _is_identical(self, chunk_data, path):
+        if path is None:
+            return False
         try:
             fp = open(path, 'rb', DISK_BUFFER)
         except IOError:

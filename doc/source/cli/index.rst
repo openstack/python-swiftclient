@@ -369,10 +369,10 @@ given container. The ``-c`` or ``--changed`` is an option that will only
 upload files that have changed since the last upload. The
 ``--object-name <object-name>`` is an option that will upload a file and
 name object to ``<object-name>`` or upload a directory and use ``<object-name>``
-as object prefix. The ``-S <size>`` or ``--segment-size <size>`` and
-``--leave-segments`` are options as well (see ``--help`` for more).
-
-Uploads specified files and directories to the given container.
+as object prefix. If the file name is "-", client reads content from standard
+input. In this case ``--object-name`` is required to set the name of the object
+and no other files may be given.  The ``-S <size>`` or ``--segment-size <size>``
+and ``--leave-segments`` are options as well (see ``--help`` for more).
 
 **Positional arguments:**
 

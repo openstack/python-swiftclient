@@ -63,8 +63,11 @@ Uploads to the given container the files and directories specified by the
 remaining args. The \-c or \-\-changed is an option that will only upload files
 that have changed since the last upload. The \-\-object\-name <object\-name> is
 an option that will upload file and name object to <object\-name> or upload dir
-and use <object\-name> as object prefix. The \-S <size> or \-\-segment\-size <size>
-and \-\-leave\-segments and others are options as well (see swift upload \-\-help for more).
+and use <object\-name> as object prefix. If the file name is "-", reads the
+content from standard input. In this case, \-\-object\-name is required and no
+other files may be given. The \-S <size> or \-\-segment\-size <size> and
+\-\-leave\-segments and others are options as well (see swift upload \-\-help
+for more).
 .RE
 
 \fBpost\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR]
