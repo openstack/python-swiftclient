@@ -119,25 +119,26 @@ class TestSwiftReader(unittest.TestCase):
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
         self.assertIsNone(sr._content_length)
-        self.assertIsNone(sr._expected_etag)
+        self.assertFalse(sr._expected_md5)
 
-        self.assertIsNotNone(sr._actual_md5)
-        self.assertIs(type(sr._actual_md5), self.md5_type)
+        self.assertIsNone(sr._actual_md5)
 
     def test_create_with_large_object_headers(self):
         # md5 should not be initialized if large object headers are present
-        sr = self.sr('path', 'body', {'x-object-manifest': 'test'})
+        sr = self.sr('path', 'body', {'x-object-manifest': 'test',
+                                      'etag': '"%s"' % ('0' * 32)})
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
         self.assertIsNone(sr._content_length)
-        self.assertIsNone(sr._expected_etag)
+        self.assertFalse(sr._expected_md5)
         self.assertIsNone(sr._actual_md5)
 
-        sr = self.sr('path', 'body', {'x-static-large-object': 'test'})
+        sr = self.sr('path', 'body', {'x-static-large-object': 'test',
+                                      'etag': '"%s"' % ('0' * 32)})
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
         self.assertIsNone(sr._content_length)
-        self.assertIsNone(sr._expected_etag)
+        self.assertFalse(sr._expected_md5)
         self.assertIsNone(sr._actual_md5)
 
     def test_create_with_ignore_checksum(self):
@@ -146,7 +147,7 @@ class TestSwiftReader(unittest.TestCase):
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
         self.assertIsNone(sr._content_length)
-        self.assertIsNone(sr._expected_etag)
+        self.assertFalse(sr._expected_md5)
         self.assertIsNone(sr._actual_md5)
 
     def test_create_with_content_length(self):
@@ -155,10 +156,9 @@ class TestSwiftReader(unittest.TestCase):
         self.assertEqual(sr._path, 'path')
         self.assertEqual(sr._body, 'body')
         self.assertEqual(sr._content_length, 5)
-        self.assertIsNone(sr._expected_etag)
+        self.assertFalse(sr._expected_md5)
 
-        self.assertIsNotNone(sr._actual_md5)
-        self.assertIs(type(sr._actual_md5), self.md5_type)
+        self.assertIsNone(sr._actual_md5)
 
         # Check Contentlength raises error if it isn't an integer
         self.assertRaises(SwiftError, self.sr, 'path', 'body',
@@ -175,11 +175,17 @@ class TestSwiftReader(unittest.TestCase):
         # Check error is raised if expected etag doesn't match calculated md5.
         # md5 for a SwiftReader that has done nothing is
         # d41d8cd98f00b204e9800998ecf8427e  i.e md5 of nothing
-        sr = self.sr('path', BytesIO(b'body'), {'etag': 'doesntmatch'})
+        sr = self.sr('path', BytesIO(b'body'),
+                     {'etag': md5(b'doesntmatch').hexdigest()})
         self.assertRaises(SwiftError, _consume, sr)
 
         sr = self.sr('path', BytesIO(b'body'),
-                     {'etag': '841a2d689ad86bd1611447453c22c6fc'})
+                     {'etag': md5(b'body').hexdigest()})
+        _consume(sr)
+
+        # Should still work if etag was quoted
+        sr = self.sr('path', BytesIO(b'body'),
+                     {'etag': '"%s"' % md5(b'body').hexdigest()})
         _consume(sr)
 
         # Check error is raised if SwiftReader doesn't read the same length
@@ -191,11 +197,13 @@ class TestSwiftReader(unittest.TestCase):
         _consume(sr)
 
         # Check that the iterator generates expected length and etag values
-        sr = self.sr('path', ['abc'.encode()] * 3, {})
+        sr = self.sr('path', ['abc'.encode()] * 3,
+                     {'content-length': 9,
+                      'etag': md5('abc'.encode() * 3).hexdigest()})
         _consume(sr)
         self.assertEqual(sr._actual_read, 9)
         self.assertEqual(sr._actual_md5.hexdigest(),
-                         '97ac82a5b825239e782d0339e2d7b910')
+                         md5('abc'.encode() * 3).hexdigest())
 
 
 class _TestServiceBase(unittest.TestCase):
