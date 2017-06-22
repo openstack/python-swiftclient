@@ -387,6 +387,7 @@ class _SwiftReader(object):
         # Some headers indicate the MD5 of the response
         # definitely *won't* match the ETag
         bad_md5_headers = set([
+            'content-range',
             'x-object-manifest',
             'x-static-large-object',
         ])
