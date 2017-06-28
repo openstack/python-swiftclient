@@ -548,3 +548,24 @@ def _make_fake_import_keystone_client(fake_import):
         return fake_import, fake_import
 
     return _fake_import_keystone_client
+
+
+class FakeStream(object):
+    def __init__(self, size):
+        self.bytes_read = 0
+        self.size = size
+
+    def read(self, size=-1):
+        if self.bytes_read == self.size:
+            return b''
+
+        if size == -1 or size + self.bytes_read > self.size:
+            remaining = self.size - self.bytes_read
+            self.bytes_read = self.size
+            return b'A' * remaining
+
+        self.bytes_read += size
+        return b'A' * size
+
+    def __len__(self):
+        return self.size

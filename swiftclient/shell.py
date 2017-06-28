@@ -947,6 +947,8 @@ Optional arguments:
 
 
 def st_upload(parser, args, output_manager):
+    DEFAULT_STDIN_SEGMENT = 10 * 1024 * 1024
+
     parser.add_argument(
         '-c', '--changed', action='store_true', dest='changed',
         default=False, help='Only upload files that have changed since '
@@ -1059,6 +1061,12 @@ def st_upload(parser, args, output_manager):
             '\n\nUsage: %s upload %s\n%s', BASENAME, st_upload_options,
             st_upload_help)
         return
+
+    if from_stdin:
+        if not options['use_slo']:
+            options['use_slo'] = True
+        if not options['segment_size']:
+            options['segment_size'] = DEFAULT_STDIN_SEGMENT
 
     options['object_uu_threads'] = options['object_threads']
     with SwiftService(options=options) as swift:
