@@ -188,7 +188,9 @@ Download
        option to redirect the output to a specific file or ``-`` to
        redirect to stdout. The ``--ignore-checksum`` is an option that turn off
        checksum validation. You can specify optional headers with the repeatable
-       cURL-like option ``-H [--header <name:value>]``.
+       cURL-like option ``-H [--header <name:value>]``. ``--ignore-mtime`` ignores the
+       ``x-object-meta-mtime`` metadata entry on the object (if present) and instead
+       creates the downloaded files with fresh atime and mtime values.
 
 Delete
 ------

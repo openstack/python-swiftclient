@@ -2051,6 +2051,52 @@ class TestServiceDownload(_TestServiceBase):
         )
         self.assertEqual(expected_r, actual_r)
 
+    def test_download_object_job_ignore_mtime(self):
+        mock_conn = self._get_mock_connection()
+        objcontent = six.BytesIO(b'objcontent')
+        mock_conn.get_object.side_effect = [
+            ({'content-type': 'text/plain',
+              'etag': '2cbbfe139a744d6abbe695e17f3c1991',
+              'x-object-meta-mtime': '1454113727.682512'},
+             objcontent)
+        ]
+        expected_r = self._get_expected({
+            'success': True,
+            'start_time': 1,
+            'finish_time': 2,
+            'headers_receipt': 3,
+            'auth_end_time': 4,
+            'read_length': len(b'objcontent'),
+        })
+
+        with mock.patch.object(builtins, 'open') as mock_open, \
+                mock.patch('swiftclient.service.utime') as mock_utime:
+            written_content = Mock()
+            mock_open.return_value = written_content
+            s = SwiftService()
+            _opts = self.opts.copy()
+            _opts['no_download'] = False
+            _opts['ignore_mtime'] = True
+            actual_r = s._download_object_job(
+                mock_conn, 'test_c', 'test_o', _opts)
+            actual_r = dict(  # Need to override the times we got from the call
+                actual_r,
+                **{
+                    'start_time': 1,
+                    'finish_time': 2,
+                    'headers_receipt': 3
+                }
+            )
+            mock_open.assert_called_once_with('test_o', 'wb')
+            self.assertEqual([], mock_utime.mock_calls)
+            written_content.write.assert_called_once_with(b'objcontent')
+
+        mock_conn.get_object.assert_called_once_with(
+            'test_c', 'test_o', resp_chunk_size=65536, headers={},
+            response_dict={}
+        )
+        self.assertEqual(expected_r, actual_r)
+
     def test_download_object_job_exception(self):
         mock_conn = self._get_mock_connection()
         mock_conn.get_object = Mock(side_effect=self.exc)

@@ -203,6 +203,7 @@ _default_local_options = {
     'shuffle': False,
     'destination': None,
     'fresh_metadata': False,
+    'ignore_mtime': False,
 }
 
 POLICY = 'X-Storage-Policy'
@@ -1240,7 +1241,8 @@ class SwiftService(object):
                 bytes_read = obj_body.bytes_read()
                 if fp is not None:
                     fp.close()
-                    if 'x-object-meta-mtime' in headers and not no_file:
+                    if ('x-object-meta-mtime' in headers and not no_file
+                            and not options['ignore_mtime']):
                         try:
                             mtime = float(headers['x-object-meta-mtime'])
                         except ValueError:

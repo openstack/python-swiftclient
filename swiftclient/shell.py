@@ -272,6 +272,9 @@ Optional arguments:
                         script to multiple servers). Enable this option to
                         submit download jobs to the thread pool in the order
                         they are listed in the object store.
+  --ignore-mtime        Ignore the 'X-Object-Meta-Mtime' header when
+                        downloading an object. Instead, create atime and mtime
+                        with fresh timestamps.
 '''.strip("\n")
 
 
@@ -332,6 +335,12 @@ def st_download(parser, args, output_manager):
         'nightly automated download script to multiple servers). Enable this '
         'option to submit download jobs to the thread pool in the order they '
         'are listed in the object store.')
+    parser.add_argument(
+        '--ignore-mtime', action='store_true', dest='ignore_mtime',
+        default=False, help='By default, the object-meta-mtime header is used '
+        'to store the access and modified timestamp for the downloaded file. '
+        'With this option, the header is ignored and the timestamps are '
+        'created freshly.')
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options['out_file'] == '-':

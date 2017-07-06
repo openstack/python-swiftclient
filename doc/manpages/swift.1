@@ -102,6 +102,9 @@ with \-\-no-download actually not to write anything to disk.
 The \-\-ignore-checksum is an option that turns off checksum validation.
 You can specify optional headers with the repeatable cURL-like option
 \-H [\-\-header]. For more details and options see swift download \-\-help.
+The \-\-ignore\-mtime option ignores the x\-object\-meta\-mtime metadata entry
+on the object (if present) and instead creates the downloaded files with
+fresh atime and mtime values.
 .RE
 
 \fBdelete\fR [\fIcommand-options\fR] [\fIcontainer\fR] [\fIobject\fR] [\fIobject\fR] [...]
