@@ -623,7 +623,8 @@ class TestShell(unittest.TestCase):
         connection.return_value.put_object.return_value = EMPTY_ETAG
         connection.return_value.attempts = 0
         argv = ["", "upload", "container", self.tmpfile,
-                "-H", "X-Storage-Policy:one"]
+                "-H", "X-Storage-Policy:one",
+                "--meta", "Color:Blue"]
         swiftclient.shell.main(argv)
         connection.return_value.put_container.assert_called_once_with(
             'container',
@@ -636,7 +637,8 @@ class TestShell(unittest.TestCase):
             mock.ANY,
             content_length=0,
             headers={'x-object-meta-mtime': mock.ANY,
-                     'X-Storage-Policy': 'one'},
+                     'X-Storage-Policy': 'one',
+                     'X-Object-Meta-Color': 'Blue'},
             response_dict={})
 
         # upload to pseudo-folder (via <container> param)

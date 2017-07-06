@@ -881,8 +881,8 @@ def st_copy(parser, args, output_manager):
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
-                    [--header <header>] [--use-slo] [--ignore-checksum]
-                    [--object-name <object-name>]
+                    [--meta <name:value>] [--header <header>] [--use-slo]
+                    [--ignore-checksum] [--object-name <object-name>]
                     <container> <file_or_directory> [<file_or_directory>] [...]
 '''
 
@@ -916,6 +916,9 @@ Optional arguments:
   --segment-threads <threads>
                         Number of threads to use for uploading object segments.
                         Default is 10.
+  -m, --meta <name:value>
+                        Sets a meta data item. This option may be repeated.
+                        Example: -m Color:Blue -m Size:Large
   -H, --header <header:value>
                         Adds a customized request header. This option may be
                         repeated. Example: -H "content-type:text/plain"
@@ -966,6 +969,10 @@ def st_upload(parser, args, output_manager):
         '--segment-threads', type=int, default=10,
         help='Number of threads to use for uploading object segments. '
         'Its value must be a positive integer. Default is 10.')
+    parser.add_argument(
+        '-m', '--meta', action='append', dest='meta', default=[],
+        help='Sets a meta data item. This option may be repeated. '
+        'Example: -m Color:Blue -m Size:Large')
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[], help='Set request headers with the syntax header:value. '

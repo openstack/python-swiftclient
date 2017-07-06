@@ -1146,14 +1146,9 @@ class TestServiceUpload(_TestServiceBase):
                                          container='test_c',
                                          source=f.name,
                                          obj='テスト/dummy.dat',
-                                         options={'changed': False,
-                                                  'skip_identical': False,
-                                                  'leave_segments': True,
-                                                  'header': '',
-                                                  'segment_size': 10,
-                                                  'segment_container': None,
-                                                  'use_slo': False,
-                                                  'checksum': True})
+                                         options=dict(s._options,
+                                                      segment_size=10,
+                                                      leave_segments=True))
 
             mtime = r['headers']['x-object-meta-mtime']
             self.assertEqual(expected_mtime, mtime)
@@ -1350,12 +1345,8 @@ class TestServiceUpload(_TestServiceBase):
                                          container='test_c',
                                          source=f.name,
                                          obj='test_o',
-                                         options={'changed': False,
-                                                  'skip_identical': False,
-                                                  'leave_segments': True,
-                                                  'header': '',
-                                                  'segment_size': 0,
-                                                  'checksum': True})
+                                         options=dict(s._options,
+                                                      leave_segments=True))
 
             mtime = r['headers']['x-object-meta-mtime']
             self.assertEqual(expected_mtime, mtime)
@@ -1405,12 +1396,8 @@ class TestServiceUpload(_TestServiceBase):
                                      container='test_c',
                                      source=f,
                                      obj='test_o',
-                                     options={'changed': False,
-                                              'skip_identical': False,
-                                              'leave_segments': True,
-                                              'header': '',
-                                              'segment_size': 0,
-                                              'checksum': True})
+                                     options=dict(s._options,
+                                                  leave_segments=True))
 
             mtime = float(r['headers']['x-object-meta-mtime'])
             self.assertEqual(mtime, expected_mtime)
@@ -1452,12 +1439,8 @@ class TestServiceUpload(_TestServiceBase):
                                      container='test_c',
                                      source=f.name,
                                      obj='test_o',
-                                     options={'changed': False,
-                                              'skip_identical': False,
-                                              'leave_segments': True,
-                                              'header': '',
-                                              'segment_size': 0,
-                                              'checksum': True})
+                                     options=dict(s._options,
+                                                  leave_segments=True))
 
             self.assertIs(r['success'], False)
             self.assertIn('md5 mismatch', str(r.get('error')))
