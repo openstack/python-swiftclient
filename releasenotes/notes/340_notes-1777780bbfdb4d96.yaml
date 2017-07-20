@@ -1,0 +1,20 @@
+---
+features:
+
+  - The ``swift`` CLI now supports streaming from stdin. If "-" is given
+    as the source, the object content is read from stdin. The
+    ``--object-name`` must be given when content is loaded from stdin.
+  - Tolerate RFC-compliant ETags returned from the server.
+  - Skip checksum validation on partial downloads.
+  - Buffer reads from disk, resulting in much faster upload throughput.
+  - >
+    Added support for ISO 8601 timestamps for tempurl, matching the
+    feature in Swift 2.13.0.
+  - Added an option to ignore mtime metadata entry (``--ignore-mtime``).
+  - >
+    When using SwiftService to delete many objects, the bulk delete page
+    size will now be respected. Previously, exceeding this limit would
+    prevent any objects from being deleted.
+  - Expose `--prefix` as an option for st_delete.
+  - Imported docs content from openstack-manuals project.
+  - Various other minor bug fixes and improvements.
