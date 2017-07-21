@@ -43,7 +43,7 @@ __ http://github.com/openstack/swift
 * `How to Contribute`_
 
 .. _PyPI: https://pypi.python.org/pypi/python-swiftclient
-.. _Online Documentation: http://docs.openstack.org/developer/python-swiftclient
+.. _Online Documentation: https://docs.openstack.org/python-swiftclient/latest/
 .. _Launchpad project: https://launchpad.net/python-swiftclient
 .. _Blueprints: https://blueprints.launchpad.net/python-swiftclient
 .. _Bugs: https://bugs.launchpad.net/python-swiftclient

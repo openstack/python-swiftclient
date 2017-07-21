@@ -313,7 +313,7 @@ The ``-p <prefix>`` or ``--prefix <prefix>`` is an option that will only
 list items beginning with that prefix. The ``-d <delimiter>`` or
 ``--delimiter <delimiter>`` is an option (for container listings only)
 that will roll up items with the given delimiter (see `OpenStack Swift
-general documentation <http://docs.openstack.org/developer/swift/>` for
+general documentation <http://docs.openstack.org/swift/latest/>` for
 what this means).
 
 The ``-l`` and ``--lh`` options provide more detail, similar to ``ls -l``
@@ -457,7 +457,7 @@ and is used to define the user metadata items to set in the form ``Name:Value``.
 You can repeat this option. For example: ``post -m Color:Blue -m Size:Large``
 
 For more information about ACL formats see the documentation:
-`ACLs <http://docs.openstack.org/developer/swift/misc.html#acls/>`_.
+`ACLs <http://docs.openstack.org/swift/latest/misc.html#acls>`_.
 
 **Positional arguments:**
 
@@ -927,7 +927,7 @@ object in 1GiB segments:
 This command will upload segments to a container named ``videos_segments``, and
 create a manifest file describing the entire object in the ``videos`` container.
 For more information on large objects, see the documentation `here
-<http://docs.openstack.org/developer/swift/overview_large_objects.html>`_.
+<https://docs.openstack.org/swift/latest/overview_large_objects.html>`_.
 
 .. code-block:: bash
 
