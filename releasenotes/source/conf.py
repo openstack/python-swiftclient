@@ -33,6 +33,7 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import datetime
+
 from swiftclient import __version__
 
 # -- General configuration ------------------------------------------------
