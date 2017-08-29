@@ -25,7 +25,7 @@ from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
 from six.moves import http_client
 from six.moves.urllib.parse import quote as _quote, unquote
-from six.moves.urllib.parse import urlparse, urlunparse
+from six.moves.urllib.parse import urljoin, urlparse, urlunparse
 from time import sleep, time
 import six
 
@@ -550,9 +550,22 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
 
     insecure = kwargs.get('insecure', False)
     timeout = kwargs.get('timeout', None)
-    auth_version = kwargs.get('auth_version', '2.0')
+    auth_version = kwargs.get('auth_version', None)
     debug = logger.isEnabledFor(logging.DEBUG)
 
+    # Add the version suffix in case of versionless Keystone endpoints. If
+    # auth_version is also unset it is likely that it is v3
+    if len(urlparse(auth_url).path) <= 1:
+        if auth_version and auth_version in AUTH_VERSIONS_V2:
+            auth_url = urljoin(auth_url, "v2.0")
+        else:
+            auth_url = urljoin(auth_url, "v3")
+            auth_version = '3'
+        logger.debug("Versionless auth_url - using %s as endpoint" % auth_url)
+
+    # Legacy default if not set
+    if auth_version is None:
+        auth_version = 'v2.0'
     ksclient, exceptions = _import_keystone_client(auth_version)
 
     try:
