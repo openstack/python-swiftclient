@@ -2,5 +2,6 @@
 # see http://docs.openstack.org/infra/bindep/ for additional information.
 
 curl
-pypy [test]
-pypy-dev [test]
+pypy [test !platform:fedora]
+pypy-dev [test platform:dpkg]
+pypy-devel [test platform:rpm !platform:fedora]
