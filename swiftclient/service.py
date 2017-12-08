@@ -1917,6 +1917,8 @@ class SwiftService(object):
                         return res
 
             # Merge the command line header options to the put_headers
+            put_headers.update(split_headers(
+                options['meta'], 'X-Object-Meta-'))
             put_headers.update(split_headers(options['header'], ''))
 
             # Don't do segment job if object is not big enough, and never do
