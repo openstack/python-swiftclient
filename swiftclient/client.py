@@ -273,6 +273,9 @@ class _ObjectBody(object):
     def __next__(self):
         return self.next()
 
+    def close(self):
+        self.resp.close()
+
 
 class _RetryBody(_ObjectBody):
     """
