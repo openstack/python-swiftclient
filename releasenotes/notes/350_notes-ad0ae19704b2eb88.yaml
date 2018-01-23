@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    Allow for object uploads > 5GB from stdin.
+
+    When uploading from standard input, swiftclient will turn the upload
+    into an SLO in the case of large objects. By default, input larger
+    than 10MB will be uploaded as an SLO with 10MB segment sizes. Users
+    can also supply the ``--segment-size`` option to alter that
+    threshold and the SLO segment size. One segment is buffered in
+    memory (which is why 10MB default was chosen).
+
+  - |
+    The ``--meta`` option can now be set on the upload command.
+
+  - |
+    Updated PyPy test dependency references to be more accurate
+    on different distros.
