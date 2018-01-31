@@ -313,7 +313,7 @@ The ``-p <prefix>`` or ``--prefix <prefix>`` is an option that will only
 list items beginning with that prefix. The ``-d <delimiter>`` or
 ``--delimiter <delimiter>`` is an option (for container listings only)
 that will roll up items with the given delimiter (see `OpenStack Swift
-general documentation <http://docs.openstack.org/swift/latest/>` for
+general documentation <https://docs.openstack.org/swift/latest/>` for
 what this means).
 
 The ``-l`` and ``--lh`` options provide more detail, similar to ``ls -l``
@@ -457,7 +457,7 @@ and is used to define the user metadata items to set in the form ``Name:Value``.
 You can repeat this option. For example: ``post -m Color:Blue -m Size:Large``
 
 For more information about ACL formats see the documentation:
-`ACLs <http://docs.openstack.org/swift/latest/misc.html#acls>`_.
+`ACLs <https://docs.openstack.org/swift/latest/misc.html#acls>`_.
 
 **Positional arguments:**
 

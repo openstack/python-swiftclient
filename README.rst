@@ -24,13 +24,13 @@ This is a python client for the Swift API. There's a Python API (the
 Development takes place via the usual OpenStack processes as outlined
 in the `OpenStack wiki`__.
 
-__ http://docs.openstack.org/infra/manual/developers.html
+__ https://docs.openstack.org/infra/manual/developers.html
 
 This code is based on the original client previously included with
 `OpenStack's Swift`__ The python-swiftclient is licensed under the
 Apache License like the rest of OpenStack.
 
-__ http://github.com/openstack/swift
+__ https://github.com/openstack/swift
 
 * Free software: Apache license
 * `PyPI`_ - package installation
@@ -48,8 +48,8 @@ __ http://github.com/openstack/swift
 .. _Blueprints: https://blueprints.launchpad.net/python-swiftclient
 .. _Bugs: https://bugs.launchpad.net/python-swiftclient
 .. _Source: https://git.openstack.org/cgit/openstack/python-swiftclient
-.. _How to Contribute: http://docs.openstack.org/infra/manual/developers.html
-.. _Specs: http://specs.openstack.org/openstack/swift-specs/
+.. _How to Contribute: https://docs.openstack.org/infra/manual/developers.html
+.. _Specs: https://specs.openstack.org/openstack/swift-specs/
 
 
 .. contents:: Contents:
