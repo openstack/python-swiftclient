@@ -1188,7 +1188,7 @@ def get_object(url, token, container, name, http_conn=None,
 
 
 def head_object(url, token, container, name, http_conn=None,
-                service_token=None, headers=None):
+                service_token=None, headers=None, query_string=None):
     """
     Get object info
 
@@ -1209,6 +1209,8 @@ def head_object(url, token, container, name, http_conn=None,
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
+    if query_string:
+        path += '?' + query_string
     if headers:
         headers = dict(headers)
     else:
@@ -1785,9 +1787,10 @@ class Connection(object):
                            query_string=query_string,
                            headers=headers)
 
-    def head_object(self, container, obj, headers=None):
+    def head_object(self, container, obj, headers=None, query_string=None):
         """Wrapper for :func:`head_object`"""
-        return self._retry(None, head_object, container, obj, headers=headers)
+        return self._retry(None, head_object, container, obj, headers=headers,
+                           query_string=query_string)
 
     def get_object(self, container, obj, resp_chunk_size=None,
                    query_string=None, response_dict=None, headers=None):

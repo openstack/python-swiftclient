@@ -1180,6 +1180,16 @@ class TestHeadObject(MockHttpTest):
             }),
         ])
 
+    def test_query_string(self):
+        c.http_connection = self.fake_http_connection(204)
+        conn = c.http_connection('http://www.test.com')
+        query_string = 'foo=bar'
+        c.head_object('url_is_irrelevant', 'token', 'container', 'key',
+                      http_conn=conn, query_string=query_string)
+        self.assertRequests([
+            ('HEAD', '/container/key?foo=bar', '', {'x-auth-token': 'token'})
+        ])
+
 
 class TestPutObject(MockHttpTest):
 
@@ -2459,16 +2469,17 @@ class TestConnection(MockHttpTest):
 
     def test_head_object(self):
         headers = {'X-Favourite-Pet': 'Aardvark'}
+        query_string = 'foo=bar'
         with mock.patch('swiftclient.client.http_connection',
                         self.fake_http_connection(200)):
             with mock.patch('swiftclient.client.get_auth',
                             lambda *a, **k: ('http://url:8080/v1/a', 'token')):
                 conn = c.Connection()
                 conn.head_object('c1', 'o1',
-                                 headers=headers)
+                                 headers=headers, query_string=query_string)
         self.assertEqual(1, len(self.request_log), self.request_log)
         self.assertRequests([
-            ('HEAD', '/v1/a/c1/o1', '', {
+            ('HEAD', '/v1/a/c1/o1?foo=bar', '', {
                 'x-auth-token': 'token',
                 'X-Favourite-Pet': 'Aardvark',
             }),
