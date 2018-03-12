@@ -1542,7 +1542,7 @@ class Connection(object):
                  os_options=None, auth_version="1", cacert=None,
                  insecure=False, cert=None, cert_key=None,
                  ssl_compression=True, retry_on_ratelimit=False,
-                 timeout=None, session=None):
+                 timeout=None, session=None, force_auth_retry=False):
         """
         :param authurl: authentication URL
         :param user: user name to authenticate as
@@ -1578,6 +1578,8 @@ class Connection(object):
                                    after a backoff.
         :param timeout: The connect timeout for the HTTP connection.
         :param session: A keystoneauth session object.
+        :param force_auth_retry: reset auth info even if client got unexpected
+                                 error except 401 Unauthorized.
         """
         self.session = session
         self.authurl = authurl
@@ -1610,6 +1612,7 @@ class Connection(object):
         self.auth_end_time = 0
         self.retry_on_ratelimit = retry_on_ratelimit
         self.timeout = timeout
+        self.force_auth_retry = force_auth_retry
 
     def close(self):
         if (self.http_conn and isinstance(self.http_conn, tuple)
@@ -1724,6 +1727,10 @@ class Connection(object):
                     pass
                 else:
                     raise
+
+            if self.force_auth_retry:
+                self.url = self.token = self.service_token = None
+
             sleep(backoff)
             backoff = min(backoff * 2, self.max_backoff)
             if reset_func:

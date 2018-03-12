@@ -26,11 +26,13 @@ import tempfile
 from hashlib import md5
 from six import binary_type
 from six.moves.urllib.parse import urlparse
+from requests.exceptions import RequestException
 
 from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
                     FakeKeystone, _make_fake_import_keystone_client)
 
 from swiftclient.utils import EMPTY_ETAG
+from swiftclient.exceptions import ClientException
 from swiftclient import client as c
 import swiftclient.utils
 import swiftclient
@@ -1977,6 +1979,71 @@ class TestConnection(MockHttpTest):
             conn.head_account()
         self.assertIn('Account HEAD failed', str(exc_context.exception))
         self.assertEqual(conn.attempts, 1)
+
+    def test_retry_with_socket_error(self):
+        def quick_sleep(*args):
+            pass
+        c.sleep = quick_sleep
+        conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
+        with mock.patch('swiftclient.client.http_connection') as \
+                fake_http_connection, \
+                mock.patch('swiftclient.client.get_auth_1_0') as mock_auth:
+            mock_auth.return_value = ('http://mock.com', 'mock_token')
+            fake_http_connection.side_effect = socket.error
+            self.assertRaises(socket.error, conn.head_account)
+        self.assertEqual(mock_auth.call_count, 1)
+        self.assertEqual(conn.attempts, conn.retries + 1)
+
+    def test_retry_with_force_auth_retry_exceptions(self):
+        def quick_sleep(*args):
+            pass
+
+        def do_test(exception):
+            c.sleep = quick_sleep
+            conn = c.Connection(
+                'http://www.test.com', 'asdf', 'asdf',
+                force_auth_retry=True)
+            with mock.patch('swiftclient.client.http_connection') as \
+                    fake_http_connection, \
+                    mock.patch('swiftclient.client.get_auth_1_0') as mock_auth:
+                mock_auth.return_value = ('http://mock.com', 'mock_token')
+                fake_http_connection.side_effect = exception
+                self.assertRaises(exception, conn.head_account)
+            self.assertEqual(mock_auth.call_count, conn.retries + 1)
+            self.assertEqual(conn.attempts, conn.retries + 1)
+
+        do_test(socket.error)
+        do_test(RequestException)
+
+    def test_retry_with_force_auth_retry_client_exceptions(self):
+        def quick_sleep(*args):
+            pass
+
+        def do_test(http_status, count):
+
+            def mock_http_connection(*args, **kwargs):
+                raise ClientException('fake', http_status=http_status)
+
+            c.sleep = quick_sleep
+            conn = c.Connection(
+                'http://www.test.com', 'asdf', 'asdf',
+                force_auth_retry=True)
+            with mock.patch('swiftclient.client.http_connection') as \
+                    fake_http_connection, \
+                    mock.patch('swiftclient.client.get_auth_1_0') as mock_auth:
+                mock_auth.return_value = ('http://mock.com', 'mock_token')
+                fake_http_connection.side_effect = mock_http_connection
+                self.assertRaises(ClientException, conn.head_account)
+            self.assertEqual(mock_auth.call_count, count)
+            self.assertEqual(conn.attempts, count)
+
+        # sanity, in case of 401, the auth will be called only twice because of
+        # retried_auth mechanism
+        do_test(401, 2)
+        # others will be tried until retry limits
+        do_test(408, 6)
+        do_test(500, 6)
+        do_test(503, 6)
 
     def test_resp_read_on_server_error(self):
         conn = c.Connection('http://www.test.com', 'asdf', 'asdf', retries=0)

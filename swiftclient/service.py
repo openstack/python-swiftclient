@@ -144,6 +144,7 @@ def _build_default_global_options():
         "user": environ.get('ST_USER'),
         "key": environ.get('ST_KEY'),
         "retries": 5,
+        "force_auth_retry": False,
         "os_username": environ.get('OS_USERNAME'),
         "os_user_id": environ.get('OS_USER_ID'),
         "os_user_domain_name": environ.get('OS_USER_DOMAIN_NAME'),
@@ -261,7 +262,8 @@ def get_conn(options):
                       insecure=options['insecure'],
                       cert=options['os_cert'],
                       cert_key=options['os_key'],
-                      ssl_compression=options['ssl_compression'])
+                      ssl_compression=options['ssl_compression'],
+                      force_auth_retry=options['force_auth_retry'])
 
 
 def mkdirs(path):

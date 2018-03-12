@@ -1501,6 +1501,7 @@ def main(arguments=None):
              [--os-cert <client-certificate-file>]
              [--os-key <client-certificate-key-file>]
              [--no-ssl-compression]
+             [--force-auth-retry]
              <subcommand> [--help] [<subcommand options>]
 
 Command-line interface to the OpenStack Swift API.
@@ -1610,6 +1611,11 @@ Examples:
                         help='This option is deprecated and not used anymore. '
                              'SSL compression should be disabled by default '
                              'by the system SSL library.')
+    parser.add_argument('--force-auth-retry',
+                        action='store_true', dest='force_auth_retry',
+                        default=False,
+                        help='Force a re-auth attempt on '
+                             'any error other than 401 unauthorized')
 
     os_grp = parser.add_argument_group("OpenStack authentication options")
     os_grp.add_argument('--os-username',
