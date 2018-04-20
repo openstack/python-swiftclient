@@ -11,11 +11,11 @@ Python bindings to the OpenStack Object Storage API
 ===================================================
 
 .. image:: https://img.shields.io/pypi/v/python-swiftclient.svg
-    :target: https://pypi.python.org/pypi/python-swiftclient/
+    :target: https://pypi.org/project/python-swiftclient/
     :alt: Latest Version
 
 .. image:: https://img.shields.io/pypi/dm/python-swiftclient.svg
-    :target: https://pypi.python.org/pypi/python-swiftclient/
+    :target: https://pypi.org/project/python-swiftclient/
     :alt: Downloads
 
 This is a python client for the Swift API. There's a Python API (the
@@ -42,7 +42,7 @@ __ https://github.com/openstack/swift
 * `Specs`_
 * `How to Contribute`_
 
-.. _PyPI: https://pypi.python.org/pypi/python-swiftclient
+.. _PyPI: https://pypi.org/project/python-swiftclient
 .. _Online Documentation: https://docs.openstack.org/python-swiftclient/latest/
 .. _Launchpad project: https://launchpad.net/python-swiftclient
 .. _Blueprints: https://blueprints.launchpad.net/python-swiftclient
