@@ -565,7 +565,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
 
     # Legacy default if not set
     if auth_version is None:
-        auth_version = 'v2.0'
+        auth_version = '2'
     ksclient, exceptions = _import_keystone_client(auth_version)
 
     try:
