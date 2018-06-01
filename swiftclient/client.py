@@ -644,8 +644,10 @@ def get_auth(auth_url, user, key, **kwargs):
     if session:
         service_type = os_options.get('service_type', 'object-store')
         interface = os_options.get('endpoint_type', 'public')
+        region_name = os_options.get('region_name')
         storage_url = session.get_endpoint(service_type=service_type,
-                                           interface=interface)
+                                           interface=interface,
+                                           region_name=region_name)
         token = session.get_token()
     elif auth_version in AUTH_VERSIONS_V1:
         storage_url, token = get_auth_1_0(auth_url,
