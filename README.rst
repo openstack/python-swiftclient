@@ -14,10 +14,6 @@ Python bindings to the OpenStack Object Storage API
     :target: https://pypi.org/project/python-swiftclient/
     :alt: Latest Version
 
-.. image:: https://img.shields.io/pypi/dm/python-swiftclient.svg
-    :target: https://pypi.org/project/python-swiftclient/
-    :alt: Downloads
-
 This is a python client for the Swift API. There's a Python API (the
 ``swiftclient`` module), and a command-line script (``swift``).
 
