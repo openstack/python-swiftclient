@@ -13,8 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import unicode_literals
+
 from genericpath import getmtime
 
+import getpass
 import hashlib
 import json
 import logging
@@ -2283,17 +2285,66 @@ class TestParsing(TestBase):
         os_opts = {"password": "secret",
                    "auth_url": "http://example.com:5000/v3"}
         args = _make_args("stat", opts, os_opts)
-        self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        with self.assertRaises(SystemExit) as cm:
+            swiftclient.shell.main(args)
+        self.assertIn(
+            'Auth version 3 requires either OS_USERNAME or OS_USER_ID',
+            str(cm.exception))
 
         os_opts = {"username": "user",
                    "auth_url": "http://example.com:5000/v3"}
         args = _make_args("stat", opts, os_opts)
-        self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        with self.assertRaises(SystemExit) as cm:
+            swiftclient.shell.main(args)
+        self.assertIn('Auth version 3 requires OS_PASSWORD', str(cm.exception))
 
         os_opts = {"username": "user",
                    "password": "secret"}
         args = _make_args("stat", opts, os_opts)
-        self.assertRaises(SystemExit, swiftclient.shell.main, args)
+        with self.assertRaises(SystemExit) as cm:
+            swiftclient.shell.main(args)
+        self.assertIn('Auth version 3 requires OS_AUTH_URL', str(cm.exception))
+
+    def test_password_prompt(self):
+        def do_test(opts, os_opts, auth_version):
+            args = _make_args("stat", opts, os_opts)
+            result = [None, None]
+            fake_command = self._make_fake_command(result)
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                with mock.patch('getpass.getpass',
+                                return_value='input_pwd') as mock_getpass:
+                    swiftclient.shell.main(args)
+            mock_getpass.assert_called_once_with()
+            self.assertEqual('input_pwd', result[0]['key'])
+            self.assertEqual('input_pwd', result[0]['os_password'])
+
+            # ctrl-D
+            with self.assertRaises(SystemExit) as cm:
+                with mock.patch('swiftclient.shell.st_stat', fake_command):
+                    with mock.patch('getpass.getpass',
+                                    side_effect=EOFError) as mock_getpass:
+                        swiftclient.shell.main(args)
+            mock_getpass.assert_called_once_with()
+            self.assertIn(
+                'Auth version %s requires' % auth_version, str(cm.exception))
+
+            # force getpass to think it needs to use raw input
+            with self.assertRaises(SystemExit) as cm:
+                with mock.patch('getpass.getpass', getpass.fallback_getpass):
+                    swiftclient.shell.main(args)
+            self.assertIn(
+                'Input stream incompatible', str(cm.exception))
+
+        opts = {"prompt": None, "user": "bob", "key": "secret",
+                "auth": "http://example.com:8080/auth/v1.0"}
+        do_test(opts, {}, '1.0')
+        os_opts = {"username": "user",
+                   "password": "secret",
+                   "auth_url": "http://example.com:5000/v3"}
+        opts = {"auth_version": "2.0", "prompt": None}
+        do_test(opts, os_opts, '2.0')
+        opts = {"auth_version": "3", "prompt": None}
+        do_test(opts, os_opts, '3')
 
     def test_no_tenant_name_or_id_v2(self):
         os_opts = {"password": "secret",
