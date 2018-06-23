@@ -485,9 +485,6 @@ class TestUsingKeystone(TestFunctional):
             self.auth_url, username, password, auth_version=self.auth_version,
             os_options=os_options)
 
-    def setUp(self):
-        super(TestUsingKeystone, self).setUp()
-
 
 class TestUsingKeystoneV3(TestFunctional):
     """
@@ -514,6 +511,3 @@ class TestUsingKeystoneV3(TestFunctional):
         return swiftclient.Connection(self.auth_url, username, password,
                                       auth_version=self.auth_version,
                                       os_options=os_options)
-
-    def setUp(self):
-        super(TestUsingKeystoneV3, self).setUp()
