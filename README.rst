@@ -37,6 +37,7 @@ __ https://github.com/openstack/swift
 * `Source`_
 * `Specs`_
 * `How to Contribute`_
+* `Release Notes`_
 
 .. _PyPI: https://pypi.org/project/python-swiftclient
 .. _Online Documentation: https://docs.openstack.org/python-swiftclient/latest/
@@ -46,7 +47,7 @@ __ https://github.com/openstack/swift
 .. _Source: https://git.openstack.org/cgit/openstack/python-swiftclient
 .. _How to Contribute: https://docs.openstack.org/infra/manual/developers.html
 .. _Specs: https://specs.openstack.org/openstack/swift-specs/
-
+.. _Release Notes: https://docs.openstack.org/releasenotes/python-swiftclient
 
 .. contents:: Contents:
    :local:
