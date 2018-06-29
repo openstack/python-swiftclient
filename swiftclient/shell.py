@@ -51,7 +51,7 @@ except ImportError:
 
 BASENAME = 'swift'
 commands = ('delete', 'download', 'list', 'post', 'copy', 'stat', 'upload',
-            'capabilities', 'info', 'tempurl', 'auth')
+            'capabilities', 'info', 'tempurl', 'auth', 'bash_completion')
 
 
 def immediate_exit(signum, frame):
@@ -90,7 +90,7 @@ Optional arguments:
 '''.strip("\n")
 
 
-def st_delete(parser, args, output_manager):
+def st_delete(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Delete all containers and objects.')
@@ -114,6 +114,11 @@ def st_delete(parser, args, output_manager):
         '--container-threads', type=int,
         default=10, help='Number of threads to use for deleting containers. '
         'Its value must be a positive integer. Default is 10.')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (not args and not options['yes_all']) or (args and options['yes_all']):
@@ -281,7 +286,7 @@ Optional arguments:
 '''.strip("\n")
 
 
-def st_download(parser, args, output_manager):
+def st_download(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Indicates that you really want to download '
@@ -344,6 +349,11 @@ def st_download(parser, args, output_manager):
         'to store the access and modified timestamp for the downloaded file. '
         'With this option, the header is ignored and the timestamps are '
         'created freshly.')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if options['out_file'] == '-':
@@ -494,7 +504,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_list(parser, args, output_manager):
+def st_list(parser, args, output_manager, return_parser=False):
 
     def _print_stats(options, stats, human):
         total_count = total_bytes = 0
@@ -571,6 +581,11 @@ def st_list(parser, args, output_manager):
         '-H', '--header', action='append', dest='header',
         default=[],
         help='Adds a custom request header to use for listing.')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     options, args = parse_args(parser, args)
     args = args[1:]
     if options['delimiter'] and not args:
@@ -629,7 +644,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_stat(parser, args, output_manager):
+def st_stat(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '--lh', dest='human', action='store_true', default=False,
         help='Report sizes in human readable format similar to ls -lh.')
@@ -637,6 +652,10 @@ def st_stat(parser, args, output_manager):
         '-H', '--header', action='append', dest='header',
         default=[],
         help='Adds a custom request header to use for stat.')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
 
     options, args = parse_args(parser, args)
     args = args[1:]
@@ -725,7 +744,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_post(parser, args, output_manager):
+def st_post(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '-r', '--read-acl', dest='read_acl', help='Read ACL for containers. '
         'Quick summary of ACL syntax: .r:*, .r:-.example.com, '
@@ -750,6 +769,11 @@ def st_post(parser, args, output_manager):
         'This option may be repeated. '
         'Example: -H "content-type:text/plain" '
         '-H "Content-Length: 4000"')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
     if (options['read_acl'] or options['write_acl'] or options['sync_to'] or
@@ -822,7 +846,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_copy(parser, args, output_manager):
+def st_copy(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '-d', '--destination', help='The container and name of the '
         'destination object')
@@ -839,6 +863,11 @@ def st_copy(parser, args, output_manager):
         'This option may be repeated. '
         'Example: -H "content-type:text/plain" '
         '-H "Content-Length: 4000"')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     (options, args) = parse_args(parser, args)
     args = args[1:]
 
@@ -948,7 +977,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_upload(parser, args, output_manager):
+def st_upload(parser, args, output_manager, return_parser=False):
     DEFAULT_STDIN_SEGMENT = 10 * 1024 * 1024
 
     parser.add_argument(
@@ -1006,6 +1035,11 @@ def st_upload(parser, args, output_manager):
     parser.add_argument(
         '--ignore-checksum', dest='checksum', default=True,
         action='store_false', help='Turn off checksum validation for uploads.')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     options, args = parse_args(parser, args)
     args = args[1:]
     if len(args) < 2:
@@ -1185,7 +1219,7 @@ Optional arguments:
 st_info_help = st_capabilities_help
 
 
-def st_capabilities(parser, args, output_manager):
+def st_capabilities(parser, args, output_manager, return_parser=False):
     def _print_compo_cap(name, capabilities):
         for feature, options in sorted(capabilities.items(),
                                        key=lambda x: x[0]):
@@ -1198,6 +1232,11 @@ def st_capabilities(parser, args, output_manager):
 
     parser.add_argument('--json', action='store_true',
                         help='print capability information in json')
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     (options, args) = parse_args(parser, args)
     if args and len(args) > 2:
         output_manager.error('Usage: %s capabilities %s\n%s',
@@ -1246,7 +1285,12 @@ Display auth related authentication variables in shell friendly format.
 '''.strip('\n')
 
 
-def st_auth(parser, args, thread_manager):
+def st_auth(parser, args, thread_manager, return_parser=False):
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
+
     (options, args) = parse_args(parser, args)
     if options['verbose'] > 1:
         if options['auth_version'] in ('1', '1.0'):
@@ -1330,7 +1374,7 @@ Optional arguments:
 '''.strip('\n')
 
 
-def st_tempurl(parser, args, thread_manager):
+def st_tempurl(parser, args, thread_manager, return_parser=False):
     parser.add_argument(
         '--absolute', action='store_true',
         dest='absolute_expiry', default=False,
@@ -1356,6 +1400,10 @@ def st_tempurl(parser, args, thread_manager):
         help=("If present, the temporary URL will be restricted to the "
               "given ip or ip range."),
     )
+
+    # We return the parser to build up the bash_completion
+    if return_parser:
+        return parser
 
     (options, args) = parse_args(parser, args)
     args = args[1:]
@@ -1386,6 +1434,65 @@ def st_tempurl(parser, args, thread_manager):
     else:
         url = path
     thread_manager.print_msg(url)
+
+
+st_bash_completion_help = '''Retrieve command specific flags used by bash_completion.
+
+Optional positional arguments:
+  <command>           Swift client command to filter the flags by.
+'''.strip('\n')
+
+
+st_bash_completion_options = '''[command]
+'''
+
+
+def st_bash_completion(parser, args, thread_manager, return_parser=False):
+    if return_parser:
+        return parser
+
+    global commands
+    com = args[1] if len(args) > 1 else None
+
+    if com:
+        if com in commands:
+            fn_commands = ["st_%s" % com]
+        else:
+            print("")
+            return
+    else:
+        fn_commands = [fn for fn in globals().keys()
+                       if fn.startswith('st_') and not fn.endswith('_options')
+                       and not fn.endswith('_help')]
+
+    subparsers = parser.add_subparsers()
+    subcommands = {}
+    if not com:
+        subcommands['base'] = parser
+    for command in fn_commands:
+        cmd = command[3:]
+        if com:
+            subparser = subparsers.add_parser(
+                cmd, help=globals()['%s_help' % command])
+            add_default_args(subparser)
+            subparser = globals()[command](
+                subparser, args, thread_manager, True)
+            subcommands[cmd] = subparser
+        else:
+            subcommands[cmd] = None
+
+    cmds = set()
+    opts = set()
+    for sc_str, sc in list(subcommands.items()):
+        cmds.add(sc_str)
+        if sc:
+            for option in sc._optionals._option_string_actions:
+                opts.add(option)
+
+    for cmd_to_remove in (com, 'bash_completion', 'base'):
+        if cmd_to_remove in cmds:
+            cmds.remove(cmd_to_remove)
+    print(' '.join(cmds | opts))
 
 
 class HelpFormatter(argparse.HelpFormatter):
@@ -1508,94 +1615,7 @@ adding "-V 2" is necessary for this.'''.strip('\n'))
     return options, args
 
 
-def main(arguments=None):
-    argv = sys_argv if arguments is None else arguments
-
-    argv = [a if isinstance(a, text_type) else a.decode('utf-8') for a in argv]
-
-    version = client_version
-    parser = argparse.ArgumentParser(
-        add_help=False, formatter_class=HelpFormatter, usage='''
-%(prog)s [--version] [--help] [--os-help] [--snet] [--verbose]
-             [--debug] [--info] [--quiet] [--auth <auth_url>]
-             [--auth-version <auth_version> |
-                 --os-identity-api-version <auth_version> ]
-             [--user <username>]
-             [--key <api_key>] [--retries <num_retries>]
-             [--os-username <auth-user-name>]
-             [--os-password <auth-password>]
-             [--os-user-id <auth-user-id>]
-             [--os-user-domain-id <auth-user-domain-id>]
-             [--os-user-domain-name <auth-user-domain-name>]
-             [--os-tenant-id <auth-tenant-id>]
-             [--os-tenant-name <auth-tenant-name>]
-             [--os-project-id <auth-project-id>]
-             [--os-project-name <auth-project-name>]
-             [--os-project-domain-id <auth-project-domain-id>]
-             [--os-project-domain-name <auth-project-domain-name>]
-             [--os-auth-url <auth-url>]
-             [--os-auth-token <auth-token>]
-             [--os-storage-url <storage-url>]
-             [--os-region-name <region-name>]
-             [--os-service-type <service-type>]
-             [--os-endpoint-type <endpoint-type>]
-             [--os-cacert <ca-certificate>]
-             [--insecure]
-             [--os-cert <client-certificate-file>]
-             [--os-key <client-certificate-key-file>]
-             [--no-ssl-compression]
-             [--force-auth-retry]
-             [--prompt]
-             <subcommand> [--help] [<subcommand options>]
-
-Command-line interface to the OpenStack Swift API.
-
-Positional arguments:
-  <subcommand>
-    delete               Delete a container or objects within a container.
-    download             Download objects from containers.
-    list                 Lists the containers for the account or the objects
-                         for a container.
-    post                 Updates meta information for the account, container,
-                         or object; creates containers if not present.
-    copy                 Copies object, optionally adds meta
-    stat                 Displays information for the account, container,
-                         or object.
-    upload               Uploads files or directories to the given container.
-    capabilities         List cluster capabilities.
-    tempurl              Create a temporary URL.
-    auth                 Display auth related environment variables.
-
-Examples:
-  %(prog)s download --help
-
-  %(prog)s -A https://api.example.com/v1.0 \\
-      -U user -K api_key stat -v
-
-  %(prog)s --os-auth-url https://api.example.com/v2.0 \\
-      --os-tenant-name tenant \\
-      --os-username user --os-password password list
-
-  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
-      --os-project-name project1 --os-project-domain-name domain1 \\
-      --os-username user --os-user-domain-name domain1 \\
-      --os-password password list
-
-  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
-      --os-project-id 0123456789abcdef0123456789abcdef \\
-      --os-user-id abcdef0123456789abcdef0123456789 \\
-      --os-password password list
-
-  %(prog)s --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
-      --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
-      list
-
-  %(prog)s list --lh
-'''.strip('\n'))
-    parser.add_argument('--version', action='version',
-                        version='python-swiftclient %s' % version)
-    parser.add_argument('-h', '--help', action='store_true')
-
+def add_default_args(parser):
     default_auth_version = '1.0'
     for k in ('ST_AUTH_VERSION', 'OS_AUTH_VERSION', 'OS_IDENTITY_API_VERSION'):
         try:
@@ -1808,6 +1828,100 @@ Examples:
                         default=environ.get('OS_KEY'),
                         help='Specify a client certificate key file (for '
                         'client auth). Defaults to env[OS_KEY].')
+
+
+def main(arguments=None):
+    argv = sys_argv if arguments is None else arguments
+
+    argv = [a if isinstance(a, text_type) else a.decode('utf-8') for a in argv]
+
+    parser = argparse.ArgumentParser(
+        add_help=False, formatter_class=HelpFormatter, usage='''
+%(prog)s [--version] [--help] [--os-help] [--snet] [--verbose]
+             [--debug] [--info] [--quiet] [--auth <auth_url>]
+             [--auth-version <auth_version> |
+                 --os-identity-api-version <auth_version> ]
+             [--user <username>]
+             [--key <api_key>] [--retries <num_retries>]
+             [--os-username <auth-user-name>]
+             [--os-password <auth-password>]
+             [--os-user-id <auth-user-id>]
+             [--os-user-domain-id <auth-user-domain-id>]
+             [--os-user-domain-name <auth-user-domain-name>]
+             [--os-tenant-id <auth-tenant-id>]
+             [--os-tenant-name <auth-tenant-name>]
+             [--os-project-id <auth-project-id>]
+             [--os-project-name <auth-project-name>]
+             [--os-project-domain-id <auth-project-domain-id>]
+             [--os-project-domain-name <auth-project-domain-name>]
+             [--os-auth-url <auth-url>]
+             [--os-auth-token <auth-token>]
+             [--os-storage-url <storage-url>]
+             [--os-region-name <region-name>]
+             [--os-service-type <service-type>]
+             [--os-endpoint-type <endpoint-type>]
+             [--os-cacert <ca-certificate>]
+             [--insecure]
+             [--os-cert <client-certificate-file>]
+             [--os-key <client-certificate-key-file>]
+             [--no-ssl-compression]
+             [--force-auth-retry]
+             <subcommand> [--help] [<subcommand options>]
+
+Command-line interface to the OpenStack Swift API.
+
+Positional arguments:
+  <subcommand>
+    delete               Delete a container or objects within a container.
+    download             Download objects from containers.
+    list                 Lists the containers for the account or the objects
+                         for a container.
+    post                 Updates meta information for the account, container,
+                         or object; creates containers if not present.
+    copy                 Copies object, optionally adds meta
+    stat                 Displays information for the account, container,
+                         or object.
+    upload               Uploads files or directories to the given container.
+    capabilities         List cluster capabilities.
+    tempurl              Create a temporary URL.
+    auth                 Display auth related environment variables.
+    bash_completion      Outputs option and flag cli data ready for
+                         bash_completion.
+
+Examples:
+  %(prog)s download --help
+
+  %(prog)s -A https://api.example.com/v1.0 \\
+      -U user -K api_key stat -v
+
+  %(prog)s --os-auth-url https://api.example.com/v2.0 \\
+      --os-tenant-name tenant \\
+      --os-username user --os-password password list
+
+  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
+      --os-project-name project1 --os-project-domain-name domain1 \\
+      --os-username user --os-user-domain-name domain1 \\
+      --os-password password list
+
+  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
+      --os-project-id 0123456789abcdef0123456789abcdef \\
+      --os-user-id abcdef0123456789abcdef0123456789 \\
+      --os-password password list
+
+  %(prog)s --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
+      --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\
+      list
+
+  %(prog)s list --lh
+'''.strip('\n'))
+
+    version = client_version
+    parser.add_argument('--version', action='version',
+                        version='python-swiftclient %s' % version)
+    parser.add_argument('-h', '--help', action='store_true')
+
+    add_default_args(parser)
+
     options, args = parse_args(parser, argv[1:], enforce_requires=False)
 
     if options['help'] or options['os_help']:

@@ -1,0 +1,32 @@
+declare -a _swift_opts # lazy init
+
+_swift_get_current_opt()
+{
+    local opt
+    for opt in ${_swift_opts[@]} ; do
+        if [[ $(echo ${COMP_WORDS[*]} |grep -c " $opt\$") > 0 ]] || [[ $(echo ${COMP_WORDS[*]} |grep -c " $opt ") > 0 ]] ; then
+            echo $opt
+            return 0
+        fi
+    done
+    echo ""
+    return 0
+}
+
+_swift()
+{
+    local opt cur prev sflags
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    if [ "x$_swift_opts" == "x" ] ; then
+                _swift_opts=(`swift bash_completion "$sbc" | sed -e "s/-[-A-Za-z0-9_]*//g" -e "s/  */ /g"`)
+    fi
+
+    opt="$(_swift_get_current_opt)"
+    COMPREPLY=($(compgen -W "$(swift bash_completion $opt)" -- ${cur}))
+
+    return 0
+}
+complete -F _swift swift
