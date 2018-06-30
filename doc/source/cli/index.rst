@@ -139,6 +139,10 @@ swift optional arguments
   compression should be disabled by default by the
   system SSL library.
 
+``--prompt``
+  Prompt user to enter a password which overrides any password supplied via
+  ``--key``, ``--os-password`` or environment variables.
+
 Authentication
 ~~~~~~~~~~~~~~
 

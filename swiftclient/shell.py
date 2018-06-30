@@ -17,11 +17,13 @@
 from __future__ import print_function, unicode_literals
 
 import argparse
+import getpass
 import io
 import json
 import logging
 import signal
 import socket
+import warnings
 
 from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
@@ -1410,6 +1412,30 @@ class HelpFormatter(argparse.HelpFormatter):
         return action.dest
 
 
+def prompt_for_password():
+    """
+    Prompt the user for a password.
+
+    :raise SystemExit: if a password cannot be entered without it being echoed
+        to the terminal.
+    :return: the entered password.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error', category=getpass.GetPassWarning,
+                                append=True)
+        try:
+            # temporarily set signal handling back to default to avoid user
+            # Ctrl-c leaving terminal in weird state
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            return getpass.getpass()
+        except EOFError:
+            return None
+        except getpass.GetPassWarning:
+            exit('Input stream incompatible with --prompt option')
+        finally:
+            signal.signal(signal.SIGINT, immediate_exit)
+
+
 def parse_args(parser, args, enforce_requires=True):
     options, args = parser.parse_known_args(args or ['-h'])
     options = vars(options)
@@ -1434,6 +1460,10 @@ def parse_args(parser, args, enforce_requires=True):
     # Short circuit for tempurl, which doesn't need auth
     if args and args[0] == 'tempurl':
         return options, args
+
+    # do this before process_options sets default auth version
+    if enforce_requires and options['prompt']:
+        options['key'] = options['os_password'] = prompt_for_password()
 
     # Massage auth version; build out os_options subdict
     process_options(options)
@@ -1506,6 +1536,7 @@ def main(arguments=None):
              [--os-key <client-certificate-key-file>]
              [--no-ssl-compression]
              [--force-auth-retry]
+             [--prompt]
              <subcommand> [--help] [<subcommand options>]
 
 Command-line interface to the OpenStack Swift API.
@@ -1620,6 +1651,12 @@ Examples:
                         default=False,
                         help='Force a re-auth attempt on '
                              'any error other than 401 unauthorized')
+    parser.add_argument('--prompt',
+                        action='store_true', dest='prompt',
+                        default=False,
+                        help='Prompt user to enter a password which overrides '
+                             'any password supplied via --key, --os-password '
+                             'or environment variables.')
 
     os_grp = parser.add_argument_group("OpenStack authentication options")
     os_grp.add_argument('--os-username',
