@@ -152,6 +152,54 @@ class TestTempURL(unittest.TestCase):
         self.assertIsInstance(url, type(self.url))
 
     @mock.patch('hmac.HMAC')
+    @mock.patch('time.time', return_value=1400000000)
+    def test_generate_temp_url_ip_range(self, time_mock, hmac_mock):
+        hmac_mock().hexdigest.return_value = 'temp_url_signature'
+        ip_ranges = [
+            '1.2.3.4', '1.2.3.4/24', '2001:db8::',
+            b'1.2.3.4', b'1.2.3.4/24', b'2001:db8::',
+        ]
+        path = '/v1/AUTH_account/c/o/'
+        expected_url = path + ('?temp_url_sig=temp_url_signature'
+                               '&temp_url_expires=1400003600'
+                               '&temp_url_ip_range=')
+        for ip_range in ip_ranges:
+            hmac_mock.reset_mock()
+            url = u.generate_temp_url(path, self.seconds,
+                                      self.key, self.method,
+                                      ip_range=ip_range)
+            key = self.key
+            if not isinstance(key, six.binary_type):
+                key = key.encode('utf-8')
+
+            if isinstance(ip_range, six.binary_type):
+                ip_range_expected_url = (
+                    expected_url + ip_range.decode('utf-8')
+                )
+                expected_body = '\n'.join([
+                    'ip=' + ip_range.decode('utf-8'),
+                    self.method,
+                    '1400003600',
+                    path,
+                ]).encode('utf-8')
+            else:
+                ip_range_expected_url = expected_url + ip_range
+                expected_body = '\n'.join([
+                    'ip=' + ip_range,
+                    self.method,
+                    '1400003600',
+                    path,
+                ]).encode('utf-8')
+
+            self.assertEqual(url, ip_range_expected_url)
+
+            self.assertEqual(hmac_mock.mock_calls, [
+                mock.call(key, expected_body, sha1),
+                mock.call().hexdigest(),
+            ])
+            self.assertIsInstance(url, type(path))
+
+    @mock.patch('hmac.HMAC')
     def test_generate_temp_url_iso8601_argument(self, hmac_mock):
         hmac_mock().hexdigest.return_value = 'temp_url_signature'
         url = u.generate_temp_url(self.url, '2014-05-13T17:53:20Z',
@@ -380,6 +428,10 @@ class TestTempURLBytesPathAndNonUtf8Key(TestTempURL):
         b'1400003600',
         url,
     ])
+
+
+class TestTempURLIPRange(TestTempURL):
+    ip_range = '1.2.3.4/24'
 
 
 class TestReadableToIterable(unittest.TestCase):

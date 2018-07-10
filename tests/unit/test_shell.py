@@ -1667,7 +1667,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=False, prefix=False)
+            iso8601=False, prefix=False, ip_range=None)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_prefix_based(self, temp_url):
@@ -1676,7 +1676,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=False, prefix=True)
+            iso8601=False, prefix=True, ip_range=None)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_iso8601_in(self, temp_url):
@@ -1688,7 +1688,7 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
             temp_url.assert_called_with(
                 '/v1/AUTH_account/c/', d, 'secret_key', 'GET', absolute=False,
-                iso8601=False, prefix=False)
+                iso8601=False, prefix=False, ip_range=None)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_iso8601_out(self, temp_url):
@@ -1697,7 +1697,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=True, prefix=False)
+            iso8601=True, prefix=False, ip_range=None)
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_absolute_expiry_temp_url(self, temp_url):
@@ -1706,7 +1706,16 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=True,
-            iso8601=False, prefix=False)
+            iso8601=False, prefix=False, ip_range=None)
+
+    @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
+    def test_temp_url_with_ip_range(self, temp_url):
+        argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/o",
+                "secret_key", "--ip-range", "1.2.3.4"]
+        swiftclient.shell.main(argv)
+        temp_url.assert_called_with(
+            '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
+            iso8601=False, prefix=False, ip_range='1.2.3.4')
 
     def test_temp_url_output(self):
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
@@ -1768,6 +1777,17 @@ class TestShell(unittest.TestCase):
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
             self.assertEqual(expected, output.out)
+
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
+                "secret_key", "--absolute", "--ip-range", "1.2.3.4"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        sig = "6a6ec8efa4be53904ecba8d055d841e24a937c98"
+        expected = (
+            "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60"
+            "&temp_url_ip_range=1.2.3.4\n" % sig
+        )
+        self.assertEqual(expected, output.out)
 
     def test_temp_url_error_output(self):
         expected = 'path must be full path to an object e.g. /v1/a/c/o\n'
