@@ -69,7 +69,7 @@ def prt_bytes(num_bytes, human_flag):
 
 
 def generate_temp_url(path, seconds, key, method, absolute=False,
-                      prefix=False, iso8601=False):
+                      prefix=False, iso8601=False, ip_range=None):
     """Generates a temporary URL that gives unauthenticated access to the
     Swift object.
 
@@ -92,6 +92,8 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     :param prefix: if True then a prefix-based temporary URL will be generated.
     :param iso8601: if True, a URL containing an ISO 8601 UTC timestamp
         instead of a UNIX timestamp will be created.
+    :param ip_range: if a valid ip range, restricts the temporary URL to the
+        range of ips.
     :raises ValueError: if timestamp or path is not in valid format.
     :return: the path portion of a temporary URL
     """
@@ -155,8 +157,21 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         expiration = int(time.time() + timestamp)
     else:
         expiration = timestamp
-    hmac_body = u'\n'.join([method.upper(), str(expiration),
-                            ('prefix:' if prefix else '') + path_for_body])
+
+    hmac_parts = [method.upper(), str(expiration),
+                  ('prefix:' if prefix else '') + path_for_body]
+
+    if ip_range:
+        if isinstance(ip_range, six.binary_type):
+            try:
+                ip_range = ip_range.decode('utf-8')
+            except UnicodeDecodeError:
+                raise ValueError(
+                    'ip_range must be representable as UTF-8'
+                )
+        hmac_parts.insert(0, "ip=%s" % ip_range)
+
+    hmac_body = u'\n'.join(hmac_parts)
 
     # Encode to UTF-8 for py3 compatibility
     if not isinstance(key, six.binary_type):
@@ -169,6 +184,10 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
 
     temp_url = u'{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
         path=path_for_body, sig=sig, exp=expiration)
+
+    if ip_range:
+        temp_url += u'&temp_url_ip_range={}'.format(ip_range)
+
     if prefix:
         temp_url += u'&temp_url_prefix={}'.format(parts[4])
     # Have return type match path from caller
