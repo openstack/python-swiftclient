@@ -1325,6 +1325,8 @@ Optional arguments:
                         generated.
   --iso8601             If present, the generated temporary URL will contain an
                         ISO 8601 UTC timestamp instead of a Unix timestamp.
+  --ip-range            If present, the temporary URL will be restricted to the
+                        given ip or ip range.
 '''.strip('\n')
 
 
@@ -1348,6 +1350,12 @@ def st_tempurl(parser, args, thread_manager):
         help=("If present, the temporary URL will contain an ISO 8601 UTC "
               "timestamp instead of a Unix timestamp."),
     )
+    parser.add_argument(
+        '--ip-range', action='store',
+        default=None,
+        help=("If present, the temporary URL will be restricted to the "
+              "given ip or ip range."),
+    )
 
     (options, args) = parse_args(parser, args)
     args = args[1:]
@@ -1367,7 +1375,8 @@ def st_tempurl(parser, args, thread_manager):
         path = generate_temp_url(parsed.path, timestamp, key, method,
                                  absolute=options['absolute_expiry'],
                                  iso8601=options['iso8601'],
-                                 prefix=options['prefix_based'])
+                                 prefix=options['prefix_based'],
+                                 ip_range=options['ip_range'])
     except ValueError as err:
         thread_manager.error(err)
         return
