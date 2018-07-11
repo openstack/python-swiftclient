@@ -39,7 +39,7 @@ six==1.9.0
 snowballstemmer==1.2.1
 sphinx==1.6.2
 sphinxcontrib-websupport==1.0.1
-testrepository==0.0.18
+stestr==2.0.0
 testtools==2.2.0
 traceback2==1.4.0
 unittest2==1.1.0
