@@ -2473,17 +2473,18 @@ class SwiftService(object):
     def _delete_segment(conn, container, obj, results_queue=None):
         results_dict = {}
         try:
-            conn.delete_object(container, obj, response_dict=results_dict)
             res = {'success': True}
+            conn.delete_object(container, obj, response_dict=results_dict)
         except Exception as err:
-            traceback, err_time = report_traceback()
-            logger.exception(err)
-            res = {
-                'success': False,
-                'error': err,
-                'traceback': traceback,
-                'error_timestamp': err_time
-            }
+            if not isinstance(err, ClientException) or err.http_status != 404:
+                traceback, err_time = report_traceback()
+                logger.exception(err)
+                res = {
+                    'success': False,
+                    'error': err,
+                    'traceback': traceback,
+                    'error_timestamp': err_time
+                }
 
         res.update({
             'action': 'delete_segment',
