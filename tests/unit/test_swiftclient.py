@@ -749,9 +749,10 @@ class TestPostAccount(MockHttpTest):
         c.http_connection = self.fake_http_connection(200, headers={
             'X-Account-Meta-Color': 'blue',
         }, body='foo')
+        headers = {'x-account-meta-shape': 'square'}
         resp_headers, body = c.post_account(
             'http://www.tests.com/path/to/account', 'asdf',
-            {'x-account-meta-shape': 'square'}, query_string='bar=baz',
+            headers, query_string='bar=baz',
             data='some data')
         self.assertEqual('blue', resp_headers.get('x-account-meta-color'))
         self.assertEqual('foo', body)
@@ -760,6 +761,8 @@ class TestPostAccount(MockHttpTest):
              'some data', {'x-auth-token': 'asdf',
                            'x-account-meta-shape': 'square'})
         ])
+        # Check that we didn't mutate the request ehader dict
+        self.assertEqual(headers, {'x-account-meta-shape': 'square'})
 
     def test_server_error(self):
         body = 'c' * 65
@@ -1513,6 +1516,11 @@ class TestPostObject(MockHttpTest):
                 'X-Object-Meta-Test': 'mymeta',
                 'X-Delete-At': delete_at}),
         ])
+        # Check that the request header dict didn't get mutated
+        self.assertEqual(args[-1], {
+            'X-Object-Meta-Test': 'mymeta',
+            'X-Delete-At': delete_at,
+        })
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
@@ -3141,10 +3149,11 @@ class TestServiceToken(MockHttpTest):
         self.assertEqual(conn.attempts, 1)
 
     def test_service_token_post_container(self):
+        headers = {'X-Container-Meta-Color': 'blue'}
         with mock.patch('swiftclient.client.http_connection',
                         self.fake_http_connection(201)):
             conn = self.get_connection()
-            conn.post_container('container1', {})
+            conn.post_container('container1', headers)
         self.assertEqual(1, len(self.request_log), self.request_log)
         for actual in self.iter_request_log():
             self.assertEqual('POST', actual['method'])
@@ -3154,6 +3163,8 @@ class TestServiceToken(MockHttpTest):
             self.assertEqual('http://storage_url.com/container1',
                              actual['full_path'])
         self.assertEqual(conn.attempts, 1)
+        # Check that we didn't mutate the request header dict
+        self.assertEqual(headers, {'X-Container-Meta-Color': 'blue'})
 
     def test_service_token_put_container(self):
         with mock.patch('swiftclient.client.http_connection',

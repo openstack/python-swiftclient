@@ -304,7 +304,7 @@ class _RetryBody(_ObjectBody):
         self.obj = obj
         self.query_string = query_string
         self.response_dict = response_dict
-        self.headers = headers if headers is not None else {}
+        self.headers = dict(headers) if headers is not None else {}
         self.bytes_read = 0
 
     def read(self, length=None):
@@ -854,13 +854,15 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     path = parsed.path
     if query_string:
         path += '?' + query_string
-    headers['X-Auth-Token'] = token
+    req_headers = {'X-Auth-Token': token}
     if service_token:
-        headers['X-Service-Token'] = service_token
-    conn.request(method, path, data, headers)
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
+    conn.request(method, path, data, req_headers)
     resp = conn.getresponse()
     body = resp.read()
-    http_log((url, method,), {'headers': headers}, resp, body)
+    http_log((url, method,), {'headers': req_headers}, resp, body)
 
     store_response(resp, response_dict)
 
@@ -902,12 +904,6 @@ def get_container(url, token, container, marker=None, limit=None,
     """
     if not http_conn:
         http_conn = http_connection(url)
-    if headers:
-        headers = dict(headers)
-    else:
-        headers = {}
-    headers['X-Auth-Token'] = token
-    headers['Accept-Encoding'] = 'gzip'
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
                            delimiter, end_marker, path, http_conn,
@@ -942,17 +938,20 @@ def get_container(url, token, container, marker=None, limit=None,
         qs += '&path=%s' % quote(path)
     if query_string:
         qs += '&%s' % query_string.lstrip('?')
+    req_headers = {'X-Auth-Token': token, 'Accept-Encoding': 'gzip'}
     if service_token:
-        headers['X-Service-Token'] = service_token
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
     method = 'GET'
-    conn.request(method, '%s?%s' % (cont_path, qs), '', headers)
+    conn.request(method, '%s?%s' % (cont_path, qs), '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
     http_log(('%(url)s%(cont_path)s?%(qs)s' %
               {'url': url.replace(parsed.path, ''),
                'cont_path': cont_path,
                'qs': qs}, method,),
-             {'headers': headers}, resp, body)
+             {'headers': req_headers}, resp, body)
 
     if resp.status < 200 or resp.status >= 300:
         raise ClientException.from_response(resp, 'Container GET failed', body)
@@ -1025,23 +1024,23 @@ def put_container(url, token, container, headers=None, http_conn=None,
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'PUT'
-    if not headers:
-        headers = {}
-    headers['X-Auth-Token'] = token
+    req_headers = {'X-Auth-Token': token}
     if service_token:
-        headers['X-Service-Token'] = service_token
-    if 'content-length' not in (k.lower() for k in headers):
-        headers['Content-Length'] = '0'
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
+    if 'content-length' not in (k.lower() for k in req_headers):
+        req_headers['Content-Length'] = '0'
     if query_string:
         path += '?' + query_string.lstrip('?')
-    conn.request(method, path, '', headers)
+    conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
 
     store_response(resp, response_dict)
 
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
-             {'headers': headers}, resp, body)
+             {'headers': req_headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException.from_response(resp, 'Container PUT failed', body)
 
@@ -1068,16 +1067,18 @@ def post_container(url, token, container, headers, http_conn=None,
         parsed, conn = http_connection(url)
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'POST'
-    headers['X-Auth-Token'] = token
+    req_headers = {'X-Auth-Token': token}
     if service_token:
-        headers['X-Service-Token'] = service_token
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
     if 'content-length' not in (k.lower() for k in headers):
-        headers['Content-Length'] = '0'
-    conn.request(method, path, '', headers)
+        req_headers['Content-Length'] = '0'
+    conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
-             {'headers': headers}, resp, body)
+             {'headers': req_headers}, resp, body)
 
     store_response(resp, response_dict)
 
@@ -1374,14 +1375,16 @@ def post_object(url, token, container, name, headers, http_conn=None,
     else:
         parsed, conn = http_connection(url)
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
-    headers['X-Auth-Token'] = token
+    req_headers = {'X-Auth-Token': token}
     if service_token:
-        headers['X-Service-Token'] = service_token
-    conn.request('POST', path, '', headers)
+        req_headers['X-Service-Token'] = service_token
+    if headers:
+        req_headers.update(headers)
+    conn.request('POST', path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'POST',),
-             {'headers': headers}, resp, body)
+             {'headers': req_headers}, resp, body)
 
     store_response(resp, response_dict)
 
