@@ -1454,6 +1454,9 @@ class SwiftService(object):
         # to HEAD the first container
         for r in interruptable_as_completed(create_containers):
             res = r.result()
+            # Explicitly ignore failure to create container because of missing permission
+            if 'error' in res and res['error'].http_status == 405:
+                continue
             yield res
 
         if segment_size:
