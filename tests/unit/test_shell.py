@@ -14,8 +14,8 @@
 # limitations under the License.
 from __future__ import unicode_literals
 
+import contextlib
 from genericpath import getmtime
-
 import getpass
 import hashlib
 import json
@@ -27,7 +27,6 @@ import unittest
 import textwrap
 from time import localtime, mktime, strftime, strptime
 
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import six
 import sys
 
@@ -44,6 +43,10 @@ from swiftclient.utils import (
     EMPTY_ETAG, EXPIRES_ISO8601_FORMAT,
     SHORT_EXPIRES_ISO8601_FORMAT, TIME_ERRMSG)
 
+try:
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+except ImportError:
+    InsecureRequestWarning = None
 
 if six.PY2:
     BUILTIN_OPEN = '__builtin__.open'
@@ -112,6 +115,20 @@ def _make_cmd(cmd, opts, os_opts, use_env=False, flags=None, cmd_args=None):
         args = _make_args(cmd, opts, os_opts, separator='-', flags=flags,
                           cmd_args=cmd_args)
     return args, env
+
+
+@contextlib.contextmanager
+def patch_disable_warnings():
+    if InsecureRequestWarning is None:
+        # If InsecureRequestWarning isn't available, disbale_warnings won't
+        # be either; they both came in with
+        # https://github.com/requests/requests/commit/811ee4e and left again
+        # in https://github.com/requests/requests/commit/8e17600
+        yield None
+    else:
+        with mock.patch('requests.packages.urllib3.disable_warnings') \
+                as patched:
+            yield patched
 
 
 @mock.patch.dict(os.environ, mocked_os_environ)
@@ -2529,8 +2546,7 @@ class TestKeystoneOptions(MockHttpTest):
                         _make_fake_import_keystone_client(fake_ks)), \
                 mock.patch('swiftclient.client.http_connection', fake_conn), \
                 mock.patch.dict(os.environ, env, clear=True), \
-                mock.patch('requests.packages.urllib3.disable_warnings') as \
-                mock_disable_warnings:
+                patch_disable_warnings() as mock_disable_warnings:
             try:
                 swiftclient.shell.main(args)
             except SystemExit as e:
@@ -2538,11 +2554,12 @@ class TestKeystoneOptions(MockHttpTest):
             except SwiftError as err:
                 self.fail('Unexpected SwiftError: %s' % err)
 
-        if 'insecure' in flags:
-            self.assertEqual([mock.call(InsecureRequestWarning)],
-                             mock_disable_warnings.mock_calls)
-        else:
-            self.assertEqual([], mock_disable_warnings.mock_calls)
+        if InsecureRequestWarning is not None:
+            if 'insecure' in flags:
+                self.assertEqual([mock.call(InsecureRequestWarning)],
+                                 mock_disable_warnings.mock_calls)
+            else:
+                self.assertEqual([], mock_disable_warnings.mock_calls)
 
         if no_auth:
             # check that keystone client was not used and terminate tests

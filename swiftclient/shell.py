@@ -1942,9 +1942,14 @@ Examples:
         parser.usage = globals()['st_%s_help' % args[0]]
         if options['insecure']:
             import requests
-            from requests.packages.urllib3.exceptions import \
-                InsecureRequestWarning
-            requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+            try:
+                from requests.packages.urllib3.exceptions import \
+                    InsecureRequestWarning
+            except ImportError:
+                pass
+            else:
+                requests.packages.urllib3.disable_warnings(
+                    InsecureRequestWarning)
         try:
             globals()['st_%s' % args[0]](parser, argv[1:], output)
         except ClientException as err:

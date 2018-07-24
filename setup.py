@@ -17,16 +17,10 @@
 # THIS FILE IS MANAGED BY THE GLOBAL REQUIREMENTS REPO - DO NOT EDIT
 import setuptools, sys
 
-import setuptools
-
-# In python < 2.7.4, a lazy loading of package `pbr` will break
-# setuptools if some other modules registered functions in `atexit`.
-# solution from: http://bugs.python.org/issue15881#msg170215
-try:
-    import multiprocessing  # noqa
-except ImportError:
-    pass
+if sys.version_info < (2, 7):
+    sys.exit('Sorry, Python < 2.7 is not supported for'
+             ' python-swiftclient>=3.0')
 
 setuptools.setup(
-    setup_requires=['pbr>=2.0.0'],
+    setup_requires=['pbr'],
     pbr=True)
