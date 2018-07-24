@@ -1896,6 +1896,57 @@ class TestHTTPConnection(MockHttpTest):
         self.assertFalse(resp.read())
         self.assertTrue(resp.closed)
 
+    @unittest.skipIf(six.PY3, 'python2 specific test')
+    def test_response_python2_headers(self):
+        '''Test utf-8 headers in Python 2.
+        '''
+        _, conn = c.http_connection(u'http://www.test.com/')
+        conn.resp = MockHttpResponse(
+            status=200,
+            headers={
+                '\xd8\xaa-unicode': '\xd8\xaa-value',
+                'empty-header': ''
+            }
+        )
+
+        resp = conn.getresponse()
+        self.assertEqual(
+            '\xd8\xaa-value', resp.getheader('\xd8\xaa-unicode'))
+        self.assertEqual(
+            '\xd8\xaa-value', resp.getheader('\xd8\xaa-UNICODE'))
+        self.assertEqual('', resp.getheader('empty-header'))
+        self.assertEqual(
+            dict([('\xd8\xaa-unicode', '\xd8\xaa-value'),
+                  ('empty-header', ''),
+                  ('etag', '"%s"' % EMPTY_ETAG)]),
+            dict(resp.getheaders()))
+
+    @unittest.skipIf(six.PY2, 'python3 specific test')
+    def test_response_python3_headers(self):
+        '''Test latin1-encoded headers in Python 3.
+        '''
+        _, conn = c.http_connection(u'http://www.test.com/')
+        conn.resp = MockHttpResponse(
+            status=200,
+            headers={
+                b'\xd8\xaa-unicode'.decode('iso-8859-1'):
+                b'\xd8\xaa-value'.decode('iso-8859-1'),
+                'empty-header': ''
+            }
+        )
+
+        resp = conn.getresponse()
+        self.assertEqual(
+            '\u062a-value', resp.getheader('\u062a-unicode'))
+        self.assertEqual(
+            '\u062a-value', resp.getheader('\u062a-UNICODE'))
+        self.assertEqual('', resp.getheader('empty-header'))
+        self.assertEqual(
+            dict([('\u062a-unicode', '\u062a-value'),
+                  ('empty-header', ''),
+                  ('etag', ('"%s"' % EMPTY_ETAG))]),
+            dict(resp.getheaders()))
+
 
 class TestConnection(MockHttpTest):
 
@@ -2838,6 +2889,16 @@ class TestLogging(MockHttpTest):
             self.assertIn(token_value, output)
             self.assertIn('X-Storage-Token', output)
             self.assertIn(unicode_token_value, output)
+
+    @mock.patch('swiftclient.client.logger.debug')
+    def test_unicode_path(self, mock_log):
+        path = u'http://swift/v1/AUTH_account-\u062a'.encode('utf-8')
+        c.http_log(['GET', path], {},
+                   MockHttpResponse(status=200, headers=[]), '')
+        request_log_line = mock_log.mock_calls[0]
+        self.assertEqual('REQ: %s', request_log_line[1][0])
+        self.assertEqual(u'curl -i -X GET %s' % path.decode('utf-8'),
+                         request_log_line[1][1])
 
 
 class TestCloseConnection(MockHttpTest):

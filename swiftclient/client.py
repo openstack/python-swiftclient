@@ -151,7 +151,7 @@ def http_log(args, kwargs, resp, body):
         elif element in ('GET', 'POST', 'PUT'):
             string_parts.append(' -X %s' % element)
         else:
-            string_parts.append(' %s' % element)
+            string_parts.append(' %s' % parse_header_string(element))
     if 'headers' in kwargs:
         headers = scrub_headers(kwargs['headers'])
         for element in headers:
@@ -458,11 +458,23 @@ class HTTPConnection(object):
         self.resp.status = self.resp.status_code
         old_getheader = self.resp.raw.getheader
 
+        def _decode_header(string):
+            if string is None or six.PY2:
+                return string
+            return string.encode('iso-8859-1').decode('utf-8')
+
+        def _encode_header(string):
+            if string is None or six.PY2:
+                return string
+            return string.encode('utf-8').decode('iso-8859-1')
+
         def getheaders():
-            return self.resp.headers.items()
+            return [(_decode_header(k), _decode_header(v))
+                    for k, v in self.resp.headers.items()]
 
         def getheader(k, v=None):
-            return old_getheader(k.lower(), v)
+            return _decode_header(old_getheader(
+                _encode_header(k.lower()), _encode_header(v)))
 
         def releasing_read(*args, **kwargs):
             chunk = self.resp.raw.read(*args, **kwargs)
@@ -516,8 +528,11 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
         netloc = parsed[1]
         parsed[1] = 'snet-' + netloc
         url = urlunparse(parsed)
-    return url, resp.getheader('x-storage-token',
-                               resp.getheader('x-auth-token'))
+
+    auth_token = resp.getheader('x-auth-token')
+    if auth_token is not None:
+        auth_token = parse_header_string(auth_token)
+    return url, resp.getheader('x-storage-token', auth_token)
 
 
 def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
@@ -697,10 +712,14 @@ def get_auth(auth_url, user, key, **kwargs):
         raise ClientException('Unknown auth_version %s specified and no '
                               'session found.' % auth_version)
 
+    if token is not None:
+        token = parse_header_string(token)
     # Override storage url, if necessary
     if os_options.get('object_storage_url'):
         return os_options['object_storage_url'], token
     else:
+        if storage_url is not None:
+            return parse_header_string(storage_url), token
         return storage_url, token
 
 
