@@ -6,6 +6,7 @@
    :maxdepth: 1
 
    current
+   rocky
    queens
    pike
    ocata
