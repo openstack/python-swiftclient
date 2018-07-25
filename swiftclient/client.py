@@ -529,10 +529,8 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
         parsed[1] = 'snet-' + netloc
         url = urlunparse(parsed)
 
-    auth_token = resp.getheader('x-auth-token')
-    if auth_token is not None:
-        auth_token = parse_header_string(auth_token)
-    return url, resp.getheader('x-storage-token', auth_token)
+    token = resp.getheader('x-storage-token', resp.getheader('x-auth-token'))
+    return url, token
 
 
 def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
@@ -712,14 +710,10 @@ def get_auth(auth_url, user, key, **kwargs):
         raise ClientException('Unknown auth_version %s specified and no '
                               'session found.' % auth_version)
 
-    if token is not None:
-        token = parse_header_string(token)
     # Override storage url, if necessary
     if os_options.get('object_storage_url'):
         return os_options['object_storage_url'], token
     else:
-        if storage_url is not None:
-            return parse_header_string(storage_url), token
         return storage_url, token
 
 
