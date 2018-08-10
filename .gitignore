@@ -16,3 +16,4 @@ cover/
 coverage.xml
 doc/build
 doc/source/api/
+.idea
