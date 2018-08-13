@@ -1,3 +1,59 @@
+- job:
+    name: swiftclient-swift-functional
+    parent: swift-dsvm-functional
+    description: |
+      Run swift's functional tests with python-swiftclient
+      installed from source instead as package from PyPI.
+    # Ensure that we install python-swiftclient from git and
+    # do not install from pypi. This is needed since the parent
+    # job sets zuul_work_dir to the swift directory and uses tox
+    # for installation.
+    required-projects:
+      - git.openstack.org/openstack/python-swiftclient
+
+- job:
+    name: swiftclient-swift-functional-identity-v2
+    parent: swift-dsvm-functional-identity-v2
+    description: |
+      Run swift's functional tests with python-swiftclient
+      installed from source instead as package from PyPI.
+
+      This uses Identity API 2.0.
+    # Ensure that we install python-swiftclient from git and
+    # do not install from pypi. This is needed since the parent
+    # job sets zuul_work_dir to the swift directory and uses tox
+    # for installation.
+    required-projects:
+      - git.openstack.org/openstack/python-swiftclient
+
+- job:
+    name: swiftclient-functional
+    parent: swift-dsvm-functional
+    description: |
+      Run functional tests of python-swiftclient with
+      python-swiftclient installed from source instead as package from
+      PyPI.
+
+      This uses Identity API 2.0.
+    required-projects:
+      - git.openstack.org/openstack/python-swiftclient
+    vars:
+      # Override value from parent job to use swiftclient tests
+      zuul_work_dir: "{{ zuul.projects['git.openstack.org/openstack/python-swiftclient'].src_dir }}"
+
+- job:
+    name: swiftclient-functional-identity-v2
+    parent: swift-dsvm-functional-identity-v2
+    description: |
+      Run functional tests of python-swiftclient with
+      python-swiftclient installed from source instead as package from
+      PyPI.
+    required-projects:
+      - git.openstack.org/openstack/python-swiftclient
+    vars:
+      # Override value from parent job to use swiftclient tests
+      zuul_work_dir: "{{ zuul.projects['git.openstack.org/openstack/python-swiftclient'].src_dir }}"
+
 - project:
     templates:
       - openstack-python-jobs
@@ -9,18 +65,20 @@
       - release-notes-jobs
     check:
       jobs:
-        - legacy-swift-dsvm-functional
-        - legacy-swift-dsvm-functional-identity-v3-only:
+        - swiftclient-swift-functional:
             voting: false
-        - legacy-swiftclient-dsvm-functional
-        - legacy-swiftclient-dsvm-functional-identity-v3-only:
+        - swiftclient-functional:
             voting: false
+        - swiftclient-swift-functional-identity-v2
+        - swiftclient-functional-identity-v2
         - openstack-tox-py36:
             voting: false
     gate:
       jobs:
-        - legacy-swift-dsvm-functional
-        - legacy-swiftclient-dsvm-functional
+        - swiftclient-swift-functional
+        - swiftclient-functional
+        - swiftclient-swift-functional-identity-v2
+        - swiftclient-functional-identity-v2
     post:
       jobs:
         - openstack-tox-cover
