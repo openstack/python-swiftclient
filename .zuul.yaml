@@ -1,3 +1,31 @@
+- job:
+    name: swiftclient-functional
+    description: |
+      Legacy swiftclient funcional jobs for Ocata only.
+    parent: legacy-dsvm-base
+    run: playbooks/swiftclient-dsvm-functional/run.yaml
+    post-run: playbooks/swiftclient-dsvm-functional/post.yaml
+    timeout: 6000
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/python-swiftclient
+      - openstack/swift
+
+- job:
+    name: swiftclient-functional-identity-v3-only
+    parent: legacy-dsvm-base
+    description: |
+      Legacy swiftclient funcional jobs for Ocata only.
+
+      This uses Identity API v3.
+    run: playbooks/swiftclient-dsvm-functional-identity-v3-only/run.yaml
+    post-run: playbooks/swiftclient-dsvm-functional-identity-v3-only/post.yaml
+    timeout: 6000
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/python-swiftclient
+      - openstack/swift
+
 - project:
     templates:
       - openstack-python-jobs
@@ -9,18 +37,18 @@
       - release-notes-jobs
     check:
       jobs:
-        - legacy-swift-dsvm-functional
-        - legacy-swift-dsvm-functional-identity-v3-only:
+        - swift-dsvm-functional
+        - swift-dsvm-functional-identity-v3-only:
             voting: false
-        - legacy-swiftclient-dsvm-functional
-        - legacy-swiftclient-dsvm-functional-identity-v3-only:
+        - swiftclient-functional
+        - swiftclient-functional-identity-v3-only:
             voting: false
         - openstack-tox-py36:
             voting: false
     gate:
       jobs:
-        - legacy-swift-dsvm-functional
-        - legacy-swiftclient-dsvm-functional
+        - swift-dsvm-functional
+        - swiftclient-functional
     post:
       jobs:
         - openstack-tox-cover
