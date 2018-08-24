@@ -1,0 +1,26 @@
+- project:
+    templates:
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - publish-openstack-sphinx-docs
+      - check-requirements
+      - openstack-pypy-jobs-nonvoting
+      - lib-forward-testing
+      - release-notes-jobs
+    check:
+      jobs:
+        - legacy-swift-dsvm-functional
+        - legacy-swift-dsvm-functional-identity-v3-only:
+            voting: false
+        - legacy-swiftclient-dsvm-functional
+        - legacy-swiftclient-dsvm-functional-identity-v3-only:
+            voting: false
+        - openstack-tox-py36:
+            voting: false
+    gate:
+      jobs:
+        - legacy-swift-dsvm-functional
+        - legacy-swiftclient-dsvm-functional
+    post:
+      jobs:
+        - openstack-tox-cover
