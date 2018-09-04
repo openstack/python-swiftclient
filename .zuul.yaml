@@ -17,8 +17,6 @@
         - legacy-swiftclient-dsvm-functional
         - legacy-swiftclient-dsvm-functional-identity-v3-only:
             voting: false
-        - openstack-tox-py36:
-            voting: false
     gate:
       jobs:
         - openstack-tox-lower-constraints
