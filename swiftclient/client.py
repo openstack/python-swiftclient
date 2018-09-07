@@ -60,6 +60,19 @@ except ImportError:
         def createLock(self):
             self.lock = None
 
+ksexceptions = ksclient_v2 = ksclient_v3 = None
+try:
+    from keystoneclient import exceptions as ksexceptions
+    # prevent keystoneclient warning us that it has no log handlers
+    logging.getLogger('keystoneclient').addHandler(NullHandler())
+    from keystoneclient.v2_0 import client as ksclient_v2
+except ImportError:
+    pass
+try:
+    from keystoneclient.v3 import client as ksclient_v3
+except ImportError:
+    pass
+
 # requests version 1.2.3 try to encode headers in ascii, preventing
 # utf-8 encoded header to be 'prepared'
 if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
@@ -540,25 +553,6 @@ def get_keystoneclient_2_0(auth_url, user, key, os_options, **kwargs):
     return get_auth_keystone(auth_url, user, key, os_options, **kwargs)
 
 
-def _import_keystone_client(auth_version):
-    # the attempted imports are encapsulated in this function to allow
-    # mocking for tests
-    try:
-        if auth_version in AUTH_VERSIONS_V3:
-            from keystoneclient.v3 import client as ksclient
-        else:
-            from keystoneclient.v2_0 import client as ksclient
-        from keystoneclient import exceptions
-        # prevent keystoneclient warning us that it has no log handlers
-        logging.getLogger('keystoneclient').addHandler(NullHandler())
-        return ksclient, exceptions
-    except ImportError:
-        raise ClientException('''
-Auth versions 2.0 and 3 require python-keystoneclient, install it or use Auth
-version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
-variables to be set or overridden with -A, -U, or -K.''')
-
-
 def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     """
     Authenticate against a keystone server.
@@ -587,7 +581,20 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
     # Legacy default if not set
     if auth_version is None:
         auth_version = '2'
-    ksclient, exceptions = _import_keystone_client(auth_version)
+
+    ksclient = None
+    if auth_version in AUTH_VERSIONS_V3:
+        if ksclient_v3 is not None:
+            ksclient = ksclient_v3
+    else:
+        if ksclient_v2 is not None:
+            ksclient = ksclient_v2
+
+    if ksclient is None:
+        raise ClientException('''
+Auth versions 2.0 and 3 require python-keystoneclient, install it or use Auth
+version 1.0 which requires ST_AUTH, ST_USER, and ST_KEY environment
+variables to be set or overridden with -A, -U, or -K.''')
 
     try:
         _ksclient = ksclient.Client(
@@ -608,13 +615,13 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
             cert=kwargs.get('cert'),
             key=kwargs.get('cert_key'),
             auth_url=auth_url, insecure=insecure, timeout=timeout)
-    except exceptions.Unauthorized:
+    except ksexceptions.Unauthorized:
         msg = 'Unauthorized. Check username, password and tenant name/id.'
         if auth_version in AUTH_VERSIONS_V3:
             msg = ('Unauthorized. Check username/id, password, '
                    'tenant name/id and user/tenant domain name/id.')
         raise ClientException(msg)
-    except exceptions.AuthorizationFailure as err:
+    except ksexceptions.AuthorizationFailure as err:
         raise ClientException('Authorization Failure. %s' % err)
     service_type = os_options.get('service_type') or 'object-store'
     endpoint_type = os_options.get('endpoint_type') or 'publicURL'
@@ -627,7 +634,7 @@ def get_auth_keystone(auth_url, user, key, os_options, **kwargs):
             service_type=service_type,
             endpoint_type=endpoint_type,
             **filter_kwargs)
-    except exceptions.EndpointNotFound:
+    except ksexceptions.EndpointNotFound:
         raise ClientException('Endpoint for %s not found - '
                               'have you specified a region?' % service_type)
     return endpoint, _ksclient.auth_token
