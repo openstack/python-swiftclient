@@ -24,6 +24,14 @@
       # Override value from parent job to use swiftclient tests
       zuul_work_dir: "{{ zuul.projects['git.openstack.org/openstack/python-swiftclient'].src_dir }}"
 
+- job:
+    name: swiftclient-functional-py2
+    parent: swiftclient-functional
+    description: |
+      Run functional tests of python-swiftclient under Python 2
+    vars:
+      tox_envlist: py2func
+
 - project:
     templates:
       - openstack-python-jobs
@@ -38,11 +46,13 @@
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
+        - swiftclient-functional-py2
         - openstack-tox-lower-constraints
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
+        - swiftclient-functional-py2
         - openstack-tox-lower-constraints
     post:
       jobs:
