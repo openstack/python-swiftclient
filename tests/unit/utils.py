@@ -542,14 +542,6 @@ class FakeKeystone(object):
         pass
 
 
-def _make_fake_import_keystone_client(fake_import):
-    def _fake_import_keystone_client(auth_version):
-        fake_import.auth_version = auth_version
-        return fake_import, fake_import
-
-    return _fake_import_keystone_client
-
-
 class FakeStream(object):
     def __init__(self, size):
         self.bytes_read = 0

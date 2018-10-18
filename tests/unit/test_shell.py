@@ -37,7 +37,7 @@ import swiftclient.utils
 
 from os.path import basename, dirname
 from .utils import (
-    CaptureOutput, fake_get_auth_keystone, _make_fake_import_keystone_client,
+    CaptureOutput, fake_get_auth_keystone,
     FakeKeystone, StubResponse, MockHttpTest)
 from swiftclient.utils import (
     EMPTY_ETAG, EXPIRES_ISO8601_FORMAT,
@@ -2534,7 +2534,17 @@ class TestKeystoneOptions(MockHttpTest):
                               cmd_args=cmd_args)
         ks_endpoint = 'http://example.com:8080/v1/AUTH_acc'
         ks_token = 'fake_auth_token'
+        # check correct auth version gets used
+        key = 'auth-version'
         fake_ks = FakeKeystone(endpoint=ks_endpoint, token=ks_token)
+        if no_auth:
+            fake_ks2 = fake_ks3 = None
+        elif opts.get(key, self.defaults.get(key)) == '2.0':
+            fake_ks2 = fake_ks
+            fake_ks3 = None
+        else:
+            fake_ks2 = None
+            fake_ks3 = fake_ks
         # fake_conn will check that storage_url and auth_token are as expected
         endpoint = os_opts.get('storage-url', ks_endpoint)
         token = os_opts.get('auth-token', ks_token)
@@ -2542,8 +2552,8 @@ class TestKeystoneOptions(MockHttpTest):
                                               storage_url=endpoint,
                                               auth_token=token)
 
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)), \
+        with mock.patch('swiftclient.client.ksclient_v2', fake_ks2), \
+                mock.patch('swiftclient.client.ksclient_v3', fake_ks3), \
                 mock.patch('swiftclient.client.http_connection', fake_conn), \
                 mock.patch.dict(os.environ, env, clear=True), \
                 patch_disable_warnings() as mock_disable_warnings:
@@ -2562,15 +2572,10 @@ class TestKeystoneOptions(MockHttpTest):
                 self.assertEqual([], mock_disable_warnings.mock_calls)
 
         if no_auth:
-            # check that keystone client was not used and terminate tests
-            self.assertIsNone(getattr(fake_ks, 'auth_version'))
-            self.assertEqual(len(fake_ks.calls), 0)
+            # We patched out both keystoneclient versions to be None;
+            # they *can't* have been used and if we tried to, we would
+            # have raised ClientExceptions
             return
-
-        # check correct auth version was passed to _import_keystone_client
-        key = 'auth-version'
-        expected = opts.get(key, self.defaults.get(key))
-        self.assertEqual(expected, fake_ks.auth_version)
 
         # check args passed to keystone Client __init__
         self.assertEqual(len(fake_ks.calls), 1)
@@ -2942,9 +2947,9 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         self.account = 'AUTH_alice'
 
         # keystone returns endpoint for another account
-        fake_ks = FakeKeystone(endpoint='http://example.com:8080/v1/AUTH_bob',
-                               token='bob_token')
-        self.fake_ks_import = _make_fake_import_keystone_client(fake_ks)
+        self.fake_ks = FakeKeystone(
+            endpoint='http://example.com:8080/v1/AUTH_bob',
+            token='bob_token')
 
         self.cont = 'c1'
         self.cont_path = '/v1/%s/%s' % (self.account, self.cont)
@@ -3023,8 +3028,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
         args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
                                                        '--leave-segments'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3046,8 +3050,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
                                               on_request=req_handler)
         args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
                                                        '--leave-segments'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3073,8 +3076,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
                                              '--segment-size=10',
                                              '--segment-container=%s'
                                              % self.cont])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3112,8 +3114,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
                                    cmd_args=[self.cont, self.obj,
                                              '--leave-segments',
                                              '--segment-size=10'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3149,8 +3150,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
         args, env = self._make_cmd('upload', cmd_args=[self.cont, self.obj,
                                                        '--leave-segments'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3207,8 +3207,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         args, env = self._make_cmd('download', cmd_args=[self.cont,
                                                          self.obj.lstrip('/'),
                                                          '--no-download'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3229,8 +3228,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         args, env = self._make_cmd('download', cmd_args=[self.cont,
                                                          self.obj.lstrip('/'),
                                                          '--no-download'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3248,8 +3246,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         args, env = self._make_cmd('download', cmd_args=[self.cont,
                                                          self.obj.lstrip('/'),
                                                          '--no-download'])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3273,8 +3270,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         fake_conn = self.fake_http_connection(resp, on_request=req_handler)
 
         args, env = self._make_cmd('download', cmd_args=[self.cont])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:
@@ -3291,8 +3287,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         fake_conn = self.fake_http_connection(403)
 
         args, env = self._make_cmd('download', cmd_args=[self.cont])
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        self.fake_ks_import):
+        with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):
             with mock.patch('swiftclient.client.http_connection', fake_conn):
                 with mock.patch.dict(os.environ, env):
                     with CaptureOutput() as out:

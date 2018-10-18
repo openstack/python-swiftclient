@@ -29,7 +29,7 @@ from six.moves.urllib.parse import urlparse
 from requests.exceptions import RequestException
 
 from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
-                    FakeKeystone, _make_fake_import_keystone_client)
+                    FakeKeystone)
 
 from swiftclient.utils import EMPTY_ETAG
 from swiftclient.exceptions import ClientException
@@ -322,8 +322,7 @@ class TestGetAuth(MockHttpTest):
         # TestConnection.test_timeout_passed_down but is required to check that
         # get_auth does the right thing when it is not passed a timeout arg
         fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v2', fake_ks):
             c.get_auth('http://www.test.com', 'asdf', 'asdf',
                        os_options=dict(tenant_name='tenant'),
                        auth_version="2.0", timeout=42.0)
@@ -580,8 +579,7 @@ class TestGetAuth(MockHttpTest):
     def test_get_auth_keystone_versionless(self):
         fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
 
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v3', fake_ks):
             c.get_auth_keystone('http://authurl', 'user', 'key', {})
         self.assertEqual(1, len(fake_ks.calls))
         self.assertEqual('http://authurl/v3', fake_ks.calls[0].get('auth_url'))
@@ -589,8 +587,7 @@ class TestGetAuth(MockHttpTest):
     def test_get_auth_keystone_versionless_auth_version_set(self):
         fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
 
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v2', fake_ks):
             c.get_auth_keystone('http://auth_url', 'user', 'key',
                                 {}, auth_version='2.0')
         self.assertEqual(1, len(fake_ks.calls))
@@ -600,8 +597,7 @@ class TestGetAuth(MockHttpTest):
     def test_get_auth_keystone_versionful(self):
         fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
 
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v3', fake_ks):
             c.get_auth_keystone('http://auth_url/v3', 'user', 'key',
                                 {}, auth_version='3')
         self.assertEqual(1, len(fake_ks.calls))
@@ -611,8 +607,7 @@ class TestGetAuth(MockHttpTest):
     def test_get_auth_keystone_devstack_versionful(self):
         fake_ks = FakeKeystone(
             endpoint='http://storage.example.com/v1/AUTH_user', token='secret')
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v3', fake_ks):
             c.get_auth_keystone('https://192.168.8.8/identity/v3',
                                 'user', 'key', {}, auth_version='3')
         self.assertEqual(1, len(fake_ks.calls))
@@ -622,8 +617,7 @@ class TestGetAuth(MockHttpTest):
     def test_get_auth_keystone_devstack_versionless(self):
         fake_ks = FakeKeystone(
             endpoint='http://storage.example.com/v1/AUTH_user', token='secret')
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v3', fake_ks):
             c.get_auth_keystone('https://192.168.8.8/identity',
                                 'user', 'key', {}, auth_version='3')
         self.assertEqual(1, len(fake_ks.calls))
@@ -634,8 +628,7 @@ class TestGetAuth(MockHttpTest):
         fake_ks = FakeKeystone(
             endpoint='http://storage.example.com/v1/AUTH_user',
             token='secret')
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v3', fake_ks):
             c.get_auth_keystone('http://blah.example.com/v2moo',
                                 'user', 'key', {}, auth_version='3')
         self.assertEqual(1, len(fake_ks.calls))
@@ -2456,8 +2449,7 @@ class TestConnection(MockHttpTest):
             'http://auth.example.com', 'user', 'password', timeout=33.0,
             os_options=os_options, auth_version=2.0)
         fake_ks = FakeKeystone(endpoint='http://some_url', token='secret')
-        with mock.patch('swiftclient.client._import_keystone_client',
-                        _make_fake_import_keystone_client(fake_ks)):
+        with mock.patch('swiftclient.client.ksclient_v2', fake_ks):
             with mock.patch.multiple('swiftclient.client',
                                      http_connection=shim_connection,
                                      sleep=mock.DEFAULT):
