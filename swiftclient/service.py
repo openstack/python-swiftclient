@@ -1736,6 +1736,12 @@ class SwiftService(object):
             'log_line': '%s segment %s' % (obj_name, segment_index),
         }
         fp = None
+
+        header_opts={}
+        for head in options['header']:
+                t = head.split(":")
+                header_opts[t[0].strip()] = t[1].strip()
+
         try:
             fp = open(path, 'rb', DISK_BUFFER)
             fp.seek(segment_start)
@@ -1747,7 +1753,8 @@ class SwiftService(object):
                 contents,
                 content_length=segment_size,
                 content_type='application/swiftclient-segment',
-                response_dict=results_dict)
+                response_dict=results_dict,
+                headers=header_opts)
 
             if options['checksum'] and etag and etag != contents.get_md5sum():
                 raise SwiftError('Segment {0}: upload verification failed: '
