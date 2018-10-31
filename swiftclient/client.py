@@ -1874,7 +1874,7 @@ class Connection(object):
                                   'ability to reset contents for reupload.'
                                   % (container, obj))
 
-        if isinstance(contents, str) or not contents:
+        if isinstance(contents, six.binary_type) or isinstance(contents, six.string_types) or not contents:
             # if its a str or None then you can retry as much as you want
             reset_func = None
         else:
