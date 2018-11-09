@@ -78,6 +78,10 @@ class StubResponse(object):
         self.body = body
         self.headers = headers or {}
 
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (self.__class__.__name__, self.status,
+                                   self.body, self.headers)
+
 
 def fake_http_connect(*code_iter, **kwargs):
     """
@@ -102,7 +106,6 @@ def fake_http_connect(*code_iter, **kwargs):
             self.etag = etag
             self.content = self.body = body
             self.timestamp = timestamp
-            self._is_closed = True
             self.headers = headers or {}
             self.request = None
 
@@ -161,6 +164,9 @@ def fake_http_connect(*code_iter, **kwargs):
 
         def getheader(self, name, default=None):
             return dict(self.getheaders()).get(name.lower(), default)
+
+        def close(self):
+            pass
 
     timestamps_iter = iter(kwargs.get('timestamps') or ['1'] * len(code_iter))
     etag_iter = iter(kwargs.get('etags') or [None] * len(code_iter))
@@ -228,7 +234,8 @@ class MockHttpTest(unittest.TestCase):
                 parsed, _conn = _orig_http_connection(url, proxy=proxy)
 
                 class RequestsWrapper(object):
-                    pass
+                    def close(self):
+                        pass
                 conn = RequestsWrapper()
 
                 def request(method, path, *args, **kwargs):

@@ -402,6 +402,7 @@ class HTTPConnection(object):
         self.request_session = requests.Session()
         # Don't use requests's default headers
         self.request_session.headers = None
+        self.resp = None
         if self.parsed_url.scheme not in ('http', 'https'):
             raise ClientException('Unsupported scheme "%s" in url "%s"'
                                   % (self.parsed_url.scheme, url))
@@ -506,6 +507,11 @@ class HTTPConnection(object):
 
         return self.resp
 
+    def close(self):
+        if self.resp:
+            self.resp.close()
+        self.request_session.close()
+
 
 def http_connection(*arg, **kwarg):
     """:returns: tuple of (parsed url, connection object)"""
@@ -527,6 +533,8 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
     conn.request(method, parsed.path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    resp.close()
+    conn.close()
     http_log((url, method,), headers, resp, body)
     url = resp.getheader('x-storage-url')
 
@@ -1651,11 +1659,8 @@ class Connection(object):
         if (self.http_conn and isinstance(self.http_conn, tuple)
                 and len(self.http_conn) > 1):
             conn = self.http_conn[1]
-            if hasattr(conn, 'close') and callable(conn.close):
-                # XXX: Our HTTPConnection object has no close, should be
-                # trying to close the requests.Session here?
-                conn.close()
-                self.http_conn = None
+            conn.close()
+            self.http_conn = None
 
     def get_auth(self):
         self.url, self.token = get_auth(self.authurl, self.user, self.key,
@@ -1715,10 +1720,10 @@ class Connection(object):
             try:
                 if not self.url or not self.token:
                     self.url, self.token = self.get_auth()
-                    self.http_conn = None
+                    self.close()
                 if self.service_auth and not self.service_token:
                     self.url, self.service_token = self.get_service_auth()
-                    self.http_conn = None
+                    self.close()
                 self.auth_end_time = time()
                 if not self.http_conn:
                     self.http_conn = self.http_connection()
@@ -1908,8 +1913,7 @@ class Connection(object):
         url = url or self.url
         if not url:
             url, _ = self.get_auth()
-        scheme = urlparse(url).scheme
-        netloc = urlparse(url).netloc
-        url = scheme + '://' + netloc + '/info'
-        http_conn = self.http_connection(url)
-        return get_capabilities(http_conn)
+        parsed = urlparse(urljoin(url, '/info'))
+        if not self.http_conn:
+            self.http_conn = self.http_connection(url)
+        return get_capabilities((parsed, self.http_conn[1]))

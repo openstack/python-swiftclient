@@ -108,6 +108,7 @@ class TestFunctional(unittest.TestCase):
                 self.conn.delete_container(container)
             except swiftclient.ClientException:
                 pass
+        self.conn.close()
 
     def _check_account_headers(self, headers):
         headers_to_check = [

@@ -2532,6 +2532,9 @@ class TestConnection(MockHttpTest):
             def read(self, *args, **kwargs):
                 return ''
 
+            def close(self):
+                pass
+
         def local_http_connection(url, proxy=None, cacert=None,
                                   insecure=False, cert=None, cert_key=None,
                                   ssl_compression=True, timeout=None):
@@ -2901,6 +2904,9 @@ class TestCloseConnection(MockHttpTest):
         self.assertIsNone(conn.http_conn)
         conn.close()
         self.assertIsNone(conn.http_conn)
+        # Can re-close
+        conn.close()
+        self.assertIsNone(conn.http_conn)
 
     def test_close_ok(self):
         url = 'http://www.test.com'
@@ -2911,7 +2917,7 @@ class TestCloseConnection(MockHttpTest):
         self.assertEqual(len(conn.http_conn), 2)
         http_conn_obj = conn.http_conn[1]
         self.assertIsInstance(http_conn_obj, c.HTTPConnection)
-        self.assertFalse(hasattr(http_conn_obj, 'close'))
+        self.assertTrue(hasattr(http_conn_obj, 'close'))
         conn.close()
 
 
