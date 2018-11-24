@@ -704,6 +704,18 @@ class TestGetAccount(MockHttpTest):
                 'x-auth-token': 'asdf'}),
         ])
 
+    def test_param_delimiter(self):
+        c.http_connection = self.fake_http_connection(
+            204,
+            query_string="format=json&delimiter=-")
+        c.get_account('http://www.test.com/v1/acct', 'asdf',
+                      delimiter='-')
+        self.assertRequests([
+            ('GET', '/v1/acct?format=json&delimiter=-', '', {
+                'accept-encoding': 'gzip',
+                'x-auth-token': 'asdf'}),
+        ])
+
 
 class TestHeadAccount(MockHttpTest):
 
