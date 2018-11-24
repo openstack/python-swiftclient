@@ -2,9 +2,13 @@
 set -e
 
 export OS_TEST_PATH='tests.functional'
-python setup.py testr --coverage --testr-args="--concurrency=1"
+export PYTHON='coverage run --source swiftclient --parallel-mode'
+stestr run --concurrency=1
 
 RET=$?
+coverage combine
+coverage html -d cover
+coverage xml -o cover/coverage.xml
 coverage report -m
 rm -f .coverage
 exit $RET
