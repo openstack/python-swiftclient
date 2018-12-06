@@ -757,7 +757,7 @@ def store_response(resp, response_dict):
 
 def get_account(url, token, marker=None, limit=None, prefix=None,
                 end_marker=None, http_conn=None, full_listing=False,
-                service_token=None, headers=None):
+                service_token=None, headers=None, delimiter=None):
     """
     Get a listing of containers for the account.
 
@@ -773,6 +773,7 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
                          of 10000 listings
     :param service_token: service auth token
     :param headers: additional headers to include in the request
+    :param delimiter: delimiter query
     :returns: a tuple of (response headers, a list of containers) The response
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
@@ -786,14 +787,14 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     if not http_conn:
         http_conn = http_connection(url)
     if full_listing:
-        rv = get_account(url, token, marker, limit, prefix,
-                         end_marker, http_conn, headers=req_headers)
+        rv = get_account(url, token, marker, limit, prefix, end_marker,
+                         http_conn, headers=req_headers, delimiter=delimiter)
         listing = rv[1]
         while listing:
             marker = listing[-1]['name']
             listing = get_account(url, token, marker, limit, prefix,
-                                  end_marker, http_conn,
-                                  headers=req_headers)[1]
+                                  end_marker, http_conn, headers=req_headers,
+                                  delimiter=delimiter)[1]
             if listing:
                 rv[1].extend(listing)
         return rv
@@ -805,6 +806,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
         qs += '&limit=%d' % limit
     if prefix:
         qs += '&prefix=%s' % quote(prefix)
+    if delimiter:
+        qs += '&delimiter=%s' % quote(delimiter)
     if end_marker:
         qs += '&end_marker=%s' % quote(end_marker)
     full_path = '%s?%s' % (parsed.path, qs)
@@ -1779,14 +1782,16 @@ class Connection(object):
         return self._retry(None, head_account, headers=headers)
 
     def get_account(self, marker=None, limit=None, prefix=None,
-                    end_marker=None, full_listing=False, headers=None):
+                    end_marker=None, full_listing=False, headers=None,
+                    delimiter=None):
         """Wrapper for :func:`get_account`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
         # retries where it left off.
         return self._retry(None, get_account, marker=marker, limit=limit,
                            prefix=prefix, end_marker=end_marker,
-                           full_listing=full_listing, headers=headers)
+                           full_listing=full_listing, headers=headers,
+                           delimiter=delimiter)
 
     def post_account(self, headers, response_dict=None,
                      query_string=None, data=None):

@@ -154,6 +154,18 @@ class TestFunctional(unittest.TestCase):
         self.assertTrue(len(containers) >= 1)
         self.assertEqual(self.containername_2, containers[0].get('name'))
 
+        # Test prefix
+        _, containers = self.conn.get_account(prefix='dne')
+        self.assertEqual(0, len(containers))
+
+        # Test delimiter
+        _, containers = self.conn.get_account(
+            prefix=self.containername, delimiter='_')
+        self.assertEqual(2, len(containers))
+        self.assertEqual(self.containername, containers[0].get('name'))
+        self.assertTrue(
+            self.containername_2.startswith(containers[1].get('subdir')))
+
     def _check_container_headers(self, headers):
         self.assertTrue(headers.get('content-length'))
         self.assertTrue(headers.get('x-container-object-count'))
