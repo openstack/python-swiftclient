@@ -1462,8 +1462,9 @@ def st_bash_completion(parser, args, thread_manager, return_parser=False):
             return
     else:
         fn_commands = [fn for fn in globals().keys()
-                       if fn.startswith('st_') and not fn.endswith('_options')
-                       and not fn.endswith('_help')]
+                       if fn.startswith('st_') and
+                       not fn.endswith('_options') and
+                       not fn.endswith('_help')]
 
     subparsers = parser.add_subparsers()
     subcommands = {}

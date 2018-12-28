@@ -1996,8 +1996,8 @@ class TestBase(unittest.TestCase):
         self._environ_vars = {}
         keys = list(os.environ.keys())
         for k in keys:
-            if (k in ('ST_KEY', 'ST_USER', 'ST_AUTH')
-                    or k.startswith('OS_')):
+            if (k in ('ST_KEY', 'ST_USER', 'ST_AUTH') or
+                    k.startswith('OS_')):
                 self._environ_vars[k] = os.environ.pop(k)
 
     def _replace_swift_env_vars(self):
@@ -2979,12 +2979,12 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
             Modify response code to 200 if cross account permissions match.
             """
             status = 403
-            if (path.startswith('/v1/%s/%s' % (self.account, self.cont))
-                    and read_ok and method in ('GET', 'HEAD')):
+            if (path.startswith('/v1/%s/%s' % (self.account, self.cont)) and
+                    read_ok and method in ('GET', 'HEAD')):
                 status = 200
             elif (path.startswith('/v1/%s/%s%s'
-                                  % (self.account, self.cont, self.obj))
-                    and write_ok and method in ('PUT', 'POST', 'DELETE')):
+                                  % (self.account, self.cont, self.obj)) and
+                    write_ok and method in ('PUT', 'POST', 'DELETE')):
                 status = 200
             return status
         return on_request
