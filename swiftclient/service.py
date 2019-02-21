@@ -451,7 +451,9 @@ class SwiftService(object):
                 **_default_local_options
             )
         process_options(self._options)
-        create_connection = lambda: get_conn(self._options)
+
+        def create_connection():
+            return get_conn(self._options)
         self.thread_manager = MultiThreadingManager(
             create_connection,
             segment_threads=self._options['segment_threads'],
