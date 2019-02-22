@@ -424,8 +424,8 @@ class _SwiftReader(object):
                                  '{1} != {2}'.format(
                                      self._path, etag, self._expected_md5))
 
-        if (self._content_length is not None
-                and self._actual_read != self._content_length):
+        if (self._content_length is not None and
+                self._actual_read != self._content_length):
             raise SwiftError('Error downloading {0}: read_length != '
                              'content_length, {1:d} != {2:d}'.format(
                                  self._path, self._actual_read,
@@ -1244,8 +1244,8 @@ class SwiftService(object):
                 bytes_read = obj_body.bytes_read()
                 if fp is not None:
                     fp.close()
-                    if ('x-object-meta-mtime' in headers and not no_file
-                            and not options['ignore_mtime']):
+                    if ('x-object-meta-mtime' in headers and not no_file and
+                            not options['ignore_mtime']):
                         try:
                             mtime = float(headers['x-object-meta-mtime'])
                         except ValueError:
@@ -2036,8 +2036,8 @@ class SwiftService(object):
             new_slo_manifest_paths = set()
             segment_size = int(0 if options['segment_size'] is None
                                else options['segment_size'])
-            if (options['changed'] or options['skip_identical']
-                    or not options['leave_segments']):
+            if (options['changed'] or options['skip_identical'] or
+                    not options['leave_segments']):
                 try:
                     headers = conn.head_object(container, obj)
                     is_slo = config_true_value(
@@ -2058,9 +2058,9 @@ class SwiftService(object):
 
                     cl = int(headers.get('content-length'))
                     mt = headers.get('x-object-meta-mtime')
-                    if (path is not None and options['changed']
-                            and cl == getsize(path)
-                            and mt == put_headers['x-object-meta-mtime']):
+                    if (path is not None and options['changed'] and
+                            cl == getsize(path) and
+                            mt == put_headers['x-object-meta-mtime']):
                         res.update({
                             'success': True,
                             'status': 'skipped-changed'
@@ -2095,8 +2095,8 @@ class SwiftService(object):
             # a segment job if we're reading from a stream - we may fail if we
             # go over the single object limit, but this gives us a nice way
             # to create objects from memory
-            if (path is not None and segment_size
-                    and (getsize(path) > segment_size)):
+            if (path is not None and segment_size and
+                    (getsize(path) > segment_size)):
                 res['large_object'] = True
                 seg_container = container + '_segments'
                 if options['segment_container']:
@@ -2425,8 +2425,8 @@ class SwiftService(object):
 
                             # Cancel the remaining container deletes, but yield
                             # any pending results
-                            if (not cancelled and options['fail_fast']
-                                    and not res['success']):
+                            if (not cancelled and options['fail_fast'] and
+                                    not res['success']):
                                 cancelled = True
 
     def _bulk_delete_page_size(self, objects):

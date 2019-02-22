@@ -248,8 +248,8 @@ def encode_meta_headers(headers):
         value = encode_utf8(value)
         header = header.lower()
 
-        if (isinstance(header, six.string_types)
-                and header.startswith(USER_METADATA_TYPE)):
+        if (isinstance(header, six.string_types) and
+                header.startswith(USER_METADATA_TYPE)):
             header = encode_utf8(header)
 
         ret[header] = value
@@ -706,9 +706,9 @@ def get_auth(auth_url, user, key, **kwargs):
         if kwargs.get('tenant_name'):
             os_options['tenant_name'] = kwargs['tenant_name']
 
-        if not (os_options.get('tenant_name') or os_options.get('tenant_id')
-                or os_options.get('project_name')
-                or os_options.get('project_id')):
+        if not (os_options.get('tenant_name') or os_options.get('tenant_id') or
+                os_options.get('project_name') or
+                os_options.get('project_id')):
             if auth_version in AUTH_VERSIONS_V2:
                 raise ClientException('No tenant specified')
             raise ClientException('No project name or project id specified.')
@@ -1659,8 +1659,8 @@ class Connection(object):
         self.force_auth_retry = force_auth_retry
 
     def close(self):
-        if (self.http_conn and isinstance(self.http_conn, tuple)
-                and len(self.http_conn) > 1):
+        if (self.http_conn and isinstance(self.http_conn, tuple) and
+                len(self.http_conn) > 1):
             conn = self.http_conn[1]
             conn.close()
             self.http_conn = None
