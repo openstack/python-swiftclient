@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Added the delimiter keyword parameter to ``get_account()`` to match the
+    functionality of ``get_container()``.
+
+  - |
+    Fixed an issue in the client module where socket connections weren't
+    closed properly before being dereferenced.
+
+  - |
+    Various other minor bug fixes and improvements.
