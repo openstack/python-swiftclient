@@ -245,13 +245,10 @@ storage URL options shown below:
           --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \
           list
 
-.. We need the backslash below in order to indent the note
-\
+.. note::
 
-  .. note::
-
-     Leftover environment variables are a common source of confusion when
-     authorization fails.
+   Leftover environment variables are a common source of confusion when
+   authorization fails.
 
 CLI commands
 ~~~~~~~~~~~~
@@ -739,15 +736,15 @@ is passed, the Unix timestamp when the temporary URL will expire.
 But beyond that, ``time`` can also be specified as an ISO 8601 timestamp
 in one of following formats:
 
-    i) Complete date: YYYY-MM-DD (eg 1997-07-16)
+i) Complete date: YYYY-MM-DD (e.g. 1997-07-16)
 
-    ii) Complete date plus hours, minutes and seconds:
-        YYYY-MM-DDThh:mm:ss
-        (eg 1997-07-16T19:20:30)
+ii) Complete date plus hours, minutes and seconds:
+    YYYY-MM-DDThh:mm:ss
+    (e.g. 1997-07-16T19:20:30)
 
-    iii) Complete date plus hours, minutes and seconds with UTC designator:
-        YYYY-MM-DDThh:mm:ssZ
-        (eg 1997-07-16T19:20:30Z)
+iii) Complete date plus hours, minutes and seconds with UTC designator:
+     YYYY-MM-DDThh:mm:ssZ
+     (e.g. 1997-07-16T19:20:30Z)
 
 Please be aware that if you don't provide the UTC designator (i.e., Z)
 the timestamp is generated using your local timezone. If only a date is
@@ -881,17 +878,14 @@ Download an object from a container:
 
     testSwift.txt [auth 0.028s, headers 0.045s, total 0.045s, 0.002 MB/s]
 
-.. We need the backslash below in order to indent the note
-\
+.. note::
 
-  .. note::
-
-     To upload an object to a container, your current working directory must be
-     where the file is located or you must provide the complete path to the file.
-     In other words, the --object-name <object-name> is an option that will upload
-     file and name object to <object-name> or upload directory and use <object-name> as
-     object prefix. In the case that you provide the complete path of the file,
-     that complete path will be the name of the uploaded object.
+   To upload an object to a container, your current working directory must be
+   where the file is located or you must provide the complete path to the file.
+   In other words, the --object-name <object-name> is an option that will upload
+   file and name object to <object-name> or upload directory and use <object-name> as
+   object prefix. In the case that you provide the complete path of the file,
+   that complete path will be the name of the uploaded object.
 
 For example:
 

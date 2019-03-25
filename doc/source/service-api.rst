@@ -26,10 +26,10 @@ the auth version based on the combination of options specified, but
 supplying options from multiple different auth versions can cause unexpected
 behaviour.
 
-  .. note::
+.. note::
 
-     Leftover environment variables are a common source of confusion when
-     authorization fails.
+   Leftover environment variables are a common source of confusion when
+   authorization fails.
 
 Keystone V3
 ~~~~~~~~~~~
@@ -109,17 +109,17 @@ in this dictionary are described below, along with their defaults:
 Options
 ~~~~~~~
 
-    ``retries``: ``5``
+``retries``: ``5``
         The number of times that the library should attempt to retry HTTP
         actions before giving up and reporting a failure.
 
-    ``container_threads``: ``10``
+``container_threads``: ``10``
 
-    ``object_dd_threads``: ``10``
+``object_dd_threads``: ``10``
 
-    ``object_uu_threads``: ``10``
+``object_uu_threads``: ``10``
 
-    ``segment_threads``: ``10``
+``segment_threads``: ``10``
         The above options determine the size of the available thread pools for
         performing swift operations. Container operations (such as listing a
         container) operate in the container threads, and a similar pattern
@@ -131,86 +131,86 @@ Options
            ``uu`` and ``dd``. This stands for "upload/update" and "download/delete",
            and the corresponding actions will be run on separate threads pools.
 
-    ``segment_size``: ``None``
+``segment_size``: ``None``
         If specified, this option enables uploading of large objects. Should the
         object being uploaded be larger than 5G in size, this option is
         mandatory otherwise the upload will fail. This option should be
         specified as a size in bytes.
 
-    ``use_slo``: ``False``
+``use_slo``: ``False``
         Used in combination with the above option, ``use_slo`` will upload large
         objects as static rather than dynamic. Only static large objects provide
         error checking for the downloaded object, so we recommend this option.
 
-    ``segment_container``: ``None``
+``segment_container``: ``None``
         Allows the user to select the container into which large object segments
         will be uploaded. We do not recommend changing this value as it could make
         locating orphaned segments more difficult in the case of errors.
 
-    ``leave_segments``: ``False``
+``leave_segments``: ``False``
         Setting this option to true means that when deleting or overwriting a large
         object, its segments will be left in the object store and must be cleaned
         up manually. This option can be useful when sharing large object segments
         between multiple objects in more advanced scenarios, but must be treated
         with care, as it could lead to ever increasing storage usage.
 
-    ``changed``: ``None``
+``changed``: ``None``
         This option affects uploads and simply means that those objects which
         already exist in the object store will not be overwritten if the ``mtime``
         and size of the source is the same as the existing object.
 
-    ``skip_identical``: ``False``
+``skip_identical``: ``False``
         A slightly more thorough case of the above, but rather than ``mtime`` and size
         uses an object's ``MD5 sum``.
 
-    ``yes_all``: ``False``
+``yes_all``: ``False``
         This options affects only download and delete, and in each case must be
         specified in order to download/delete the entire contents of an account.
         This option has no effect on any other calls.
 
-    ``no_download``: ``False``
+``no_download``: ``False``
         This option only affects download and means that all operations proceed as
         normal with the exception that no data is written to disk.
 
-    ``header``: ``[]``
+``header``: ``[]``
         Used with upload and post operations to set headers on objects. Headers
         are specified as colon separated strings, e.g. "content-type:text/plain".
 
-    ``meta``: ``[]``
+``meta``: ``[]``
         Used to set metadata on an object similarly to headers.
 
         .. note::
            Setting metadata is a destructive operation, so when updating one
            of many metadata values all desired metadata for an object must be re-applied.
 
-    ``long``: ``False``
+``long``: ``False``
         Affects only list operations, and results in more metrics being made
         available in the results at the expense of lower performance.
 
-    ``fail_fast``: ``False``
+``fail_fast``: ``False``
         Applies to delete and upload operations, and attempts to abort queued
         tasks in the event of errors.
 
-    ``prefix``: ``None``
+``prefix``: ``None``
         Affects list operations; only objects with the given prefix will be
         returned/affected. It is not advisable to set at the service level, as
         those operations that call list to discover objects on which they should
         operate will also be affected.
 
-    ``delimiter``: ``None``
+``delimiter``: ``None``
         Affects list operations, and means that listings only contain results up
         to the first instance of the delimiter in the object name. This is useful
         for working with objects containing '/' in their names to simulate folder
         structures.
 
-    ``dir_marker``: ``False``
+``dir_marker``: ``False``
         Affects uploads, and allows empty 'pseudofolder' objects to be created
         when the source of an upload is ``None``.
 
-    ``checksum``: ``True``
+``checksum``: ``True``
         Affects uploads and downloads. If set check md5 sum for the transfer.
 
-    ``shuffle``: ``False``
+``shuffle``: ``False``
         When downloading objects, the default behaviour of the CLI is to shuffle
         lists of objects in order to spread the load on storage drives when multiple
         clients are downloading the same files to multiple locations (e.g. in the
@@ -220,12 +220,12 @@ Options
         are downloaded in lexically-sorted order. Setting this option to ``True``
         gives the same shuffling behaviour as the CLI.
 
-    ``destination``: ``None``
+``destination``: ``None``
         When copying objects, this specifies the destination where the object
         will be copied to.  The default of None means copy will be the same as
         source.
 
-    ``fresh_metadata``: ``None``
+``fresh_metadata``: ``None``
         When copying objects, this specifies that the object metadata on the
         source will *not* be applied to the destination object - the
         destination object will have a new fresh set of metadata that includes
