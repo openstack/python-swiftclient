@@ -22,7 +22,6 @@ mock==1.2.0
 netaddr==0.7.10
 openstackdocstheme==1.18.1
 oslo.config==1.2.0
-oslosphinx==4.7.0
 pbr==2.0.0
 pep8==1.5.7
 PrettyTable==0.7
