@@ -799,11 +799,11 @@ class TestShell(unittest.TestCase):
             response_dict={})
         expected_delete_calls = [
             mock.call(
-                b'container1', b'old_seg1',
+                'container1', 'old_seg1',
                 response_dict={}
             ),
             mock.call(
-                b'container2', b'old_seg2',
+                'container2', 'old_seg2',
                 response_dict={}
             )
         ]
@@ -831,6 +831,46 @@ class TestShell(unittest.TestCase):
             mock.ANY,
             content_length=0,
             headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+        self.assertFalse(connection.return_value.delete_object.mock_calls)
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_reupload_leaves_slo_segments(self, connection):
+        with open(self.tmpfile, "wb") as fh:
+            fh.write(b'12345678901234567890')
+        mtime = '{:.6f}'.format(os.path.getmtime(self.tmpfile))
+        expected_segments = [
+            'container_segments/{}/slo/{}/20/10/{:08d}'.format(
+                self.tmpfile[1:], mtime, i)
+            for i in range(2)
+        ]
+
+        # Test re-upload overwriting a manifest doesn't remove
+        # segments it just wrote
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", self.tmpfile,
+                "--use-slo", "-S", "10"]
+        connection.return_value.head_object.side_effect = [
+            {'x-static-large-object': 'true',  # For the upload call
+             'content-length': '20'}]
+        connection.return_value.get_object.return_value = (
+            {},
+            # we've already *got* the expected manifest!
+            json.dumps([
+                {'name': seg} for seg in expected_segments
+            ]).encode('ascii')
+        )
+        connection.return_value.put_object.return_value = (
+            'd41d8cd98f00b204e9800998ecf8427e')
+        swiftclient.shell.main(argv)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile[1:],  # drop leading /
+            mock.ANY,
+            headers={'x-object-meta-mtime': mtime},
+            query_string='multipart-manifest=put',
             response_dict={})
         self.assertFalse(connection.return_value.delete_object.mock_calls)
 
