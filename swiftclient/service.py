@@ -17,6 +17,7 @@ import logging
 
 import os
 
+from collections import defaultdict
 from concurrent.futures import as_completed, CancelledError, TimeoutError
 from copy import deepcopy
 from errno import EEXIST, ENOENT
@@ -44,7 +45,7 @@ from swiftclient.command_helpers import (
 from swiftclient.utils import (
     config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG,
     parse_api_response, report_traceback, n_groups, split_request_headers,
-    n_at_a_time
+    n_at_a_time, normalize_manifest_path
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
@@ -2067,11 +2068,9 @@ class SwiftService(object):
                     if not options['leave_segments']:
                         old_manifest = headers.get('x-object-manifest')
                         if is_slo:
-                            for old_seg in chunk_data:
-                                seg_path = old_seg['name'].lstrip('/')
-                                if isinstance(seg_path, text_type):
-                                    seg_path = seg_path.encode('utf-8')
-                                old_slo_manifest_paths.append(seg_path)
+                            old_slo_manifest_paths.extend(
+                                normalize_manifest_path(old_seg['name'])
+                                for old_seg in chunk_data)
                 except ClientException as err:
                     if err.http_status != 404:
                         traceback, err_time = report_traceback()
@@ -2161,8 +2160,9 @@ class SwiftService(object):
                     response = self._upload_slo_manifest(
                         conn, segment_results, container, obj, put_headers)
                     res['manifest_response_dict'] = response
-                    new_slo_manifest_paths = {
-                        seg['segment_location'] for seg in segment_results}
+                    new_slo_manifest_paths.update(
+                        normalize_manifest_path(new_seg['segment_location'])
+                        for new_seg in segment_results)
                 else:
                     new_object_manifest = '%s/%s/%s/%s/%s/' % (
                         quote(seg_container.encode('utf8')),
@@ -2219,8 +2219,9 @@ class SwiftService(object):
                     response = self._upload_slo_manifest(
                         conn, results, container, obj, put_headers)
                     res['manifest_response_dict'] = response
-                    new_slo_manifest_paths = {
-                        r['segment_location'] for r in results}
+                    new_slo_manifest_paths.update(
+                        normalize_manifest_path(new_seg['segment_location'])
+                        for new_seg in results)
                     res['large_object'] = True
                 else:
                     res['response_dict'] = ret
@@ -2260,11 +2261,10 @@ class SwiftService(object):
                         fp.close()
             if old_manifest or old_slo_manifest_paths:
                 drs = []
-                delobjsmap = {}
+                delobjsmap = defaultdict(list)
                 if old_manifest:
                     scontainer, sprefix = old_manifest.split('/', 1)
                     sprefix = sprefix.rstrip('/') + '/'
-                    delobjsmap[scontainer] = []
                     for part in self.list(scontainer, {'prefix': sprefix}):
                         if not part["success"]:
                             raise part["error"]
@@ -2276,10 +2276,8 @@ class SwiftService(object):
                         if seg_to_delete in new_slo_manifest_paths:
                             continue
                         scont, sobj = \
-                            seg_to_delete.split(b'/', 1)
-                        delobjs_cont = delobjsmap.get(scont, [])
-                        delobjs_cont.append(sobj)
-                        delobjsmap[scont] = delobjs_cont
+                            seg_to_delete.split('/', 1)
+                        delobjsmap[scont].append(sobj)
 
                 del_segs = []
                 for dscont, dsobjs in delobjsmap.items():

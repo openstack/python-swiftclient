@@ -376,3 +376,11 @@ def n_at_a_time(seq, n):
 def n_groups(seq, n):
     items_per_group = ((len(seq) - 1) // n) + 1
     return n_at_a_time(seq, items_per_group)
+
+
+def normalize_manifest_path(path):
+    if six.PY2 and isinstance(path, six.text_type):
+        path = path.encode('utf-8')
+    if path.startswith('/'):
+        return path[1:]
+    return path
