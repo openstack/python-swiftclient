@@ -9,7 +9,7 @@
     # job sets zuul_work_dir to the swift directory and uses tox
     # for installation.
     required-projects:
-      - git.openstack.org/openstack/python-swiftclient
+      - opendev.org/openstack/python-swiftclient
 
 - job:
     name: swiftclient-swift-functional-identity-v2
@@ -24,7 +24,7 @@
     # job sets zuul_work_dir to the swift directory and uses tox
     # for installation.
     required-projects:
-      - git.openstack.org/openstack/python-swiftclient
+      - opendev.org/openstack/python-swiftclient
 
 - job:
     name: swiftclient-functional
@@ -36,10 +36,10 @@
 
       This uses Identity API 2.0.
     required-projects:
-      - git.openstack.org/openstack/python-swiftclient
+      - opendev.org/openstack/python-swiftclient
     vars:
       # Override value from parent job to use swiftclient tests
-      zuul_work_dir: "{{ zuul.projects['git.openstack.org/openstack/python-swiftclient'].src_dir }}"
+      zuul_work_dir: "{{ zuul.projects['opendev.org/openstack/python-swiftclient'].src_dir }}"
 
 - job:
     name: swiftclient-functional-identity-v2
@@ -49,10 +49,10 @@
       python-swiftclient installed from source instead as package from
       PyPI.
     required-projects:
-      - git.openstack.org/openstack/python-swiftclient
+      - opendev.org/openstack/python-swiftclient
     vars:
       # Override value from parent job to use swiftclient tests
-      zuul_work_dir: "{{ zuul.projects['git.openstack.org/openstack/python-swiftclient'].src_dir }}"
+      zuul_work_dir: "{{ zuul.projects['opendev.org/openstack/python-swiftclient'].src_dir }}"
 
 - project:
     templates:
