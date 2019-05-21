@@ -44,7 +44,7 @@ __ https://github.com/openstack/swift
 .. _Launchpad project: https://launchpad.net/python-swiftclient
 .. _Blueprints: https://blueprints.launchpad.net/python-swiftclient
 .. _Bugs: https://bugs.launchpad.net/python-swiftclient
-.. _Source: https://git.openstack.org/cgit/openstack/python-swiftclient
+.. _Source: https://opendev.org/openstack/python-swiftclient
 .. _How to Contribute: https://docs.openstack.org/infra/manual/developers.html
 .. _Specs: https://specs.openstack.org/openstack/swift-specs/
 .. _Release Notes: https://docs.openstack.org/releasenotes/python-swiftclient
