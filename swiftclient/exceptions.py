@@ -73,9 +73,9 @@ class ClientException(Exception):
             else:
                 b = 'device %s' % self.http_device
         if self.http_response_content:
-            if len(self.http_response_content) <= 60:
+            if len(self.http_response_content) <= 256:
                 b += '   %s' % self.http_response_content
             else:
-                b += '  [first 60 chars of response] %s' \
-                    % self.http_response_content[:60]
+                b += '  [first 256 chars of response] %s' \
+                    % self.http_response_content[:256]
         return b and '%s: %s' % (a, b) or a

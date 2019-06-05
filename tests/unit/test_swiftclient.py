@@ -744,7 +744,7 @@ class TestHeadAccount(MockHttpTest):
         ])
         # TODO: this is a fairly brittle test of the __repr__ on the
         # ClientException which should probably be in a targeted test
-        new_body = "[first 60 chars of response] " + body[0:60]
+        new_body = "[first 256 chars of response] " + body[0:256]
         self.assertEqual(e.__str__()[-89:], new_body)
 
 
@@ -781,7 +781,7 @@ class TestPostAccount(MockHttpTest):
         ])
         # TODO: this is a fairly brittle test of the __repr__ on the
         # ClientException which should probably be in a targeted test
-        new_body = "[first 60 chars of response] " + body[0:60]
+        new_body = "[first 256 chars of response] " + body[0:256]
         self.assertEqual(exc_mgr.exception.__str__()[-89:], new_body)
 
 
