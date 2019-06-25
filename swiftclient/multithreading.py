@@ -175,6 +175,14 @@ class ConnectionThreadPoolExecutor(ThreadPoolExecutor):
         super(ConnectionThreadPoolExecutor, self).__init__(max_workers)
 
     def submit(self, fn, *args, **kwargs):
+        """
+        Schedules the callable, `fn`, to be executed
+
+        :param fn: the callable to be invoked
+        :param args: the positional arguments for the callable
+        :param kwargs: the keyword arguments for the callable
+        :returns: a Future object representing the execution of the callable
+        """
         def conn_fn():
             priority = None
             conn = None

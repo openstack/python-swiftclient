@@ -46,11 +46,34 @@ class TestFunctional(unittest.TestCase):
         config.read(config_file)
         self.config = config
         if config.has_section('func_test'):
-            auth_host = config.get('func_test', 'auth_host')
-            auth_port = config.getint('func_test', 'auth_port')
-            auth_ssl = config.getboolean('func_test', 'auth_ssl')
-            auth_prefix = config.get('func_test', 'auth_prefix')
-            self.auth_version = config.get('func_test', 'auth_version')
+            if config.has_option('func_test', 'auth_uri'):
+                self.auth_url = config.get('func_test', 'auth_uri')
+                try:
+                    self.auth_version = config.get('func_test', 'auth_version')
+                except configparser.NoOptionError:
+                    last_piece = self.auth_url.rstrip('/').rsplit('/', 1)[1]
+                    if last_piece.endswith('.0'):
+                        last_piece = last_piece[:-2]
+                    if last_piece in ('1', '2', '3'):
+                        self.auth_version = last_piece
+                    else:
+                        raise
+            else:
+                auth_host = config.get('func_test', 'auth_host')
+                auth_port = config.getint('func_test', 'auth_port')
+                auth_ssl = config.getboolean('func_test', 'auth_ssl')
+                auth_prefix = config.get('func_test', 'auth_prefix')
+                self.auth_version = config.get('func_test', 'auth_version')
+                self.auth_url = ""
+                if auth_ssl:
+                    self.auth_url += "https://"
+                else:
+                    self.auth_url += "http://"
+                self.auth_url += "%s:%s%s" % (
+                    auth_host, auth_port, auth_prefix)
+                if self.auth_version == "1":
+                    self.auth_url += 'v1.0'
+
             try:
                 self.account_username = config.get('func_test',
                                                    'account_username')
@@ -59,15 +82,6 @@ class TestFunctional(unittest.TestCase):
                 username = config.get('func_test', 'username')
                 self.account_username = "%s:%s" % (account, username)
             self.password = config.get('func_test', 'password')
-            self.auth_url = ""
-            if auth_ssl:
-                self.auth_url += "https://"
-            else:
-                self.auth_url += "http://"
-            self.auth_url += "%s:%s%s" % (auth_host, auth_port, auth_prefix)
-            if self.auth_version == "1":
-                self.auth_url += 'v1.0'
-
         else:
             self.skip_tests = True
 
