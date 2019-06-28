@@ -1862,7 +1862,7 @@ class TestShell(unittest.TestCase):
         argv = ["", "tempurl", "GET", "60", '/v1/a/c',
                     "secret_key", "--absolute", '--prefix-based']
         with CaptureOutput(suppress_systemexit=True) as output:
-                swiftclient.shell.main(argv)
+            swiftclient.shell.main(argv)
         self.assertEqual(expected, output.err,
                          'Expected %r but got %r for path %r' %
                          (expected, output.err, '/v1/a/c'))
@@ -1872,7 +1872,7 @@ class TestShell(unittest.TestCase):
             argv = ["", "tempurl", "GET", bad_time, '/v1/a/c/o',
                         "secret_key", "--absolute"]
             with CaptureOutput(suppress_systemexit=True) as output:
-                    swiftclient.shell.main(argv)
+                swiftclient.shell.main(argv)
             self.assertEqual(expected, output.err,
                              'Expected %r but got %r for time %r' %
                              (expected, output.err, bad_time))

@@ -58,6 +58,7 @@ def immediate_exit(signum, frame):
     stderr.write(" Aborted\n")
     os_exit(2)
 
+
 st_delete_options = '''[--all] [--leave-segments]
                     [--object-threads <threads>]
                     [--container-threads <threads>]

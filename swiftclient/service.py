@@ -174,6 +174,7 @@ def _build_default_global_options():
         'container_threads': 10
     }
 
+
 _default_global_options = _build_default_global_options()
 
 _default_local_options = {
