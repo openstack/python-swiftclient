@@ -1,3 +1,15 @@
+3.8.0
+-----
+
+* Added a new `--json` option to `swift list`.
+
+* Fixed an issue introduced in 3.5.0 where re-uploading an SLO with
+  the same size, mtime, and segment size would delete all of the
+  just-uploaded segments.
+
+* Various other minor bug fixes and improvements.
+
+
 3.7.0
 -----
 

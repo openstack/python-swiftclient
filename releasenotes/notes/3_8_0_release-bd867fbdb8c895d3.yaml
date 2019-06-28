@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added a new ``--json`` option to ``swift list``.
+fixes:
+  - |
+    Fixed an issue introduced in 3.5.0 where re-uploading an SLO with
+    the same size, mtime, and segment size would delete all of the
+    just-uploaded segments.
