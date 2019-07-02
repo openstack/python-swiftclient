@@ -33,7 +33,8 @@ from sys import argv as sys_argv, exit, stderr, stdin
 from time import gmtime, strftime
 
 from swiftclient import RequestException
-from swiftclient.utils import config_true_value, generate_temp_url, prt_bytes
+from swiftclient.utils import config_true_value, generate_temp_url, \
+    prt_bytes, JSONableIterable
 from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
@@ -578,6 +579,8 @@ def st_list(parser, args, output_manager, return_parser=False):
         help='Roll up items with the given delimiter. For containers '
              'only. See OpenStack Swift API documentation for '
              'what this means.')
+    parser.add_argument('-j', '--json', action='store_true',
+                        help='print listing information in json')
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[],
@@ -616,6 +619,20 @@ def st_list(parser, args, output_manager, return_parser=False):
                 else:
                     stats_parts_gen = swift.list(container=container)
 
+            if options.get('json', False):
+                def listing(stats_parts_gen=stats_parts_gen):
+                    for stats in stats_parts_gen:
+                        if stats["success"]:
+                            for item in stats['listing']:
+                                yield item
+                        else:
+                            raise stats["error"]
+
+                json.dump(
+                    JSONableIterable(listing()), output_manager.print_stream,
+                    sort_keys=True, indent=2)
+                output_manager.print_msg('')
+                return
             for stats in stats_parts_gen:
                 if stats["success"]:
                     _print_stats(options, stats, human)

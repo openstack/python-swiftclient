@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import gzip
+import json
 import unittest
 import mock
 import six
@@ -638,3 +639,41 @@ class TestGetBody(unittest.TestCase):
             {'content-encoding': 'gzip'},
             buf.getvalue())
         self.assertEqual({'test': u'\u2603'}, result)
+
+
+class JSONTracker(object):
+    def __init__(self, data):
+        self.data = data
+        self.calls = []
+
+    def __iter__(self):
+        for item in self.data:
+            self.calls.append(('read', item))
+            yield item
+
+    def write(self, s):
+        self.calls.append(('write', s))
+
+
+class TestJSONableIterable(unittest.TestCase):
+    def test_json_dump_iterencodes(self):
+        t = JSONTracker([1, 'fish', 2, 'fish'])
+        json.dump(u.JSONableIterable(t), t)
+        self.assertEqual(t.calls, [
+            ('read', 1),
+            ('write', '[1'),
+            ('read', 'fish'),
+            ('write', ', "fish"'),
+            ('read', 2),
+            ('write', ', 2'),
+            ('read', 'fish'),
+            ('write', ', "fish"'),
+            ('write', ']'),
+        ])
+
+    def test_json_dump_empty_iter(self):
+        t = JSONTracker([])
+        json.dump(u.JSONableIterable(t), t)
+        self.assertEqual(t.calls, [
+            ('write', '[]'),
+        ])
