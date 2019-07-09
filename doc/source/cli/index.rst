@@ -443,7 +443,7 @@ swift post
 
 .. code-block:: console
 
-   Usage: swift post [--read-acl <acl>] [--write-acl <acl>] [--sync-to]
+   Usage: swift post [--read-acl <acl>] [--write-acl <acl>] [--sync-to <sync-to>]
                      [--sync-key <sync-key>] [--meta <name:value>]
                      [--header <header>]
                      [<container> [<object>]]

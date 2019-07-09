@@ -709,7 +709,7 @@ def st_stat(parser, args, output_manager, return_parser=False):
             output_manager.error(e.value)
 
 
-st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to]
+st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to <sync-to>]
                   [--sync-key <sync-key>] [--meta <name:value>]
                   [--header <header>]
                   [<container> [<object>]]
