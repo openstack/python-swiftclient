@@ -22,7 +22,6 @@ import requests
 import logging
 import warnings
 
-from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
 from six.moves import http_client
 from six.moves.urllib.parse import quote as _quote, unquote
@@ -72,18 +71,6 @@ try:
     from keystoneclient.v3 import client as ksclient_v3
 except ImportError:
     pass
-
-# requests version 1.2.3 try to encode headers in ascii, preventing
-# utf-8 encoded header to be 'prepared'
-if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
-    from requests.structures import CaseInsensitiveDict
-
-    def prepare_unicode_headers(self, headers):
-        if headers:
-            self.headers = CaseInsensitiveDict(headers)
-        else:
-            self.headers = CaseInsensitiveDict()
-    requests.models.PreparedRequest.prepare_headers = prepare_unicode_headers
 
 logger = logging.getLogger("swiftclient")
 logger.addHandler(NullHandler())
@@ -1342,11 +1329,6 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                 content_length = int(v)
     if content_type is not None:
         headers['Content-Type'] = content_type
-    elif 'Content-Type' not in headers:
-        if StrictVersion(requests.__version__) < StrictVersion('2.4.0'):
-            # python-requests sets application/x-www-form-urlencoded otherwise
-            # if using python3.
-            headers['Content-Type'] = ''
     if not contents:
         headers['Content-Length'] = '0'
 
