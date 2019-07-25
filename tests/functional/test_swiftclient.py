@@ -18,6 +18,7 @@ import unittest
 import time
 from io import BytesIO
 
+import six
 from six.moves import configparser
 
 import swiftclient
@@ -445,6 +446,22 @@ class TestFunctional(unittest.TestCase):
         self.assertEqual('123', headers.get('x-object-meta-int'))
         self.assertEqual('45.67', headers.get('x-object-meta-float'))
         self.assertEqual('False', headers.get('x-object-meta-bool'))
+
+    def test_post_object_unicode_header_name(self):
+        self.conn.post_object(self.containername,
+                              self.objectname,
+                              {u'x-object-meta-\U0001f44d': u'\U0001f44d'})
+
+        # Note that we can't actually read this header back on py3; see
+        # https://bugs.python.org/issue37093
+        # We'll have to settle for just testing that the POST doesn't blow up
+        # with a UnicodeDecodeError
+        if six.PY2:
+            headers = self.conn.head_object(
+                self.containername, self.objectname)
+            self.assertIn(u'x-object-meta-\U0001f44d', headers)
+            self.assertEqual(u'\U0001f44d',
+                             headers.get(u'x-object-meta-\U0001f44d'))
 
     def test_copy_object(self):
         self.conn.put_object(

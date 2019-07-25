@@ -74,8 +74,10 @@ except ImportError:
     pass
 
 # requests version 1.2.3 try to encode headers in ascii, preventing
-# utf-8 encoded header to be 'prepared'
-if StrictVersion(requests.__version__) < StrictVersion('2.0.0'):
+# utf-8 encoded header to be 'prepared'. This also affects all
+# (or at least most) versions of requests on py3
+if StrictVersion(requests.__version__) < StrictVersion('2.0.0') \
+        or not six.PY2:
     from requests.structures import CaseInsensitiveDict
 
     def prepare_unicode_headers(self, headers):
