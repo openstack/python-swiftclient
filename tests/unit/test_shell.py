@@ -833,6 +833,35 @@ class TestShell(unittest.TestCase):
         )
 
     @mock.patch('swiftclient.service.Connection')
+    def test_upload_over_symlink_to_slo(self, connection):
+        # Upload delete existing segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        connection.return_value.attempts = 0
+        connection.return_value.head_object.side_effect = [
+            {'x-static-large-object': 'true',
+             'content-location': '/v1/a/c/manifest',
+             'content-length': '2'},
+        ]
+        connection.return_value.get_object.return_value = (
+            {'content-location': '/v1/a/c/manifest'},
+            b'[{"name": "container1/old_seg1"},'
+            b' {"name": "container2/old_seg2"}]'
+        )
+        connection.return_value.put_object.return_value = EMPTY_ETAG
+        connection.return_value.delete_object.return_value = None
+        argv = ["", "upload", "container", self.tmpfile]
+        swiftclient.shell.main(argv)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+        self.assertEqual([], connection.return_value.delete_object.mock_calls)
+
+    @mock.patch('swiftclient.service.Connection')
     def test_upload_leave_slo_segments(self, connection):
         # Test upload overwriting a manifest respects --leave-segments
         connection.return_value.head_container.return_value = {

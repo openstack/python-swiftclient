@@ -2070,7 +2070,8 @@ class SwiftService(object):
                             'status': 'skipped-changed'
                         })
                         return res
-                    if not options['leave_segments']:
+                    if not options['leave_segments'] and not headers.get(
+                            'content-location'):
                         old_manifest = headers.get('x-object-manifest')
                         if is_slo:
                             old_slo_manifest_paths.extend(
@@ -2515,7 +2516,8 @@ class SwiftService(object):
             if not options['leave_segments']:
                 try:
                     headers = conn.head_object(container, obj,
-                                               headers=_headers)
+                                               headers=_headers,
+                                               query_string='symlink=get')
                     old_manifest = headers.get('x-object-manifest')
                     if config_true_value(headers.get('x-static-large-object')):
                         query_string = 'multipart-manifest=delete'

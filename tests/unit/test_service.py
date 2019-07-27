@@ -312,8 +312,8 @@ class TestServiceDelete(_TestServiceBase):
         s = SwiftService()
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
 
-        mock_conn.head_object.assert_called_once_with('test_c', 'test_o',
-                                                      headers={})
+        mock_conn.head_object.assert_called_once_with(
+            'test_c', 'test_o', query_string='symlink=get', headers={})
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o', query_string=None, response_dict={},
             headers={}
@@ -335,7 +335,8 @@ class TestServiceDelete(_TestServiceBase):
         r = s._delete_object(mock_conn, 'test_c', 'test_o', opt_c, mock_q)
 
         mock_conn.head_object.assert_called_once_with(
-            'test_c', 'test_o', headers={'Skip-Middleware': 'Test'})
+            'test_c', 'test_o', headers={'Skip-Middleware': 'Test'},
+            query_string='symlink=get')
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o', query_string=None, response_dict={},
             headers={'Skip-Middleware': 'Test'}
@@ -362,8 +363,8 @@ class TestServiceDelete(_TestServiceBase):
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
         after = time.time()
 
-        mock_conn.head_object.assert_called_once_with('test_c', 'test_o',
-                                                      headers={})
+        mock_conn.head_object.assert_called_once_with(
+            'test_c', 'test_o', query_string='symlink=get', headers={})
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o', query_string=None, response_dict={},
             headers={}
@@ -389,8 +390,8 @@ class TestServiceDelete(_TestServiceBase):
         s = SwiftService()
         r = s._delete_object(mock_conn, 'test_c', 'test_o', self.opts, mock_q)
 
-        mock_conn.head_object.assert_called_once_with('test_c', 'test_o',
-                                                      headers={})
+        mock_conn.head_object.assert_called_once_with(
+            'test_c', 'test_o', query_string='symlink=get', headers={})
         mock_conn.delete_object.assert_called_once_with(
             'test_c', 'test_o',
             query_string='multipart-manifest=delete',
