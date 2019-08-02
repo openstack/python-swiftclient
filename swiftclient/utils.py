@@ -74,7 +74,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     Swift object.
 
     :param path: The full path to the Swift object or prefix if
-         a prefix-based temporary URL should be generated. Example:
+        a prefix-based temporary URL should be generated. Example:
         /v1/AUTH_account/c/o or /v1/AUTH_account/c/prefix.
     :param seconds: time in seconds or ISO 8601 timestamp.
         If absolute is False and this is the string representation of an
