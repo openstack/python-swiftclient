@@ -181,7 +181,7 @@ htmlhelp_basename = 'SwiftClientwebdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual])
 latex_documents = [
-    ('index', 'SwiftClient.tex', u'SwiftClient Documentation',
+    ('index', 'doc-python-swiftclient.tex', u'SwiftClient Documentation',
      u'OpenStack, LLC.', 'manual'),
 ]
 
@@ -201,3 +201,5 @@ latex_documents = [
 
 # If false, no module index is generated.
 # latex_use_modindex = True
+
+latex_use_xindy = False
