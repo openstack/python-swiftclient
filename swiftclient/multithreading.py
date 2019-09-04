@@ -168,6 +168,12 @@ class ConnectionThreadPoolExecutor(ThreadPoolExecutor):
     We will only create as many connections as are required concurrently.
     """
     def __init__(self, create_connection, max_workers):
+        """
+        Initializes a new ThreadPoolExecutor instance.
+
+        :param create_connection: callable to use to create new connections
+        :param max_workers: the maximum number of threads that can be used
+        """
         self._connections = PriorityQueue()
         self._create_connection = create_connection
         for p in range(0, max_workers):
