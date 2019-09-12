@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Deleting or overwriting a symlink to an SLO or DLO will no longer attempt
+    to clean up the large object's segments.
+  - |
+    Fixed an issue sending non-ASCII metadata keys on Python 3.
+    Note that *receiving* such metadata on py3 is `still broken
+    <https://bugs.python.org/issue37093>`__.
+other:
+  - |
+    Documentation can now be rendered as a PDF.
+  - |
+    Dropped Python 3.5 testing.
