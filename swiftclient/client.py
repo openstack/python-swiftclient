@@ -22,7 +22,7 @@ import requests
 import logging
 import warnings
 
-from requests.exceptions import RequestException, SSLError
+from requests.exceptions import RequestException, SSLError, BaseHTTPError
 from six.moves import http_client
 from six.moves.urllib.parse import quote as _quote, unquote
 from six.moves.urllib.parse import urljoin, urlparse, urlunparse
@@ -315,7 +315,7 @@ class _RetryBody(_ObjectBody):
         try:
             buf = self.resp.read(length)
             self.bytes_read += len(buf)
-        except (socket.error, RequestException):
+        except (socket.error, RequestException, BaseHTTPError):
             if self.conn.attempts > self.conn.retries:
                 raise
         if (not buf and self.bytes_read < self.expected_length and
@@ -1721,7 +1721,7 @@ class Connection(object):
                 return rv
             except SSLError:
                 raise
-            except (socket.error, RequestException):
+            except (socket.error, RequestException, BaseHTTPError):
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:
                     raise
