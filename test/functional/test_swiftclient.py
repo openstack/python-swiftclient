@@ -13,23 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 import time
 from io import BytesIO
 
 import six
-from six.moves import configparser
 
 import swiftclient
+from . import TEST_CONFIG
 
 
 class TestFunctional(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(TestFunctional, self).__init__(*args, **kwargs)
-        self.skip_tests = False
-        self._get_config()
+        self.skip_tests = (TEST_CONFIG is None)
+        if not self.skip_tests:
+            self._get_config()
 
         self.test_data = b'42' * 10
         self.etag = '2704306ec982238d85d4b235c925d58e'
@@ -41,50 +41,10 @@ class TestFunctional(unittest.TestCase):
         self.objectname_2 = self.objectname + '_second'
 
     def _get_config(self):
-        config_file = os.environ.get('SWIFT_TEST_CONFIG_FILE',
-                                     '/etc/swift/test.conf')
-        config = configparser.ConfigParser({'auth_version': '1'})
-        config.read(config_file)
-        self.config = config
-        if config.has_section('func_test'):
-            if config.has_option('func_test', 'auth_uri'):
-                self.auth_url = config.get('func_test', 'auth_uri')
-                try:
-                    self.auth_version = config.get('func_test', 'auth_version')
-                except configparser.NoOptionError:
-                    last_piece = self.auth_url.rstrip('/').rsplit('/', 1)[1]
-                    if last_piece.endswith('.0'):
-                        last_piece = last_piece[:-2]
-                    if last_piece in ('1', '2', '3'):
-                        self.auth_version = last_piece
-                    else:
-                        raise
-            else:
-                auth_host = config.get('func_test', 'auth_host')
-                auth_port = config.getint('func_test', 'auth_port')
-                auth_ssl = config.getboolean('func_test', 'auth_ssl')
-                auth_prefix = config.get('func_test', 'auth_prefix')
-                self.auth_version = config.get('func_test', 'auth_version')
-                self.auth_url = ""
-                if auth_ssl:
-                    self.auth_url += "https://"
-                else:
-                    self.auth_url += "http://"
-                self.auth_url += "%s:%s%s" % (
-                    auth_host, auth_port, auth_prefix)
-                if self.auth_version == "1":
-                    self.auth_url += 'v1.0'
-
-            try:
-                self.account_username = config.get('func_test',
-                                                   'account_username')
-            except configparser.NoOptionError:
-                account = config.get('func_test', 'account')
-                username = config.get('func_test', 'username')
-                self.account_username = "%s:%s" % (account, username)
-            self.password = config.get('func_test', 'password')
-        else:
-            self.skip_tests = True
+        self.auth_url = TEST_CONFIG['auth_url']
+        self.auth_version = TEST_CONFIG['auth_version']
+        self.account_username = TEST_CONFIG['account_username']
+        self.password = TEST_CONFIG['password']
 
     def _get_connection(self):
         """
@@ -514,20 +474,20 @@ class TestUsingKeystone(TestFunctional):
     """
 
     def _get_connection(self):
-        account = username = password = None
+        account = username = None
         if self.auth_version not in ('2', '3'):
             self.skipTest('SKIPPING KEYSTONE-SPECIFIC FUNCTIONAL TESTS')
         try:
-            account = self.config.get('func_test', 'account')
-            username = self.config.get('func_test', 'username')
-            password = self.config.get('func_test', 'password')
-        except Exception:
+            account = TEST_CONFIG['account']
+            username = TEST_CONFIG['username']
+        except KeyError:
             self.skipTest('SKIPPING KEYSTONE-SPECIFIC FUNCTIONAL TESTS' +
                           ' - NO CONFIG')
-        os_options = {'tenant_name': account}
+
         return swiftclient.Connection(
-            self.auth_url, username, password, auth_version=self.auth_version,
-            os_options=os_options)
+            self.auth_url, username, self.password,
+            auth_version=self.auth_version,
+            os_options={'tenant_name': account})
 
 
 class TestUsingKeystoneV3(TestFunctional):
@@ -539,13 +499,14 @@ class TestUsingKeystoneV3(TestFunctional):
         account = username = password = project_domain = user_domain = None
         if self.auth_version != '3':
             self.skipTest('SKIPPING KEYSTONE-V3-SPECIFIC FUNCTIONAL TESTS')
+
         try:
-            account = self.config.get('func_test', 'account4')
-            username = self.config.get('func_test', 'username4')
-            user_domain = self.config.get('func_test', 'domain4')
-            project_domain = self.config.get('func_test', 'domain4')
-            password = self.config.get('func_test', 'password4')
-        except Exception:
+            account = TEST_CONFIG['account4']
+            username = TEST_CONFIG['username4']
+            user_domain = TEST_CONFIG['domain4']
+            project_domain = TEST_CONFIG['domain4']
+            password = TEST_CONFIG['password4']
+        except KeyError:
             self.skipTest('SKIPPING KEYSTONE-V3-SPECIFIC FUNCTIONAL TESTS' +
                           ' - NO CONFIG')
 

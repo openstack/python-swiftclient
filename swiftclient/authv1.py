@@ -45,6 +45,7 @@ from six.moves.urllib.parse import urljoin
 # Note that while we import keystoneauth1 here, we *don't* need to add it to
 # requirements.txt -- this entire module only makes sense (and should only be
 # loaded) if keystoneauth is already installed.
+from keystoneauth1 import discover
 from keystoneauth1 import plugin
 from keystoneauth1 import exceptions
 from keystoneauth1 import loading
@@ -110,11 +111,20 @@ class ServiceCatalogV1(object):
         ]
 
     def url_for(self, **kwargs):
+        return self.endpoint_data_for(**kwargs).url
+
+    def endpoint_data_for(self, **kwargs):
         kwargs.setdefault('interface', 'public')
         kwargs.setdefault('service_type', None)
 
         if kwargs['service_type'] == 'object-store':
-            return self.storage_url
+            return discover.EndpointData(
+                service_type='object-store',
+                service_name='swift',
+                interface=kwargs['interface'],
+                region_name='default',
+                catalog_url=self.storage_url,
+            )
 
         # Although our "catalog" includes an identity entry, nothing that uses
         # url_for() (including `openstack endpoint list`) will know what to do
