@@ -36,7 +36,7 @@ from swiftclient.service import (
     SwiftService, SwiftError, SwiftUploadObject
 )
 
-from tests.unit import utils as test_utils
+from test.unit import utils as test_utils
 
 
 clean_os_environ = {}
@@ -1060,11 +1060,11 @@ class TestService(unittest.TestCase):
     @mock.patch('swiftclient.service.getsize', return_value=4)
     def test_upload_with_relative_path(self, *args, **kwargs):
         service = SwiftService({})
-        objects = [{'path': "./test",
+        objects = [{'path': "./testobj",
                     'strt_indx': 2},
-                   {'path': os.path.join(os.getcwd(), "test"),
+                   {'path': os.path.join(os.getcwd(), "testobj"),
                     'strt_indx': 1},
-                   {'path': ".\\test",
+                   {'path': ".\\testobj",
                     'strt_indx': 2}]
         for obj in objects:
             with mock.patch('swiftclient.service.Connection') as mock_conn, \

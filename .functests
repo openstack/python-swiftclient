@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export OS_TEST_PATH='tests.functional'
+export OS_TEST_PATH='test.functional'
 export PYTHON='coverage run --source swiftclient --parallel-mode'
 stestr run --concurrency=1
 
