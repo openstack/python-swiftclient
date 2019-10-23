@@ -1,3 +1,10 @@
+3.6.1
+-----
+
+* Fixed an issue introduced in 3.5.0 where re-uploading an SLO with
+  the same size, mtime, and segment size would delete all of the
+  just-uploaded segments.
+
 3.6.0
 -----
 
