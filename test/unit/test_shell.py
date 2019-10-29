@@ -242,6 +242,30 @@ class TestShell(unittest.TestCase):
             mock.call('container', headers={'Skip-Middleware': 'Test'})])
 
     @mock.patch('swiftclient.service.Connection')
+    def test_stat_version_id(self, connection):
+        argv = ["", "stat", "--version-id", "1"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--version-id option only allowed for "
+                         "object stats")
+
+        argv = ["", "stat", "--version-id", "1", "container"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--version-id option only allowed for "
+                         "object stats")
+
+        argv = ["", "stat", "--version-id", "1", "container", "object"]
+        connection.return_value.head_object.return_value = {}
+        with CaptureOutput():
+            swiftclient.shell.main(argv)
+        self.assertEqual([mock.call('container', 'object', headers={},
+                                    query_string='version-id=1')],
+                         connection.return_value.head_object.mock_calls)
+
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_object(self, connection):
         return_headers = {
             'x-object-manifest': 'manifest',
@@ -295,7 +319,45 @@ class TestShell(unittest.TestCase):
                              '      Manifest: manifest\n')
         self.assertEqual(connection.return_value.head_object.mock_calls, [
             mock.call('container', 'object',
-                      headers={'Skip-Middleware': 'Test'})])
+                      headers={'Skip-Middleware': 'Test'},
+                      query_string=None)])
+
+    def test_list_account_with_delimiter(self):
+        argv = ["", "list", "--delimiter", "foo"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "-d option only allowed for "
+                         "container listings")
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_list_container_with_versions(self, connection):
+        connection.return_value.get_container.side_effect = [
+            [None, [
+                {'name': 'foo', 'version_id': '2'},
+                {'name': 'foo', 'version_id': '1'},
+            ]],
+            [None, []],
+        ]
+        argv = ["", "list", "container", "--versions"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        calls = [mock.call('container', delimiter=None, headers={}, marker='',
+                           prefix=None, query_string='versions=true',
+                           version_marker=''),
+                 mock.call('container', delimiter=None, headers={},
+                           marker='foo', prefix=None,
+                           query_string='versions=true', version_marker='1')]
+        connection.return_value.get_container.assert_has_calls(calls)
+        self.assertEqual(output.out, 'foo\nfoo\n')
+
+    def test_list_account_with_versions(self):
+        argv = ["", "list", "--versions"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--versions option only allowed for "
+                         "container listings")
 
     @mock.patch('swiftclient.service.Connection')
     def test_list_json(self, connection):
@@ -431,9 +493,11 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
             calls = [
                 mock.call('container', marker='',
-                          delimiter=None, prefix=None, headers={}),
+                          delimiter=None, prefix=None, headers={},
+                          query_string=None, version_marker=''),
                 mock.call('container', marker='object_a',
-                          delimiter=None, prefix=None, headers={})]
+                          delimiter=None, prefix=None, headers={},
+                          query_string=None, version_marker='')]
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out, 'object_a\n')
@@ -450,9 +514,11 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
             calls = [
                 mock.call('container', marker='',
-                          delimiter=None, prefix=None, headers={}),
+                          delimiter=None, prefix=None, headers={},
+                          query_string=None, version_marker=''),
                 mock.call('container', marker='object_a',
-                          delimiter=None, prefix=None, headers={})]
+                          delimiter=None, prefix=None, headers={},
+                          query_string=None, version_marker='')]
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out,
@@ -472,13 +538,43 @@ class TestShell(unittest.TestCase):
             calls = [
                 mock.call('container', marker='',
                           delimiter=None, prefix=None,
-                          headers={'Skip-Middleware': 'Test'}),
+                          headers={'Skip-Middleware': 'Test'},
+                          query_string=None, version_marker=''),
                 mock.call('container', marker='object_a',
                           delimiter=None, prefix=None,
-                          headers={'Skip-Middleware': 'Test'})]
+                          headers={'Skip-Middleware': 'Test'},
+                          query_string=None, version_marker='')]
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out, 'object_a\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_download_version_id(self, connection):
+        argv = ["", "download", "--yes-all", "--version-id", "5"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--version-id option only allowed for "
+                         "object downloads")
+
+        argv = ["", "download", "--version-id", "2", "container"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--version-id option only allowed for "
+                         "object downloads")
+
+        argv = ["", "download", "--version-id", "1", "container", "object"]
+        connection.return_value.head_object.return_value = {}
+        connection.return_value.get_object.return_value = {}, ''
+        connection.return_value.attempts = 0
+        with CaptureOutput():
+            swiftclient.shell.main(argv)
+        self.assertEqual([mock.call('container', 'object', headers={},
+                                    query_string='version-id=1',
+                                    resp_chunk_size=65536,
+                                    response_dict={})],
+                         connection.return_value.get_object.mock_calls)
 
     @mock.patch('swiftclient.service.makedirs')
     @mock.patch('swiftclient.service.Connection')
@@ -1085,6 +1181,33 @@ class TestShell(unittest.TestCase):
         check_good(["--object-threads", "1"])
         check_good(["--container-threads", "1"])
 
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_version_id(self, connection):
+        argv = ["", "delete", "--yes-all", "--version-id", "3"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--version-id option only allowed for "
+                         "object deletes")
+
+        argv = ["", "delete", "--version-id", "1", "container"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--version-id option only allowed for "
+                         "object deletes")
+
+        argv = ["", "delete", "--version-id", "1", "container", "object"]
+        connection.return_value.head_object.return_value = {}
+        connection.return_value.delete_object.return_value = None
+        connection.return_value.attempts = 0
+        with CaptureOutput():
+            swiftclient.shell.main(argv)
+        self.assertEqual([mock.call('container', 'object', headers={},
+                                    query_string='version-id=1',
+                                    response_dict={})],
+                         connection.return_value.delete_object.mock_calls)
+
     @mock.patch.object(swiftclient.service.SwiftService,
                        '_bulk_delete_page_size', lambda *a: 1)
     @mock.patch('swiftclient.service.Connection')
@@ -1094,10 +1217,12 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'empty_container'}]],
             [None, []],
         ]
+        # N.B: missing --versions flag, version-id gets ignored
+        # only latest object is deleted
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'}]],
             [None, []],
-            [None, [{'name': 'object'}]],
+            [None, [{'name': 'object', 'version_id': 1}]],
             [None, []],
             [None, []],
         ]
@@ -1107,11 +1232,48 @@ class TestShell(unittest.TestCase):
         connection.return_value.delete_object.return_value = None
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_has_calls([
-            mock.call('container', 'object', query_string=None,
+            mock.call('container', 'object', query_string='',
                       response_dict={}, headers={}),
-            mock.call('container', 'obj\xe9ct2', query_string=None,
+            mock.call('container', 'obj\xe9ct2', query_string='',
                       response_dict={}, headers={}),
-            mock.call('container2', 'object', query_string=None,
+            mock.call('container2', 'object', query_string='',
+                      response_dict={}, headers={})], any_order=True)
+        self.assertEqual(3, connection.return_value.delete_object.call_count,
+                         'Expected 3 calls but found\n%r'
+                         % connection.return_value.delete_object.mock_calls)
+        self.assertEqual(
+            connection.return_value.delete_container.mock_calls, [
+                mock.call('container', response_dict={}, headers={}),
+                mock.call('container2', response_dict={}, headers={}),
+                mock.call('empty_container', response_dict={}, headers={})])
+
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_account_versions(self, connection):
+        connection.return_value.get_account.side_effect = [
+            [None, [{'name': 'container'}, {'name': 'container2'}]],
+            [None, [{'name': 'empty_container'}]],
+            [None, []],
+        ]
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'}]],
+            [None, []],
+            [None, [{'name': 'obj', 'version_id': 1}]],
+            [None, []],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "--all", "--versions"]
+        connection.return_value.head_object.return_value = {}
+        connection.return_value.delete_object.return_value = None
+        swiftclient.shell.main(argv)
+        connection.return_value.delete_object.assert_has_calls([
+            mock.call('container', 'object', query_string='',
+                      response_dict={}, headers={}),
+            mock.call('container', 'obj\xe9ct2', query_string='',
+                      response_dict={}, headers={}),
+            mock.call('container2', 'obj', query_string='version-id=1',
                       response_dict={}, headers={})], any_order=True)
         self.assertEqual(3, connection.return_value.delete_object.call_count,
                          'Expected 3 calls but found\n%r'
@@ -1323,8 +1485,38 @@ class TestShell(unittest.TestCase):
         connection.return_value.delete_container.assert_called_with(
             'container', response_dict={}, headers={})
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None, response_dict={},
+            'container', 'object', query_string='', response_dict={},
             headers={})
+
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 1)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_container_versions(self, connection):
+        argv = ["", "delete", "--versions", "container", "obj"]
+        with self.assertRaises(SystemExit) as caught:
+            swiftclient.shell.main(argv)
+        self.assertEqual(str(caught.exception),
+                         "--versions option not allowed for object deletes")
+
+        connection.return_value.get_container.side_effect = [
+            [None, [{'name': 'object', 'version_id': 2},
+                    {'name': 'object', 'version_id': 1}]],
+            [None, []],
+        ]
+        connection.return_value.attempts = 0
+        argv = ["", "delete", "--versions", "container"]
+        connection.return_value.head_object.return_value = {}
+        swiftclient.shell.main(argv)
+        connection.return_value.delete_container.assert_called_with(
+            'container', response_dict={}, headers={})
+        expected_calls = [
+            mock.call('container', 'object', query_string='version-id=2',
+                      response_dict={}, headers={}),
+            mock.call('container', 'object', query_string='version-id=1',
+                      response_dict={}, headers={})]
+
+        self.assertEqual(connection.return_value.delete_object.mock_calls,
+                         expected_calls)
 
     @mock.patch.object(swiftclient.service.SwiftService,
                        '_bulk_delete_page_size', lambda *a: 1)
@@ -1342,7 +1534,7 @@ class TestShell(unittest.TestCase):
             'container', response_dict={},
             headers={'Skip-Middleware': 'Test'})
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None, response_dict={},
+            'container', 'object', query_string='', response_dict={},
             headers={'Skip-Middleware': 'Test'})
 
     @mock.patch.object(swiftclient.service.SwiftService,
@@ -1408,7 +1600,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.attempts = 0
         swiftclient.shell.main(argv)
         connection.return_value.delete_object.assert_called_with(
-            'container', 'object', query_string=None, response_dict={},
+            'container', 'object', query_string='', response_dict={},
             headers={})
 
     @mock.patch.object(swiftclient.service.SwiftService,

@@ -921,7 +921,7 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
 
 def get_container(url, token, container, marker=None, limit=None,
                   prefix=None, delimiter=None, end_marker=None,
-                  path=None, http_conn=None,
+                  version_marker=None, path=None, http_conn=None,
                   full_listing=False, service_token=None, headers=None,
                   query_string=None):
     """
@@ -935,6 +935,7 @@ def get_container(url, token, container, marker=None, limit=None,
     :param prefix: prefix query
     :param delimiter: string to delimit the queries on
     :param end_marker: marker query
+    :param version_marker: version marker query
     :param path: path query (equivalent: "delimiter=/" and "prefix=path/")
     :param http_conn: a tuple of (parsed url, HTTPConnection object),
                       (If None, it will create the conn object)
@@ -951,17 +952,20 @@ def get_container(url, token, container, marker=None, limit=None,
         http_conn = http_connection(url)
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
-                           delimiter, end_marker, path, http_conn,
-                           service_token=service_token, headers=headers)
+                           delimiter, end_marker, version_marker, path=path,
+                           http_conn=http_conn, service_token=service_token,
+                           headers=headers)
         listing = rv[1]
         while listing:
             if not delimiter:
                 marker = listing[-1]['name']
             else:
                 marker = listing[-1].get('name', listing[-1].get('subdir'))
+            version_marker = listing[-1].get('version_id')
             listing = get_container(url, token, container, marker, limit,
-                                    prefix, delimiter, end_marker, path,
-                                    http_conn, service_token=service_token,
+                                    prefix, delimiter, end_marker,
+                                    version_marker, path, http_conn,
+                                    service_token=service_token,
                                     headers=headers)[1]
             if listing:
                 rv[1].extend(listing)
@@ -979,6 +983,8 @@ def get_container(url, token, container, marker=None, limit=None,
         qs += '&delimiter=%s' % quote(delimiter)
     if end_marker:
         qs += '&end_marker=%s' % quote(end_marker)
+    if version_marker:
+        qs += '&version_marker=%s' % quote(version_marker)
     if path:
         qs += '&path=%s' % quote(path)
     if query_string:
@@ -1816,15 +1822,17 @@ class Connection(object):
         return self._retry(None, head_container, container, headers=headers)
 
     def get_container(self, container, marker=None, limit=None, prefix=None,
-                      delimiter=None, end_marker=None, path=None,
-                      full_listing=False, headers=None, query_string=None):
+                      delimiter=None, end_marker=None, version_marker=None,
+                      path=None, full_listing=False, headers=None,
+                      query_string=None):
         """Wrapper for :func:`get_container`"""
         # TODO(unknown): With full_listing=True this will restart the entire
         # listing with each retry. Need to make a better version that just
         # retries where it left off.
         return self._retry(None, get_container, container, marker=marker,
                            limit=limit, prefix=prefix, delimiter=delimiter,
-                           end_marker=end_marker, path=path,
+                           end_marker=end_marker,
+                           version_marker=version_marker, path=path,
                            full_listing=full_listing, headers=headers,
                            query_string=query_string)
 

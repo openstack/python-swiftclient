@@ -65,7 +65,8 @@ st_delete_options = '''[--all] [--leave-segments]
                     [--container-threads <threads>]
                     [--header <header:value>]
                     [--prefix <prefix>]
-                    [<container> [<object>] [...]]
+                    [--versions]
+                    [<container> [<object>] [--version-id <version_id>] [...]]
 '''
 
 st_delete_help = '''
@@ -78,6 +79,7 @@ Positional arguments:
 
 Optional arguments:
   -a, --all             Delete all containers and objects.
+  --versions            Delete all versions
   --leave-segments      Do not delete segments of manifest objects.
   -H, --header <header:value>
                         Adds a custom request header to use for deleting
@@ -89,6 +91,8 @@ Optional arguments:
                         Number of threads to use for deleting containers.
                         Default is 10.
   --prefix <prefix>     Only delete objects beginning with <prefix>.
+  --version-id <version-id>
+                        Delete specific version of a versioned object.
 '''.strip("\n")
 
 
@@ -96,9 +100,14 @@ def st_delete(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '-a', '--all', action='store_true', dest='yes_all',
         default=False, help='Delete all containers and objects.')
+    parser.add_argument('--versions', action='store_true',
+                        help='delete all versions')
     parser.add_argument(
         '-p', '--prefix', dest='prefix',
         help='Only delete items beginning with <prefix>.')
+    parser.add_argument(
+        '--version-id', action='store', default=None,
+        help='Delete a specific version of a versioned object')
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[],
@@ -128,6 +137,10 @@ def st_delete(parser, args, output_manager, return_parser=False):
                              BASENAME, st_delete_options,
                              st_delete_help)
         return
+    if options['versions'] and len(args) >= 2:
+        exit('--versions option not allowed for object deletes')
+    if options['version_id'] and len(args) < 2:
+        exit('--version-id option only allowed for object deletes')
 
     if options['object_threads'] <= 0:
         output_manager.error(
@@ -227,6 +240,7 @@ st_download_options = '''[--all] [--marker <marker>] [--prefix <prefix>]
                       [--object-threads <threads>] [--ignore-checksum]
                       [--container-threads <threads>] [--no-download]
                       [--skip-identical] [--remove-prefix]
+                      [--version-id <version_id>]
                       [--header <header:value>] [--no-shuffle]
                       [<container> [<object>] [...]]
 '''
@@ -271,6 +285,8 @@ Optional arguments:
                         Example: --header "content-type:text/plain"
   --skip-identical      Skip downloading files that are identical on both
                         sides.
+  --version-id <version-id>
+                        Download specific version of a versioned object.
   --ignore-checksum     Turn off checksum validation for downloads.
   --no-shuffle          By default, when downloading a complete account or
                         container, download order is randomised in order to
@@ -333,6 +349,9 @@ def st_download(parser, args, output_manager, return_parser=False):
         default=False, help='Skip downloading files that are identical on '
         'both sides.')
     parser.add_argument(
+        '--version-id', action='store', default=None,
+        help='Download a specific version of a versioned object')
+    parser.add_argument(
         '--ignore-checksum', action='store_false', dest='checksum',
         default=True, help='Turn off checksum validation for downloads.')
     parser.add_argument(
@@ -372,6 +391,8 @@ def st_download(parser, args, output_manager, return_parser=False):
         output_manager.error('Usage: %s download %s\n%s', BASENAME,
                              st_download_options, st_download_help)
         return
+    if options['version_id'] and len(args) < 2:
+        exit('--version-id option only allowed for object downloads')
 
     if options['object_threads'] <= 0:
         output_manager.error(
@@ -479,7 +500,7 @@ def st_download(parser, args, output_manager, return_parser=False):
 
 st_list_options = '''[--long] [--lh] [--totals] [--prefix <prefix>]
                   [--delimiter <delimiter>] [--header <header:value>]
-                  [<container>]
+                  [--versions] [<container>]
 '''
 
 st_list_help = '''
@@ -499,6 +520,8 @@ Optional arguments:
                         Roll up items with the given delimiter. For containers
                         only. See OpenStack Swift API documentation for what
                         this means.
+  -j, --json            Display listing information in json
+  --versions            Display listing information for all versions
   -H, --header <header:value>
                         Adds a custom request header to use for listing.
 '''.strip('\n')
@@ -579,6 +602,8 @@ def st_list(parser, args, output_manager, return_parser=False):
              'what this means.')
     parser.add_argument('-j', '--json', action='store_true',
                         help='print listing information in json')
+    parser.add_argument('--versions', action='store_true',
+                        help='display all versions')
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[],
@@ -592,6 +617,8 @@ def st_list(parser, args, output_manager, return_parser=False):
     args = args[1:]
     if options['delimiter'] and not args:
         exit('-d option only allowed for container listings')
+    if options['versions'] and not args:
+        exit('--versions option only allowed for container listings')
 
     human = options.pop('human')
     if human:
@@ -642,6 +669,7 @@ def st_list(parser, args, output_manager, return_parser=False):
 
 
 st_stat_options = '''[--lh] [--header <header:value>]
+                  [--version-id <version_id>]
                   [<container> [<object>]]
 '''
 
@@ -655,6 +683,8 @@ Positional arguments:
 Optional arguments:
   --lh                  Report sizes in human readable format similar to
                         ls -lh.
+  --version-id <version-id>
+                        Report stat of specific version of a versioned object.
   -H, --header <header:value>
                         Adds a custom request header to use for stat.
 '''.strip('\n')
@@ -664,6 +694,9 @@ def st_stat(parser, args, output_manager, return_parser=False):
     parser.add_argument(
         '--lh', dest='human', action='store_true', default=False,
         help='Report sizes in human readable format similar to ls -lh.')
+    parser.add_argument(
+        '--version-id', action='store', default=None,
+        help='Report stat of a specific version of a versioned object')
     parser.add_argument(
         '-H', '--header', action='append', dest='header',
         default=[],
@@ -675,6 +708,8 @@ def st_stat(parser, args, output_manager, return_parser=False):
 
     options, args = parse_args(parser, args)
     args = args[1:]
+    if options['version_id'] and len(args) < 2:
+        exit('--version-id option only allowed for object stats')
 
     with SwiftService(options=options) as swift:
         try:

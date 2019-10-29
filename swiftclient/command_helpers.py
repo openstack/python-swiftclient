@@ -143,7 +143,11 @@ def print_container_stats(items, headers, output_manager):
 def stat_object(conn, options, container, obj):
     req_headers = split_request_headers(options.get('header', []))
 
-    headers = conn.head_object(container, obj, headers=req_headers)
+    query_string = None
+    if options.get('version_id') is not None:
+        query_string = 'version-id=%s' % options['version_id']
+    headers = conn.head_object(container, obj, headers=req_headers,
+                               query_string=query_string)
     items = []
     if options['verbose'] > 1:
         path = '%s/%s/%s' % (conn.url, container, obj)
