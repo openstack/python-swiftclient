@@ -1420,12 +1420,32 @@ class TestShell(unittest.TestCase):
             b'{"Number Not Found": 0, "Response Status": "200 OK", '
             b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
         connection.return_value.attempts = 0
-        swiftclient.shell.main(argv)
+        with CaptureOutput() as out:
+            swiftclient.shell.main(argv)
         connection.return_value.post_account.assert_called_with(
             query_string='bulk-delete', data=b'/container/object\n',
             headers={'Content-Type': 'text/plain',
                      'Accept': 'application/json'},
             response_dict={})
+        self.assertEqual('object\n', out.out)
+
+    @mock.patch.object(swiftclient.service.SwiftService,
+                       '_bulk_delete_page_size', lambda *a: 10)
+    @mock.patch('swiftclient.service.Connection')
+    def test_delete_bulk_object_with_retry(self, connection):
+        argv = ["", "delete", "container", "object"]
+        connection.return_value.post_account.return_value = {}, (
+            b'{"Number Not Found": 0, "Response Status": "200 OK", '
+            b'"Errors": [], "Number Deleted": 1, "Response Body": ""}')
+        connection.return_value.attempts = 3
+        with CaptureOutput() as out:
+            swiftclient.shell.main(argv)
+        connection.return_value.post_account.assert_called_with(
+            query_string='bulk-delete', data=b'/container/object\n',
+            headers={'Content-Type': 'text/plain',
+                     'Accept': 'application/json'},
+            response_dict={})
+        self.assertEqual('object [after 3 attempts]\n', out.out)
 
     def test_delete_verbose_output(self):
         del_obj_res = {'success': True, 'response_dict': {}, 'attempts': 2,

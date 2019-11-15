@@ -170,7 +170,7 @@ def st_delete(parser, args, output_manager, return_parser=False):
                 c = r.get('container', '')
                 o = r.get('object', '')
                 a = (' [after {0} attempts]'.format(r.get('attempts'))
-                     if r.get('attempts') > 1 else '')
+                     if r.get('attempts', 1) > 1 else '')
 
                 if r['action'] == 'bulk_delete':
                     if r['success']:
