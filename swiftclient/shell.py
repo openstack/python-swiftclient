@@ -1651,16 +1651,27 @@ def parse_args(parser, args, enforce_requires=True):
         return options, args
 
     if enforce_requires:
-        if options['auth_version'] == '3':
+        if options['os_auth_type'] == 'v3applicationcredential':
+            if not (options['os_application_credential_id'] and
+                    options['os_application_credential_secret']):
+                exit('Auth version 3 (application credential) requires '
+                     'OS_APPLICATION_CREDENTIAL_ID and '
+                     'OS_APPLICATION_CREDENTIAL_SECRET to be set or '
+                     'overridden with --os-application-credential-id and '
+                     '--os-application-credential-secret respectively.')
+        elif options['os_auth_type']:
+            exit('Only "v3applicationcredential" is supported for '
+                 '--os-auth-type')
+        elif options['auth_version'] == '3':
             if not options['auth']:
-                exit('Auth version 3 requires OS_AUTH_URL to be set or ' +
+                exit('Auth version 3 requires OS_AUTH_URL to be set or '
                      'overridden with --os-auth-url')
             if not (options['user'] or options['os_user_id']):
-                exit('Auth version 3 requires either OS_USERNAME or ' +
-                     'OS_USER_ID to be set or overridden with ' +
+                exit('Auth version 3 requires either OS_USERNAME or '
+                     'OS_USER_ID to be set or overridden with '
                      '--os-username or --os-user-id respectively.')
             if not options['key']:
-                exit('Auth version 3 requires OS_PASSWORD to be set or ' +
+                exit('Auth version 3 requires OS_PASSWORD to be set or '
                      'overridden with --os-password')
         elif not (options['auth'] and options['user'] and options['key']):
             exit('''
@@ -1831,6 +1842,29 @@ def add_default_args(parser):
                              'env[OS_AUTH_URL].')
     os_grp.add_argument('--os_auth_url',
                         help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-auth-type',
+                        metavar='<auth-type>',
+                        default=environ.get('OS_AUTH_TYPE'),
+                        help='OpenStack auth type for v3. Defaults to '
+                             'env[OS_AUTH_TYPE].')
+    os_grp.add_argument('--os_auth_type',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-application-credential-id',
+                        metavar='<auth-application-credential-id>',
+                        default=environ.get('OS_APPLICATION_CREDENTIAL_ID'),
+                        help='OpenStack appplication credential id. '
+                             'Defaults to env[OS_APPLICATION_CREDENTIAL_ID].')
+    os_grp.add_argument('--os_application_credential_id',
+                        help=argparse.SUPPRESS)
+    os_grp.add_argument('--os-application-credential-secret',
+                        metavar='<auth-application-credential-secret>',
+                        default=environ.get(
+                            'OS_APPLICATION_CREDENTIAL_SECRET'),
+                        help='OpenStack appplication credential secret. '
+                             'Defaults to '
+                             'env[OS_APPLICATION_CREDENTIAL_SECRET].')
+    os_grp.add_argument('--os_application_credential_secret',
+                        help=argparse.SUPPRESS)
     os_grp.add_argument('--os-auth-token',
                         metavar='<auth-token>',
                         default=environ.get('OS_AUTH_TOKEN'),
@@ -1915,6 +1949,11 @@ def main(arguments=None):
              [--os-project-domain-name <auth-project-domain-name>]
              [--os-auth-url <auth-url>]
              [--os-auth-token <auth-token>]
+             [--os-auth-type <os-auth-type>]
+             [--os-application-credential-id
+                   <auth-application-credential-id>]
+             [--os-application-credential-secret
+                   <auth-application-credential-secret>]
              [--os-storage-url <storage-url>]
              [--os-region-name <region-name>]
              [--os-service-type <service-type>]
@@ -1966,6 +2005,11 @@ Examples:
       --os-project-id 0123456789abcdef0123456789abcdef \\
       --os-user-id abcdef0123456789abcdef0123456789 \\
       --os-password password list
+
+  %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
+      --os-application-credential-id d78683c92f0e4f9b9b02a2e208039412 \\
+      --os-application-credential-secret APPLICTION_CREDENTIAL_SECRET \\
+      --os-auth-type v3applicationcredential list
 
   %(prog)s --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
       --os-storage-url https://10.1.5.2:8080/v1/AUTH_ced809b6a4baea7aeab61a \\

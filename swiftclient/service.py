@@ -110,6 +110,9 @@ def process_options(options):
         else:
             options['auth_version'] = '2.0'
 
+    if options.get('os_auth_type', None) == 'v3applicationcredential':
+        options['auth_version'] == '3'
+
     # Use new-style args if old ones not present
     if not options['auth'] and options['os_auth_url']:
         options['auth'] = options['os_auth_url']
@@ -134,6 +137,11 @@ def process_options(options):
         'auth_token': options['os_auth_token'],
         'object_storage_url': options['os_storage_url'],
         'region_name': options['os_region_name'],
+        'auth_type': options['os_auth_type'],
+        'application_credential_id':
+        options['os_application_credential_id'],
+        'application_credential_secret':
+        options['os_application_credential_secret'],
     }
 
 
@@ -162,6 +170,11 @@ def _build_default_global_options():
         "os_project_domain_id": environ.get('OS_PROJECT_DOMAIN_ID'),
         "os_auth_url": environ.get('OS_AUTH_URL'),
         "os_auth_token": environ.get('OS_AUTH_TOKEN'),
+        "os_auth_type": environ.get('OS_AUTH_TYPE'),
+        "os_application_credential_id":
+        environ.get('OS_APPLICATION_CREDENTIAL_ID'),
+        "os_application_credential_secret":
+        environ.get('OS_APPLICATION_CREDENTIAL_SECRET'),
         "os_storage_url": environ.get('OS_STORAGE_URL'),
         "os_region_name": environ.get('OS_REGION_NAME'),
         "os_service_type": environ.get('OS_SERVICE_TYPE'),
