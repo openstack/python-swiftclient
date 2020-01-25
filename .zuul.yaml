@@ -47,11 +47,15 @@
         - swiftclient-swift-functional
         - swiftclient-functional
         - swiftclient-functional-py2
+        - openstack-tox-py38:
+            voting: true
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
         - swiftclient-functional-py2
+        - openstack-tox-py38:
+            voting: true
     post:
       jobs:
         - openstack-tox-cover
