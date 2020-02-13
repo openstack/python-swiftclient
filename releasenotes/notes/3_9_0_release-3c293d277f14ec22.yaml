@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Now tested under Python 3.8.
+
+fixes:
+  - |
+    Better clean up connections when using the low-level ``client.py`` API.
+
+  - |
+    Fixed a display issue when ``swift delete`` made multiple attempts to
+    bulk delete objects.

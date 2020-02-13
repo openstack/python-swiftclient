@@ -1,3 +1,14 @@
+3.9.0
+-----
+
+* Now tested under Python 3.8.
+
+* Better clean up connections when using the low-level client.py API.
+
+* Fixed a display issue when `swift delete` made multiple attempts to bulk
+  delete objects.
+
+
 3.8.1
 -----
 
