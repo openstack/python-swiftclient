@@ -1260,8 +1260,7 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'empty_container'}]],
             [None, []],
         ]
-        # N.B: missing --versions flag, version-id gets ignored
-        # only latest object is deleted
+        # N.B: --all implies --versions, clear it all out
         connection.return_value.get_container.side_effect = [
             [None, [{'name': 'object'}, {'name': 'obj\xe9ct2'}]],
             [None, []],
@@ -1279,7 +1278,7 @@ class TestShell(unittest.TestCase):
                       response_dict={}, headers={}),
             mock.call('container', 'obj\xe9ct2', query_string='',
                       response_dict={}, headers={}),
-            mock.call('container2', 'object', query_string='',
+            mock.call('container2', 'object', query_string='version-id=1',
                       response_dict={}, headers={})], any_order=True)
         self.assertEqual(3, connection.return_value.delete_object.call_count,
                          'Expected 3 calls but found\n%r'

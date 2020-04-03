@@ -78,8 +78,8 @@ Positional arguments:
                         for multiple objects.
 
 Optional arguments:
-  -a, --all             Delete all containers and objects.
-  --versions            Delete all versions
+  -a, --all             Delete all containers and objects. Implies --versions.
+  --versions            Delete all versions.
   --leave-segments      Do not delete segments of manifest objects.
   -H, --header <header:value>
                         Adds a custom request header to use for deleting
@@ -132,6 +132,8 @@ def st_delete(parser, args, output_manager, return_parser=False):
 
     (options, args) = parse_args(parser, args)
     args = args[1:]
+    if options['yes_all']:
+        options['versions'] = True
     if (not args and not options['yes_all']) or (args and options['yes_all']):
         output_manager.error('Usage: %s delete %s\n%s',
                              BASENAME, st_delete_options,
