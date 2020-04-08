@@ -35,7 +35,7 @@
 - project:
     templates:
       - check-requirements
-      - lib-forward-testing
+      - lib-forward-testing-python3
       - openstack-lower-constraints-jobs
       - openstack-pypy-jobs-nonvoting
       - openstack-python-jobs
