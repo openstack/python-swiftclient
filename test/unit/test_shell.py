@@ -334,8 +334,15 @@ class TestShell(unittest.TestCase):
     def test_list_container_with_versions(self, connection):
         connection.return_value.get_container.side_effect = [
             [None, [
-                {'name': 'foo', 'version_id': '2'},
-                {'name': 'foo', 'version_id': '1'},
+                {'name': 'foo', 'version_id': '2',
+                 'content_type': 'text/plain',
+                 'last_modified': '123T456', 'bytes': 78},
+                {'name': 'foo', 'version_id': '1',
+                 'content_type': 'text/rtf',
+                 'last_modified': '123T456', 'bytes': 90},
+                {'name': 'bar', 'version_id': 'null',
+                 'content_type': 'text/plain',
+                 'last_modified': '123T456', 'bytes': 123},
             ]],
             [None, []],
         ]
@@ -346,10 +353,46 @@ class TestShell(unittest.TestCase):
                            prefix=None, query_string='versions=true',
                            version_marker=''),
                  mock.call('container', delimiter=None, headers={},
-                           marker='foo', prefix=None,
-                           query_string='versions=true', version_marker='1')]
+                           marker='bar', prefix=None,
+                           query_string='versions=true',
+                           version_marker='null')]
         connection.return_value.get_container.assert_has_calls(calls)
-        self.assertEqual(output.out, 'foo\nfoo\n')
+        self.assertEqual([line.split() for line in output.out.split('\n')], [
+            ['78', '123', '456', '2', 'text/plain', 'foo'],
+            ['90', '123', '456', '1', 'text/rtf', 'foo'],
+            ['123', '123', '456', 'null', 'text/plain', 'bar'],
+            [],
+        ])
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_list_container_with_versions_old_swift(self, connection):
+        # Versions of swift that don't support object-versioning won't
+        # include verison_id keys in listings. We want to present that
+        # as though the container is unversioned.
+        connection.return_value.get_container.side_effect = [
+            [None, [
+                {'name': 'foo', 'content_type': 'text/plain',
+                 'last_modified': '123T456', 'bytes': 78},
+                {'name': 'bar', 'content_type': 'text/plain',
+                 'last_modified': '123T456', 'bytes': 123},
+            ]],
+            [None, []],
+        ]
+        argv = ["", "list", "container", "--versions"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        calls = [mock.call('container', delimiter=None, headers={}, marker='',
+                           prefix=None, query_string='versions=true',
+                           version_marker=''),
+                 mock.call('container', delimiter=None, headers={},
+                           marker='bar', prefix=None,
+                           query_string='versions=true', version_marker='')]
+        connection.return_value.get_container.assert_has_calls(calls)
+        self.assertEqual([line.split() for line in output.out.split('\n')], [
+            ['78', '123', '456', 'null', 'text/plain', 'foo'],
+            ['123', '123', '456', 'null', 'text/plain', 'bar'],
+            [],
+        ])
 
     def test_list_account_with_versions(self):
         argv = ["", "list", "--versions"]

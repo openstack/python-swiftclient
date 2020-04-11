@@ -534,7 +534,7 @@ def st_list(parser, args, output_manager, return_parser=False):
         container = stats.get("container", None)
         for item in stats["listing"]:
             item_name = item.get('name')
-            if not options['long'] and not human:
+            if not options['long'] and not human and not options['versions']:
                 output_manager.print_msg(item.get('name', item.get('subdir')))
             else:
                 if not container:    # listing containers
@@ -566,9 +566,16 @@ def st_list(parser, args, output_manager, return_parser=False):
                         date = xtime = ''
                         item_name = subdir
                     if not options['totals']:
-                        output_manager.print_msg(
-                            "%s %10s %8s %24s %s",
-                            byte_str, date, xtime, content_type, item_name)
+                        if options['versions']:
+                            output_manager.print_msg(
+                                "%s %10s %8s %16s %24s %s",
+                                byte_str, date, xtime,
+                                item.get('version_id', 'null'),
+                                content_type, item_name)
+                        else:
+                            output_manager.print_msg(
+                                "%s %10s %8s %24s %s",
+                                byte_str, date, xtime, content_type, item_name)
                 total_bytes += item_bytes
 
         # report totals
