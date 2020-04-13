@@ -1727,8 +1727,6 @@ def add_default_args(parser):
                         help='Show OpenStack authentication options.')
     parser.add_argument('--os_help', action='store_true',
                         help=argparse.SUPPRESS)
-    parser.add_argument('-s', '--snet', action='store_true', dest='snet',
-                        default=False, help='Use SERVICENET internal network.')
     parser.add_argument('-v', '--verbose', action='count', dest='verbose',
                         default=1, help='Print more info.')
     parser.add_argument('--debug', action='store_true', dest='debug',
@@ -1965,7 +1963,7 @@ def main(arguments=None):
 
     parser = argparse.ArgumentParser(
         add_help=False, formatter_class=HelpFormatter, usage='''
-%(prog)s [--version] [--help] [--os-help] [--snet] [--verbose]
+%(prog)s [--version] [--help] [--os-help] [--verbose]
              [--debug] [--debug-with-secrets] [--info] [--quiet]
              [--auth <auth_url>] [--auth-version <auth_version> |
                  --os-identity-api-version <auth_version> ]
