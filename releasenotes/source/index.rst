@@ -6,6 +6,7 @@
    :maxdepth: 1
 
    current
+   ussuri
    train
    stein
    rocky
