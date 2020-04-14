@@ -42,6 +42,7 @@ class TestFunctional(unittest.TestCase):
 
     def _get_config(self):
         self.auth_url = TEST_CONFIG['auth_url']
+        self.cacert = TEST_CONFIG['cacert']
         self.auth_version = TEST_CONFIG['auth_version']
         self.account_username = TEST_CONFIG['account_username']
         self.password = TEST_CONFIG['password']
@@ -52,7 +53,7 @@ class TestFunctional(unittest.TestCase):
         """
         return swiftclient.Connection(
             self.auth_url, self.account_username, self.password,
-            auth_version=self.auth_version)
+            auth_version=self.auth_version, cacert=self.cacert)
 
     def setUp(self):
         super(TestFunctional, self).setUp()
@@ -486,7 +487,7 @@ class TestUsingKeystone(TestFunctional):
 
         return swiftclient.Connection(
             self.auth_url, username, self.password,
-            auth_version=self.auth_version,
+            auth_version=self.auth_version, cacert=self.cacert,
             os_options={'tenant_name': account})
 
 
@@ -515,4 +516,5 @@ class TestUsingKeystoneV3(TestFunctional):
                       'user_domain_name': user_domain}
         return swiftclient.Connection(self.auth_url, username, password,
                                       auth_version=self.auth_version,
+                                      cacert=self.cacert,
                                       os_options=os_options)
