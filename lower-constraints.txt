@@ -20,7 +20,7 @@ MarkupSafe==1.0
 mccabe==0.2.1
 mock==1.2.0
 netaddr==0.7.10
-openstackdocstheme==1.20.0
+openstackdocstheme==2.0.0
 openstacksdk==0.11.0
 oslo.config==1.2.0
 pbr==2.0.0
@@ -37,7 +37,7 @@ reno==2.5.0
 requests==1.1.0
 six==1.9.0
 snowballstemmer==1.2.1
-sphinx==1.6.2
+sphinx==2.0.0
 sphinxcontrib-websupport==1.0.1
 stestr==2.0.0
 testtools==2.2.0
