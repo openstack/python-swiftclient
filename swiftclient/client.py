@@ -268,7 +268,7 @@ class _ObjectBody(object):
     Readable and iterable object body response wrapper.
     """
 
-    def __init__(self, resp, chunk_size):
+    def __init__(self, resp, chunk_size, conn_to_close):
         """
         Wrap the underlying response
 
@@ -277,9 +277,13 @@ class _ObjectBody(object):
         """
         self.resp = resp
         self.chunk_size = chunk_size
+        self.conn_to_close = conn_to_close
 
     def read(self, length=None):
-        return self.resp.read(length)
+        buf = self.resp.read(length)
+        if length != 0 and not buf:
+            self.close()
+        return buf
 
     def __iter__(self):
         return self
@@ -295,6 +299,8 @@ class _ObjectBody(object):
 
     def close(self):
         self.resp.close()
+        if self.conn_to_close:
+            self.conn_to_close.close()
 
 
 class _RetryBody(_ObjectBody):
@@ -320,7 +326,7 @@ class _RetryBody(_ObjectBody):
         :param headers: an optional dictionary with additional headers to
                          include in the request
         """
-        super(_RetryBody, self).__init__(resp, resp_chunk_size)
+        super(_RetryBody, self).__init__(resp, resp_chunk_size, None)
         self.expected_length = int(self.resp.getheader('Content-Length'))
         self.conn = connection
         self.container = container
@@ -443,17 +449,6 @@ class HTTPConnection(object):
         if timeout:
             self.requests_args['timeout'] = timeout
 
-    if not six.PY2:
-        def __del__(self):
-            """Cleanup resources other than memory"""
-            if self.request_session:
-                # The session we create must be closed to free up
-                # file descriptors
-                try:
-                    self.request_session.close()
-                finally:
-                    self.request_session = None
-
     def _request(self, *arg, **kwarg):
         """Final wrapper before requests call, to be patched in tests"""
         return self.request_session.request(*arg, **kwarg)
@@ -515,7 +510,7 @@ class HTTPConnection(object):
                 # urllib3's connection pool. This will reduce the number of
                 # log messages seen in bug #1341777. This does not actually
                 # close a socket. It will also prevent people from being
-                # mislead as to the cause of a bug as in bug #1424732.
+                # misled as to the cause of a bug as in bug #1424732.
                 self.resp.close()
             return chunk
 
@@ -845,8 +840,10 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     if headers:
         req_headers.update(headers)
 
+    close_conn = False
     if not http_conn:
         http_conn = http_connection(url)
+        close_conn = True
     if full_listing:
         rv = get_account(url, token, marker, limit, prefix, end_marker,
                          http_conn, headers=req_headers, delimiter=delimiter)
@@ -876,6 +873,8 @@ def get_account(url, token, marker=None, limit=None, prefix=None,
     conn.request(method, full_path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(("%s?%s" % (url, qs), method,), {'headers': req_headers},
              resp, body)
 
@@ -902,10 +901,12 @@ def head_account(url, token, http_conn=None, headers=None,
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     method = "HEAD"
     req_headers = {'X-Auth-Token': token}
     if service_token:
@@ -916,6 +917,8 @@ def head_account(url, token, http_conn=None, headers=None,
     conn.request(method, parsed.path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log((url, method,), {'headers': req_headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
         raise ClientException.from_response(resp, 'Account HEAD failed', body)
@@ -941,10 +944,12 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     :raises ClientException: HTTP POST request failed
     :returns: resp_headers, body
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     method = 'POST'
     path = parsed.path
     if query_string:
@@ -957,6 +962,8 @@ def post_account(url, token, headers, http_conn=None, response_dict=None,
     conn.request(method, path, data, req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log((url, method,), {'headers': req_headers}, resp, body)
 
     store_response(resp, response_dict)
@@ -998,8 +1005,10 @@ def get_container(url, token, container, marker=None, limit=None,
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
     """
+    close_conn = False
     if not http_conn:
         http_conn = http_connection(url)
+        close_conn = True
     if full_listing:
         rv = get_container(url, token, container, marker, limit, prefix,
                            delimiter, end_marker, version_marker, path=path,
@@ -1048,6 +1057,8 @@ def get_container(url, token, container, marker=None, limit=None,
     conn.request(method, '%s?%s' % (cont_path, qs), '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%(url)s%(cont_path)s?%(qs)s' %
               {'url': url.replace(parsed.path, ''),
                'cont_path': cont_path,
@@ -1078,10 +1089,12 @@ def head_container(url, token, container, http_conn=None, headers=None,
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'HEAD'
     req_headers = {'X-Auth-Token': token}
@@ -1092,6 +1105,8 @@ def head_container(url, token, container, http_conn=None, headers=None,
     conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': req_headers}, resp, body)
 
@@ -1119,10 +1134,12 @@ def put_container(url, token, container, headers=None, http_conn=None,
     :param query_string: if set will be appended with '?' to generated path
     :raises ClientException: HTTP PUT request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'PUT'
     req_headers = {'X-Auth-Token': token}
@@ -1137,6 +1154,8 @@ def put_container(url, token, container, headers=None, http_conn=None,
     conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
 
     store_response(resp, response_dict)
 
@@ -1162,10 +1181,12 @@ def post_container(url, token, container, headers, http_conn=None,
     :param service_token: service auth token
     :raises ClientException: HTTP POST request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s' % (parsed.path, quote(container))
     method = 'POST'
     req_headers = {'X-Auth-Token': token}
@@ -1178,6 +1199,8 @@ def post_container(url, token, container, headers, http_conn=None,
     conn.request(method, path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': req_headers}, resp, body)
 
@@ -1206,10 +1229,12 @@ def delete_container(url, token, container, http_conn=None,
     :param headers: additional headers to include in the request
     :raises ClientException: HTTP DELETE request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s' % (parsed.path, quote(container))
     if headers:
         headers = dict(headers)
@@ -1225,6 +1250,8 @@ def delete_container(url, token, container, http_conn=None,
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
 
@@ -1246,7 +1273,8 @@ def get_object(url, token, container, name, http_conn=None,
     :param container: container name that the object is in
     :param name: object name to get
     :param http_conn: a tuple of (parsed url, HTTPConnection object),
-                      (If None, it will create the conn object)
+                      (If None, it will create the conn object and close it
+                      after all content is read)
     :param resp_chunk_size: if defined, chunk size of data to read. NOTE: If
                             you specify a resp_chunk_size you must fully read
                             the object's contents before making another
@@ -1261,10 +1289,12 @@ def get_object(url, token, container, name, http_conn=None,
               headers will be a dict and all header names will be lowercase.
     :raises ClientException: HTTP GET request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
     if query_string:
         path += '?' + query_string
@@ -1287,9 +1317,12 @@ def get_object(url, token, container, name, http_conn=None,
                  {'headers': headers}, resp, body)
         raise ClientException.from_response(resp, 'Object GET failed', body)
     if resp_chunk_size:
-        object_body = _ObjectBody(resp, resp_chunk_size)
+        object_body = _ObjectBody(resp, resp_chunk_size,
+                                  conn_to_close=conn if close_conn else None)
     else:
         object_body = resp.read()
+        if close_conn:
+            conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, None)
 
@@ -1313,10 +1346,12 @@ def head_object(url, token, container, name, http_conn=None,
               be lowercase)
     :raises ClientException: HTTP HEAD request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
     if query_string:
         path += '?' + query_string
@@ -1331,6 +1366,8 @@ def head_object(url, token, container, name, http_conn=None,
     conn.request(method, path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), method,),
              {'headers': headers}, resp, body)
     if resp.status < 200 or resp.status >= 300:
@@ -1380,10 +1417,12 @@ def put_object(url, token=None, container=None, name=None, contents=None,
     :returns: etag
     :raises ClientException: HTTP PUT request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url, proxy=proxy)
+        close_conn = True
     path = parsed.path
     if container:
         path = '%s/%s' % (path.rstrip('/'), quote(container))
@@ -1442,6 +1481,8 @@ def put_object(url, token=None, container=None, name=None, contents=None,
 
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'PUT',),
              {'headers': headers}, resp, body)
 
@@ -1471,10 +1512,12 @@ def post_object(url, token, container, name, headers, http_conn=None,
     :param service_token: service auth token
     :raises ClientException: HTTP POST request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
     path = '%s/%s/%s' % (parsed.path, quote(container), quote(name))
     req_headers = {'X-Auth-Token': token}
     if service_token:
@@ -1484,6 +1527,8 @@ def post_object(url, token, container, name, headers, http_conn=None,
     conn.request('POST', path, '', req_headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'POST',),
              {'headers': req_headers}, resp, body)
 
@@ -1516,10 +1561,12 @@ def copy_object(url, token, container, name, destination=None,
     :param service_token: service auth token
     :raises ClientException: HTTP COPY request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url)
+        close_conn = True
 
     path = parsed.path
     container = quote(container)
@@ -1548,6 +1595,8 @@ def copy_object(url, token, container, name, destination=None,
     conn.request('COPY', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'COPY',),
              {'headers': headers}, resp, body)
 
@@ -1580,10 +1629,12 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
     :param service_token: service auth token
     :raises ClientException: HTTP DELETE request failed
     """
+    close_conn = False
     if http_conn:
         parsed, conn = http_conn
     else:
         parsed, conn = http_connection(url, proxy=proxy)
+        close_conn = True
     path = parsed.path
     if container:
         path = '%s/%s' % (path.rstrip('/'), quote(container))
@@ -1602,6 +1653,8 @@ def delete_object(url, token=None, container=None, name=None, http_conn=None,
     conn.request('DELETE', path, '', headers)
     resp = conn.getresponse()
     body = resp.read()
+    if close_conn:
+        conn.close()
     http_log(('%s%s' % (url.replace(parsed.path, ''), path), 'DELETE',),
              {'headers': headers}, resp, body)
 
