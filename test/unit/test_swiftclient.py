@@ -2035,6 +2035,38 @@ class TestConnection(MockHttpTest):
                     self.assertEqual(request['headers']['x-auth-token'],
                                      'tToken')
 
+    def test_url_mapping(self):
+        conn = c.Connection()
+        uri_versions = {
+            'http://storage.test.com':
+                'http://storage.test.com/info',
+            'http://storage.test.com/':
+                'http://storage.test.com/info',
+            'http://storage.test.com/v1':
+                'http://storage.test.com/info',
+            'http://storage.test.com/v1/':
+                'http://storage.test.com/info',
+            'http://storage.test.com/swift':
+                'http://storage.test.com/swift/info',
+            'http://storage.test.com/swift/':
+                'http://storage.test.com/swift/info',
+            'http://storage.test.com/v1.0':
+                'http://storage.test.com/info',
+            'http://storage.test.com/swift/v1.0':
+                'http://storage.test.com/swift/info',
+            'http://storage.test.com/v111':
+                'http://storage.test.com/info',
+            'http://storage.test.com/v111/test':
+                'http://storage.test.com/info',
+            'http://storage.test.com/v1/test':
+                'http://storage.test.com/info',
+            'http://storage.test.com/swift/v1.0/test':
+                'http://storage.test.com/swift/info',
+            'http://storage.test.com/v1.0/test':
+                'http://storage.test.com/info'}
+        for uri_k, uri_v in uri_versions.items():
+            self.assertEqual(conn._map_url(uri_k), uri_v)
+
     def test_get_capabilities(self):
         conn = c.Connection()
         with mock.patch('swiftclient.client.get_capabilities') as get_cap:
