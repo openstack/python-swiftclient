@@ -45,6 +45,8 @@ AUTH_VERSIONS_V2 = ('2.0', '2', 2)
 AUTH_VERSIONS_V3 = ('3.0', '3', 3)
 USER_METADATA_TYPE = tuple('x-%s-meta-' % type_ for type_ in
                            ('container', 'account', 'object'))
+URI_PATTERN_INFO = re.compile(r'/info')
+URI_PATTERN_VERSION = re.compile(r'\/v\d+\.?\d*(\/.*)?')
 
 try:
     from logging import NullHandler
@@ -1935,11 +1937,22 @@ class Connection(object):
                            response_dict=response_dict,
                            headers=headers)
 
-    def get_capabilities(self, url=None):
+    def _map_url(self, url):
         url = url or self.url
         if not url:
             url, _ = self.get_auth()
-        parsed = urlparse(urljoin(url, '/info'))
+        scheme, netloc, path, params, query, fragment = urlparse(url)
+        if URI_PATTERN_VERSION.search(path):
+            path = URI_PATTERN_VERSION.sub('/info', path)
+        elif not URI_PATTERN_INFO.search(path):
+            if path.endswith('/'):
+                path += 'info'
+            else:
+                path += '/info'
+        return urlunparse((scheme, netloc, path, params, query, fragment))
+
+    def get_capabilities(self, url=None):
+        parsed = urlparse(self._map_url(url))
         if not self.http_conn:
             self.http_conn = self.http_connection(url)
         return get_capabilities((parsed, self.http_conn[1]))
