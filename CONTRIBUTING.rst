@@ -1,18 +1,19 @@
-If you would like to contribute to the development of OpenStack, you
-must follow the steps in this page:
+The source repository for this project can be found at:
 
-    https://docs.openstack.org/infra/manual/developers.html
+  https://opendev.org/openstack/python-swiftclient
 
-Once those steps have been completed, changes to OpenStack should be
-submitted for review via the Gerrit tool, following the workflow
-documented at:
+Pull requests submitted through GitHub are not monitored.
 
-    https://docs.openstack.org/infra/manual/developers.html#development-workflow
+To start contributing to OpenStack, follow the steps in the contribution guide
+to set up and use Gerrit:
 
-Gerrit is the review system used in the OpenStack projects. We're sorry,
-but we won't be able to respond to pull requests submitted through
-GitHub.
+  https://docs.openstack.org/contributors/code-and-documentation/quick-start.html
 
-Bugs should be filed on Launchpad, not Github:
+Bugs should be filed on Launchpad:
 
-    https://bugs.launchpad.net/python-swiftclient
+  https://bugs.launchpad.net/python-swiftclient
+
+For more specific information about contributing to this repository, see the
+swiftclient contributor guide:
+
+  https://docs.openstack.org/python-swiftclient/latest/contributor/contributing.html

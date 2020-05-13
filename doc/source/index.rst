@@ -16,6 +16,7 @@ Developer Documentation
 .. toctree::
     :maxdepth: 2
 
+    contributor/contributing
     cli/index
     service-api
     client-api
