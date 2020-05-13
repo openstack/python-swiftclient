@@ -2395,6 +2395,8 @@ class TestParsing(TestBase):
                                  'object_storage_url', 'project_domain_id',
                                  'user_id', 'user_domain_id', 'tenant_id',
                                  'service_type', 'project_id', 'auth_token',
+                                 'auth_type', 'application_credential_id',
+                                 'application_credential_secret',
                                  'project_domain_name']
         for key in expected_os_opts_keys:
             self.assertIn(key, actual_os_opts_dict)
@@ -2685,6 +2687,50 @@ class TestParsing(TestBase):
         with self.assertRaises(SystemExit) as cm:
             swiftclient.shell.main(args)
         self.assertIn('Auth version 3 requires OS_AUTH_URL', str(cm.exception))
+
+    def test_command_args_v3applicationcredential(self):
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        opts = {"auth_version": "3"}
+        os_opts = {
+            "auth_type": "v3applicationcredential",
+            "application_credential_id": "proejct_id",
+            "application_credential_secret": "secret",
+            "auth_url": "http://example.com:5000/v3"}
+
+        args = _make_args("stat", opts, os_opts)
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            swiftclient.shell.main(args)
+            self.assertEqual(['stat'], result[1])
+        with mock.patch('swiftclient.shell.st_stat', fake_command):
+            args = args + ["container_name"]
+            swiftclient.shell.main(args)
+            self.assertEqual(["stat", "container_name"], result[1])
+
+    def test_insufficient_args_v3applicationcredential(self):
+        opts = {"auth_version": "3"}
+        os_opts = {
+            "auth_type": "v3applicationcredential",
+            "application_credential_secret": "secret",
+            "auth_url": "http://example.com:5000/v3"}
+
+        args = _make_args("stat", opts, os_opts)
+        with self.assertRaises(SystemExit) as cm:
+            swiftclient.shell.main(args)
+        self.assertIn('Auth version 3 (application credential) requires',
+                      str(cm.exception))
+
+        os_opts = {
+            "auth_type": "v3password",
+            "application_credential_id": "proejct_id",
+            "application_credential_secret": "secret",
+            "auth_url": "http://example.com:5000/v3"}
+
+        args = _make_args("stat", opts, os_opts)
+        with self.assertRaises(SystemExit) as cm:
+            swiftclient.shell.main(args)
+        self.assertIn('Only "v3applicationcredential" is supported for',
+                      str(cm.exception))
 
     def test_password_prompt(self):
         def do_test(opts, os_opts, auth_version):

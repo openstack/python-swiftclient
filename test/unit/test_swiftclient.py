@@ -562,6 +562,63 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(url.startswith("http"))
         self.assertTrue(token)
 
+    def test_auth_v3applicationcredential(self):
+        from keystoneauth1 import exceptions as ksauthexceptions
+
+        os_options = {
+            "auth_type": "v3applicationcredential",
+            "application_credential_id": "proejct_id",
+            "application_credential_secret": "secret"}
+
+        class FakeEndpointData(object):
+            catalog_url = 'http://swift.cluster/v1/KEY_project_id'
+
+        class FakeKeystoneuth1v3Session(object):
+
+            def __init__(self, auth):
+                self.auth = auth
+                self.token = 'token'
+
+            def get_token(self):
+                if self.auth.auth_url == 'http://keystone:5000/v3':
+                    return self.token
+                elif self.auth.auth_url == 'http://keystone:9000/v3':
+                    raise ksauthexceptions.AuthorizationFailure
+                else:
+                    raise ksauthexceptions.Unauthorized
+
+            def get_endpoint_data(self, service_type, endpoint_type, **kwargs):
+                return FakeEndpointData()
+
+        mock_sess = FakeKeystoneuth1v3Session
+        with mock.patch('keystoneauth1.session.Session', mock_sess):
+            url, token = c.get_auth('http://keystone:5000', '', '',
+                                    os_options=os_options,
+                                    auth_version="3")
+
+        self.assertTrue(url.startswith("http"))
+        self.assertEqual(url, 'http://swift.cluster/v1/KEY_project_id')
+        self.assertEqual(token, 'token')
+
+        with mock.patch('keystoneauth1.session.Session', mock_sess):
+            with self.assertRaises(c.ClientException) as exc_mgr:
+                url, token = c.get_auth('http://keystone:9000', '', '',
+                                        os_options=os_options,
+                                        auth_version="3")
+
+        body = 'Unauthorized. Check application credential id and secret.'
+        body = 'Authorization Failure. Cannot authorize API client.'
+        self.assertEqual(exc_mgr.exception.__str__()[-89:], body)
+
+        with mock.patch('keystoneauth1.session.Session', mock_sess):
+            with self.assertRaises(c.ClientException) as exc_mgr:
+                url, token = c.get_auth('http://keystone:5000', '', '',
+                                        os_options=os_options,
+                                        auth_version="2")
+
+        body = 'Unauthorized. Check application credential id and secret.'
+        self.assertEqual(exc_mgr.exception.__str__()[-89:], body)
+
     def test_get_keystone_client_2_0(self):
         # check the correct auth version is passed to get_auth_keystone
         os_options = {'tenant_name': 'asdf'}
