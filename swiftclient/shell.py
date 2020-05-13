@@ -1651,7 +1651,12 @@ def parse_args(parser, args, enforce_requires=True):
         return options, args
 
     if enforce_requires:
-        if options['os_auth_type'] == 'v3applicationcredential':
+        if options['os_auth_type'] and options['os_auth_type'] not in (
+                'password', 'v1password', 'v2password', 'v3password',
+                'v3applicationcredential'):
+            exit('Only "v3applicationcredential" is supported for '
+                 '--os-auth-type')
+        elif options['os_auth_type'] == 'v3applicationcredential':
             if not (options['os_application_credential_id'] and
                     options['os_application_credential_secret']):
                 exit('Auth version 3 (application credential) requires '
@@ -1659,9 +1664,6 @@ def parse_args(parser, args, enforce_requires=True):
                      'OS_APPLICATION_CREDENTIAL_SECRET to be set or '
                      'overridden with --os-application-credential-id and '
                      '--os-application-credential-secret respectively.')
-        elif options['os_auth_type']:
-            exit('Only "v3applicationcredential" is supported for '
-                 '--os-auth-type')
         elif options['auth_version'] == '3':
             if not options['auth']:
                 exit('Auth version 3 requires OS_AUTH_URL to be set or '

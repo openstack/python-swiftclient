@@ -62,7 +62,7 @@ except ImportError:
         def createLock(self):
             self.lock = None
 
-ksexceptions = ksclient_v2 = ksclient_v3 = None
+ksexceptions = ksclient_v2 = ksclient_v3 = ksa_v3 = None
 try:
     from keystoneclient import exceptions as ksexceptions
     # prevent keystoneclient warning us that it has no log handlers
@@ -72,8 +72,8 @@ except ImportError:
     pass
 try:
     from keystoneclient.v3 import client as ksclient_v3
-    from keystoneauth1.identity import v3
-    from keystoneauth1 import session
+    from keystoneauth1.identity import v3 as ksa_v3
+    from keystoneauth1 import session as ksa_session
     from keystoneauth1 import exceptions as ksauthexceptions
 except ImportError:
     pass
@@ -627,22 +627,27 @@ variables to be set or overridden with -A, -U, or -K.''')
         filter_kwargs['attr'] = 'region'
         filter_kwargs['filter_value'] = os_options['region_name']
 
-    if os_options.get('auth_type') == 'v3applicationcredential':
-        try:
-            v3
-        except NameError:
+    if os_options.get('auth_type') and os_options['auth_type'] not in (
+            'password', 'v2password', 'v3password',
+            'v3applicationcredential'):
+        raise ClientException(
+            'Swiftclient currently only supports v3applicationcredential '
+            'for auth_type')
+    elif os_options.get('auth_type') == 'v3applicationcredential':
+        if ksa_v3 is None:
             raise ClientException('Auth v3applicationcredential requires '
-                                  'python-keystoneclient>=2.0.0')
+                                  'keystoneauth1 package; consider upgrading '
+                                  'to python-keystoneclient>=2.0.0')
 
         try:
-            auth = v3.ApplicationCredential(
+            auth = ksa_v3.ApplicationCredential(
                 auth_url=auth_url,
                 application_credential_secret=os_options.get(
                     'application_credential_secret'),
                 application_credential_id=os_options.get(
                     'application_credential_id'))
-            sses = session.Session(auth=auth)
-            token = sses.get_token()
+            sess = ksa_session.Session(auth=auth)
+            token = sess.get_token()
         except ksauthexceptions.Unauthorized:
             msg = 'Unauthorized. Check application credential id and secret.'
             raise ClientException(msg)
@@ -650,7 +655,7 @@ variables to be set or overridden with -A, -U, or -K.''')
             raise ClientException('Authorization Failure. %s' % err)
 
         try:
-            endpoint = sses.get_endpoint_data(service_type=service_type,
+            endpoint = sess.get_endpoint_data(service_type=service_type,
                                               endpoint_type=endpoint_type,
                                               **filter_kwargs)
 
