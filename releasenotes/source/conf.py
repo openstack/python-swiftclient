@@ -339,6 +339,6 @@ htmlhelp_basename = 'SwiftClientReleaseNotesdoc'
 locale_dirs = ['locale/']
 
 # -- Options for openstackdocstheme -------------------------------------------
-repository_name = 'openstack/python-swiftclient'
-bug_project = 'python-swiftclient'
-bug_tag = ''
+openstackdocs_repo_name = 'openstack/python-swiftclient'
+openstackdocs_bug_project = 'python-swiftclient'
+openstackdocs_bug_tag = ''
