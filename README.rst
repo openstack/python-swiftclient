@@ -23,7 +23,7 @@ in the `OpenStack wiki`__.
 __ https://docs.openstack.org/infra/manual/developers.html
 
 This code is based on the original client previously included with
-`OpenStack's Swift`__ The python-swiftclient is licensed under the
+`OpenStack's Swift`__. The python-swiftclient is licensed under the
 Apache License like the rest of OpenStack.
 
 __ https://github.com/openstack/swift
@@ -32,21 +32,17 @@ __ https://github.com/openstack/swift
 * `PyPI`_ - package installation
 * `Online Documentation`_
 * `Launchpad project`_ - release management
-* `Blueprints`_ - feature specifications
 * `Bugs`_ - issue tracking
 * `Source`_
-* `Specs`_
 * `How to Contribute`_
 * `Release Notes`_
 
 .. _PyPI: https://pypi.org/project/python-swiftclient
 .. _Online Documentation: https://docs.openstack.org/python-swiftclient/latest/
 .. _Launchpad project: https://launchpad.net/python-swiftclient
-.. _Blueprints: https://blueprints.launchpad.net/python-swiftclient
 .. _Bugs: https://bugs.launchpad.net/python-swiftclient
 .. _Source: https://opendev.org/openstack/python-swiftclient
 .. _How to Contribute: https://docs.openstack.org/infra/manual/developers.html
-.. _Specs: https://specs.openstack.org/openstack/swift-specs/
 .. _Release Notes: https://docs.openstack.org/releasenotes/python-swiftclient
 
 .. contents:: Contents:
