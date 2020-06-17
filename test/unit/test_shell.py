@@ -2721,7 +2721,7 @@ class TestParsing(TestBase):
                       str(cm.exception))
 
         os_opts = {
-            "auth_type": "v3password",
+            "auth_type": "v3oidcpassword",
             "application_credential_id": "proejct_id",
             "application_credential_secret": "secret",
             "auth_url": "http://example.com:5000/v3"}
