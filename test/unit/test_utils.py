@@ -521,15 +521,15 @@ class TestLengthWrapper(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode='wb') as f:
             f.write(b'a' * 100)
             f.flush()
-            contents = open(f.name, 'rb')
-            data = u.LengthWrapper(contents, 42, True)
-            s = b'a' * 42
-            read_data = b''.join(iter(data.read, ''))
+            with open(f.name, 'rb') as contents:
+                data = u.LengthWrapper(contents, 42, True)
+                s = b'a' * 42
+                read_data = b''.join(iter(data.read, ''))
 
-            self.assertEqual(42, len(data))
-            self.assertEqual(42, len(read_data))
-            self.assertEqual(s, read_data)
-            self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+                self.assertEqual(42, len(data))
+                self.assertEqual(42, len(read_data))
+                self.assertEqual(s, read_data)
+                self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
 
     def test_segmented_file(self):
         with tempfile.NamedTemporaryFile(mode='wb') as f:
@@ -539,24 +539,24 @@ class TestLengthWrapper(unittest.TestCase):
                 f.write((c * segment_length).encode())
             f.flush()
             for i, c in enumerate(segments):
-                contents = open(f.name, 'rb')
-                contents.seek(i * segment_length)
-                data = u.LengthWrapper(contents, segment_length, True)
-                read_data = b''.join(iter(data.read, ''))
-                s = (c * segment_length).encode()
+                with open(f.name, 'rb') as contents:
+                    contents.seek(i * segment_length)
+                    data = u.LengthWrapper(contents, segment_length, True)
+                    read_data = b''.join(iter(data.read, ''))
+                    s = (c * segment_length).encode()
 
-                self.assertEqual(segment_length, len(data))
-                self.assertEqual(segment_length, len(read_data))
-                self.assertEqual(s, read_data)
-                self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+                    self.assertEqual(segment_length, len(data))
+                    self.assertEqual(segment_length, len(read_data))
+                    self.assertEqual(s, read_data)
+                    self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
 
-                data.reset()
-                self.assertEqual(md5().hexdigest(), data.get_md5sum())
-                read_data = b''.join(iter(data.read, ''))
-                self.assertEqual(segment_length, len(data))
-                self.assertEqual(segment_length, len(read_data))
-                self.assertEqual(s, read_data)
-                self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+                    data.reset()
+                    self.assertEqual(md5().hexdigest(), data.get_md5sum())
+                    read_data = b''.join(iter(data.read, ''))
+                    self.assertEqual(segment_length, len(data))
+                    self.assertEqual(segment_length, len(read_data))
+                    self.assertEqual(s, read_data)
+                    self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
 
 
 class TestGroupers(unittest.TestCase):

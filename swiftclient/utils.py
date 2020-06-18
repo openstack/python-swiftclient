@@ -14,7 +14,10 @@
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
 from calendar import timegm
-import collections
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 import gzip
 import hashlib
 import hmac
@@ -218,7 +221,7 @@ def parse_api_response(headers, body):
 
 def split_request_headers(options, prefix=''):
     headers = {}
-    if isinstance(options, collections.Mapping):
+    if isinstance(options, Mapping):
         options = options.items()
     for item in options:
         if isinstance(item, six.string_types):
