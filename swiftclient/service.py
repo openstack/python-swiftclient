@@ -274,7 +274,7 @@ def get_conn(options):
     return Connection(options['auth'],
                       options['user'],
                       options['key'],
-                      options['retries'],
+                      retries=options['retries'],
                       auth_version=options['auth_version'],
                       os_options=options['os_options'],
                       snet=options['snet'],
@@ -283,7 +283,9 @@ def get_conn(options):
                       cert=options['os_cert'],
                       cert_key=options['os_key'],
                       ssl_compression=options['ssl_compression'],
-                      force_auth_retry=options['force_auth_retry'])
+                      force_auth_retry=options['force_auth_retry'],
+                      starting_backoff=options.get('starting_backoff', 1),
+                      max_backoff=options.get('max_backoff', 64))
 
 
 def mkdirs(path):
