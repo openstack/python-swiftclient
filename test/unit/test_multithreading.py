@@ -37,7 +37,7 @@ class ThreadTestCase(unittest.TestCase):
         self.got_args_kwargs.put((args, kwargs))
 
         if item == 'sleep':
-            sleep(1)
+            sleep(.1)
         if item == 'go boom':
             raise Exception('I went boom!')
 
