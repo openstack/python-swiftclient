@@ -1547,7 +1547,7 @@ class TestShell(unittest.TestCase):
             [None, []],
         ]
         connection.return_value.attempts = 0
-        argv = ["", "delete", "--versions", "container"]
+        argv = ["", "delete", "--versions", "container", "--object-threads=1"]
         connection.return_value.head_object.return_value = {}
         swiftclient.shell.main(argv)
         connection.return_value.delete_container.assert_called_with(

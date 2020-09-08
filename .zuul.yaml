@@ -23,10 +23,13 @@
     vars:
       # Override value from parent job to use swiftclient tests
       zuul_work_dir: "{{ zuul.projects['opendev.org/openstack/python-swiftclient'].src_dir }}"
+      # swift can use different tox env names
+      tox_envlist: func
 
 - job:
     name: swiftclient-functional-py2
     parent: swiftclient-functional
+    nodeset: openstack-single-node-bionic
     description: |
       Run functional tests of python-swiftclient under Python 2
     vars:
@@ -36,7 +39,6 @@
     templates:
       - check-requirements
       - lib-forward-testing-python3
-      - openstack-lower-constraints-jobs
       - openstack-python-jobs
       - openstack-python3-victoria-jobs
       - publish-openstack-docs-pti
