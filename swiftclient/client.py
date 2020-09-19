@@ -443,14 +443,16 @@ class HTTPConnection(object):
         if timeout:
             self.requests_args['timeout'] = timeout
 
-    def __del__(self):
-        """Cleanup resources other than memory"""
-        if self.request_session:
-            # The session we create must be closed to free up file descriptors
-            try:
-                self.request_session.close()
-            finally:
-                self.request_session = None
+    if not six.PY2:
+        def __del__(self):
+            """Cleanup resources other than memory"""
+            if self.request_session:
+                # The session we create must be closed to free up
+                # file descriptors
+                try:
+                    self.request_session.close()
+                finally:
+                    self.request_session = None
 
     def _request(self, *arg, **kwarg):
         """Final wrapper before requests call, to be patched in tests"""
