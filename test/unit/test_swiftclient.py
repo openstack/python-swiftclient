@@ -84,6 +84,23 @@ class TestClientException(unittest.TestCase):
             self.assertIs(True, hasattr(exc, key))
             self.assertEqual(getattr(exc, key), value)
 
+    def test_transaction_id_from_headers(self):
+        exc = c.ClientException('test')
+        self.assertIsNone(exc.transaction_id)
+
+        exc = c.ClientException('test', http_response_headers={})
+        self.assertIsNone(exc.transaction_id)
+
+        exc = c.ClientException('test', http_response_headers={
+            'X-Trans-Id': 'some-id'})
+        self.assertEqual(exc.transaction_id, 'some-id')
+        self.assertIn('(txn: some-id)', str(exc))
+
+        exc = c.ClientException('test', http_response_headers={
+            'X-Openstack-Request-Id': 'some-other-id'})
+        self.assertEqual(exc.transaction_id, 'some-other-id')
+        self.assertIn('(txn: some-other-id)', str(exc))
+
 
 class MockHttpResponse(object):
     def __init__(self, status=0, headers=None, verify=False):

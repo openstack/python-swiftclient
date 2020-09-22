@@ -2058,8 +2058,9 @@ Examples:
         try:
             globals()['st_%s' % args[0]](parser, argv[1:], output)
         except ClientException as err:
+            trans_id = err.transaction_id
+            err.transaction_id = None  # clear it so we aren't overly noisy
             output.error(str(err))
-            trans_id = (err.http_response_headers or {}).get('X-Trans-Id')
             if trans_id:
                 output.error("Failed Transaction ID: %s",
                              parse_header_string(trans_id))
