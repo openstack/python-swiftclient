@@ -27,6 +27,7 @@
 - job:
     name: swiftclient-functional-py2
     parent: swiftclient-functional
+    nodeset: openstack-single-node-bionic
     description: |
       Run functional tests of python-swiftclient under Python 2
     vars:
