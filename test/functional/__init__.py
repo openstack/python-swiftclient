@@ -58,6 +58,11 @@ def _load_config(force_reload=False):
             conf['auth_url'] = auth_url
 
         try:
+            conf['cacert'] = parser.get('func_test', 'cacert')
+        except configparser.NoOptionError:
+            conf['cacert'] = None
+
+        try:
             conf['account_username'] = parser.get('func_test',
                                                   'account_username')
         except configparser.NoOptionError:

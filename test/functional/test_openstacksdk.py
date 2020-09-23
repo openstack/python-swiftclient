@@ -35,6 +35,7 @@ class TestOpenStackSDK(unittest.TestCase):
                 auth_url=TEST_CONFIG['auth_url'],
                 username=TEST_CONFIG['account_username'],
                 password=TEST_CONFIG['password'],
+                cacert=TEST_CONFIG['cacert'],
             )
             cls.object_store = cls.conn.object_store
 
