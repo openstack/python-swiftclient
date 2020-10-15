@@ -802,6 +802,7 @@ class TestHeadAccount(MockHttpTest):
         self.assertRequests([
             ('HEAD', 'http://www.tests.com', '', {'x-auth-token': 'asdf'})
         ])
+        self.assertTrue(self.request_log[-1][-1]._closed)
 
     def test_server_error(self):
         body = 'c' * 65

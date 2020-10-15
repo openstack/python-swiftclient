@@ -109,6 +109,7 @@ def fake_http_connect(*code_iter, **kwargs):
             self.timestamp = timestamp
             self.headers = headers or {}
             self.request = None
+            self._closed = False
 
         def getresponse(self):
             if kwargs.get('raise_exc'):
@@ -167,7 +168,7 @@ def fake_http_connect(*code_iter, **kwargs):
             return dict(self.getheaders()).get(name.lower(), default)
 
         def close(self):
-            pass
+            self._closed = True
 
     timestamps_iter = iter(kwargs.get('timestamps') or ['1'] * len(code_iter))
     etag_iter = iter(kwargs.get('etags') or [None] * len(code_iter))
@@ -248,7 +249,8 @@ class MockHttpTest(unittest.TestCase):
 
                 class RequestsWrapper(object):
                     def close(self):
-                        pass
+                        if hasattr(self, 'resp'):
+                            self.resp.close()
                 conn = RequestsWrapper()
 
                 def request(method, path, *args, **kwargs):
