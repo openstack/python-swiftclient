@@ -70,40 +70,7 @@ def prt_bytes(num_bytes, human_flag):
         return '%.1f%s' % (num, suffix)
 
 
-def generate_temp_url(path, seconds, key, method, absolute=False,
-                      prefix=False, iso8601=False, ip_range=None,
-                      digest='sha256'):
-    """Generates a temporary URL that gives unauthenticated access to the
-    Swift object.
-
-    :param path: The full path to the Swift object or prefix if
-        a prefix-based temporary URL should be generated. Example:
-        /v1/AUTH_account/c/o or /v1/AUTH_account/c/prefix.
-    :param seconds: time in seconds or ISO 8601 timestamp.
-        If absolute is False and this is the string representation of an
-        integer, then this specifies the amount of time in seconds for which
-        the temporary URL will be valid.
-        If absolute is True then this specifies an absolute time at which the
-        temporary URL will expire.
-    :param key: The secret temporary URL key set on the Swift
-        cluster. To set a key, run 'swift post -m
-        "Temp-URL-Key: <substitute tempurl key here>"'
-    :param method: A HTTP method, typically either GET or PUT, to allow
-        for this temporary URL.
-    :param absolute: if True then the seconds parameter is interpreted as a
-        Unix timestamp, if seconds represents an integer.
-    :param prefix: if True then a prefix-based temporary URL will be generated.
-    :param iso8601: if True, a URL containing an ISO 8601 UTC timestamp
-        instead of a UNIX timestamp will be created.
-    :param ip_range: if a valid ip range, restricts the temporary URL to the
-        range of ips.
-    :param digest: digest algorithm to use. Must be one of ``sha1``,
-                   ``sha256``, or ``sha512``.
-    :raises ValueError: if timestamp or path is not in valid format,
-                        or if digest is not one of ``sha1``, ``sha256``, or
-                        ``sha512``.
-    :return: the path portion of a temporary URL
-    """
+def parse_timestamp(seconds, absolute=False):
     try:
         try:
             timestamp = float(seconds)
@@ -127,6 +94,20 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
                     absolute = True
                     break
 
+            if t is None and not absolute:
+                for suffix, multiplier in (
+                    ('s', 1),
+                    ('m', 60),
+                    ('min', 60),
+                    ('h', 60 * 60),
+                    ('hr', 60 * 60),
+                    ('d', 24 * 60 * 60),
+                ):
+                    if seconds.endswith(suffix):
+                        timestamp = t = int(
+                            multiplier * float(seconds[:-len(suffix)]))
+                        break
+
             if t is None:
                 raise ValueError()
         else:
@@ -137,6 +118,46 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
                 raise ValueError()
     except ValueError:
         raise ValueError(TIME_ERRMSG)
+    return timestamp, absolute
+
+
+def generate_temp_url(path, seconds, key, method, absolute=False,
+                      prefix=False, iso8601=False, ip_range=None,
+                      digest='sha256'):
+    """Generates a temporary URL that gives unauthenticated access to the
+    Swift object.
+
+    :param path: The full path to the Swift object or prefix if
+        a prefix-based temporary URL should be generated. Example:
+        /v1/AUTH_account/c/o or /v1/AUTH_account/c/prefix.
+    :param seconds: time in seconds or ISO 8601 timestamp.
+        If absolute is False and this is the string representation of an
+        integer, then this specifies the amount of time in seconds for which
+        the temporary URL will be valid. This may include a suffix to scale
+        the value: 's' for seconds, 'm' (or 'min') for minutes,
+        'h' (or 'hr') for hours, or 'd' for days.
+        If absolute is True then this specifies an absolute time at which the
+        temporary URL will expire.
+    :param key: The secret temporary URL key set on the Swift
+        cluster. To set a key, run 'swift post -m
+        "Temp-URL-Key: <substitute tempurl key here>"'
+    :param method: A HTTP method, typically either GET or PUT, to allow
+        for this temporary URL.
+    :param absolute: if True then the seconds parameter is interpreted as a
+        Unix timestamp, if seconds represents an integer.
+    :param prefix: if True then a prefix-based temporary URL will be generated.
+    :param iso8601: if True, a URL containing an ISO 8601 UTC timestamp
+        instead of a UNIX timestamp will be created.
+    :param ip_range: if a valid ip range, restricts the temporary URL to the
+        range of ips.
+    :param digest: digest algorithm to use. Must be one of ``sha1``,
+                   ``sha256``, or ``sha512``.
+    :raises ValueError: if timestamp or path is not in valid format,
+                        or if digest is not one of ``sha1``, ``sha256``, or
+                        ``sha512``.
+    :return: the path portion of a temporary URL
+    """
+    timestamp, absolute = parse_timestamp(seconds, absolute)
 
     if isinstance(path, bytes):
         try:

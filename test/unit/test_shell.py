@@ -2037,6 +2037,14 @@ class TestShell(unittest.TestCase):
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
             iso8601=False, prefix=False, ip_range=None, digest='sha256')
 
+        # sanity check that suffixes will just pass through to utils.py
+        argv = ["", "tempurl", "GET", "2d", "/v1/AUTH_account/c/o",
+                "secret_key"]
+        swiftclient.shell.main(argv)
+        temp_url.assert_called_with(
+            '/v1/AUTH_account/c/o', "2d", 'secret_key', 'GET', absolute=False,
+            iso8601=False, prefix=False, ip_range=None, digest='sha256')
+
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_prefix_based(self, temp_url):
         argv = ["", "tempurl", "GET", "60", "/v1/AUTH_account/c/",

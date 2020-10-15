@@ -1381,14 +1381,16 @@ Positional arguments:
   <method>              An HTTP method to allow for this temporary URL.
                         Usually 'GET' or 'PUT'.
   <time>                The amount of time the temporary URL will be
-                        valid. The time can be specified in two ways:
-                        an integer representing the time in seconds or an
-                        ISO 8601 timestamp in a specific format.
-                        If --absolute is passed and time
-                        is an integer, the seconds are intepreted as the Unix
-                        timestamp when the temporary URL will expire. The ISO
-                        8601 timestamp can be specified in one of following
-                        formats:
+                        valid. The time can be specified in three ways:
+                        an integer representing the time in seconds;
+                        a number with a 's', 'm', 'h', or 'd' suffix to specify
+                        the time in seconds, minutes, hours, or days; or
+                        an ISO 8601 timestamp in a specific format.
+                        If --absolute is passed and time is an integer, the
+                        seconds are intepreted as the Unix timestamp when the
+                        temporary URL will expire.
+                        The ISO 8601 timestamp can be specified in one of
+                        following formats:
 
                         i) Complete date: YYYY-MM-DD (eg 1997-07-16)
 
