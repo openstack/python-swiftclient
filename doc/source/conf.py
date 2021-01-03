@@ -53,7 +53,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-copyright = u'2013-2016 OpenStack, LLC.'
+copyright = '2013-2016 OpenStack, LLC.'
 
 # -- Options for openstackdocstheme -------------------------------------------
 openstackdocs_repo_name = 'openstack/python-swiftclient'
@@ -183,8 +183,8 @@ htmlhelp_basename = 'SwiftClientwebdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual])
 latex_documents = [
-    ('index', 'doc-python-swiftclient.tex', u'SwiftClient Documentation',
-     u'OpenStack, LLC.', 'manual'),
+    ('index', 'doc-python-swiftclient.tex', 'SwiftClient Documentation',
+     'OpenStack, LLC.', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
