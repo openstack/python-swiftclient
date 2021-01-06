@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed discovery of activated capabilities against Ceph Object Gateway. It
+    prevented users from creating containers via Horizon. See bugs
+    `1712358 <https://bugs.launchpad.net/python-swiftclient/+bug/1712358>`__
+    and `1880188 <https://bugs.launchpad.net/horizon/+bug/1880188>`__ for more
+    details.
