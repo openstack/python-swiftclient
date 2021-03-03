@@ -1,3 +1,9 @@
+3.9.1
+-----
+
+* Fixed capability endpoint discovery when there's a URL prefix for the
+  Swift endpoint, such as may be done with Ceph and radosgw.
+
 3.9.0
 -----
 
