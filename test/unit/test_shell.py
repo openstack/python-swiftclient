@@ -467,6 +467,10 @@ class TestShell(unittest.TestCase):
             [None, [{'name': 'container', 'bytes': 0, 'count': 0}]],
             [None, []],
         ]
+        connection.return_value.head_container.return_value = {
+            'x-timestamp': '1617393213.49752',
+            'x-storage-policy': 'some-policy',
+        }
 
         argv = ["", "list", "--lh"]
         with CaptureOutput() as output:
@@ -475,10 +479,10 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEqual(
-                output.out,
-                '           0    0 1970-01-01 00:00:01 container\n'
-                '           0    0\n')
+        self.assertEqual(
+            output.out,
+            '           0    0 2021-04-02 19:53:33 some-policy     container\n'
+            '           0    0\n')
 
         # Now test again, this time without returning metadata
         connection.return_value.head_container.return_value = {}
@@ -496,10 +500,10 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEqual(
-                output.out,
-                '           0    0 ????-??-?? ??:??:?? container\n'
-                '           0    0\n')
+        self.assertEqual(
+            output.out,
+            '           0    0 ????-??-?? ??:??:?? ???             container\n'
+            '           0    0\n')
 
     def test_list_account_totals_error(self):
         # No --lh provided: expect info message about incorrect --totals use

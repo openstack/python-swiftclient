@@ -550,10 +550,11 @@ def st_list(parser, args, output_manager, return_parser=False):
                         datestamp = strftime('%Y-%m-%d %H:%M:%S', utc)
                     except TypeError:
                         datestamp = '????-??-?? ??:??:??'
+                    storage_policy = meta.get('x-storage-policy', '???')
                     if not options['totals']:
                         output_manager.print_msg(
-                            "%12s %s %s %s", count, byte_str,
-                            datestamp, item_name)
+                            "%12s %s %s %-15s %s", count, byte_str,
+                            datestamp, storage_policy, item_name)
                 else:    # list container contents
                     subdir = item.get('subdir')
                     content_type = item.get('content_type')
