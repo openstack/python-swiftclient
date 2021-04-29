@@ -2012,7 +2012,7 @@ Examples:
 
   %(prog)s --os-auth-url https://api.example.com/v3 --auth-version 3\\
       --os-application-credential-id d78683c92f0e4f9b9b02a2e208039412 \\
-      --os-application-credential-secret APPLICTION_CREDENTIAL_SECRET \\
+      --os-application-credential-secret APPLICATION_CREDENTIAL_SECRET \\
       --os-auth-type v3applicationcredential list
 
   %(prog)s --os-auth-token 6ee5eb33efad4e45ab46806eac010566 \\
