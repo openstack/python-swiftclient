@@ -28,7 +28,6 @@ import textwrap
 from time import localtime, mktime, strftime, strptime
 
 import six
-import sys
 
 import swiftclient
 from swiftclient.service import SwiftError
@@ -1155,9 +1154,12 @@ class TestShell(unittest.TestCase):
                      'x-object-meta-mtime': mock.ANY},
             response_dict={})
 
+    @mock.patch('swiftclient.shell.stdin')
     @mock.patch('swiftclient.shell.io.open')
     @mock.patch('swiftclient.service.SwiftService.upload')
-    def test_upload_from_stdin(self, upload_mock, io_open_mock):
+    def test_upload_from_stdin(self, upload_mock, io_open_mock, stdin_mock):
+        stdin_mock.fileno.return_value = 123
+
         def fake_open(fd, mode):
             mock_io = mock.Mock()
             mock_io.fileno.return_value = fd
@@ -1173,8 +1175,8 @@ class TestShell(unittest.TestCase):
         # element.  This is because the upload method takes a container and a
         # list of SwiftUploadObjects.
         swift_upload_obj = upload_mock.mock_calls[0][1][1][0]
-        self.assertEqual(sys.stdin.fileno(), swift_upload_obj.source.fileno())
-        io_open_mock.assert_called_once_with(sys.stdin.fileno(), mode='rb')
+        self.assertEqual(123, swift_upload_obj.source.fileno())
+        io_open_mock.assert_called_once_with(123, mode='rb')
 
     @mock.patch('swiftclient.service.SwiftService.upload')
     def test_upload_from_stdin_no_name(self, upload_mock):
@@ -3015,24 +3017,30 @@ class TestKeystoneOptions(MockHttpTest):
                                                   no_auth=no_auth)
 
     def test_all_args_passed_to_keystone(self):
-        # check that all possible command line args are passed to keystone
-        opts = {'auth-version': '3'}
-        os_opts = dict(self.all_os_opts)
-        os_opts.update(self.catalog_opts)
-        self._test_options(opts, os_opts, flags=self.flags)
+        rootLogger = logging.getLogger()
+        orig_lvl = rootLogger.getEffectiveLevel()
+        try:
+            rootLogger.setLevel(logging.DEBUG)
+            # check that all possible command line args are passed to keystone
+            opts = {'auth-version': '3'}
+            os_opts = dict(self.all_os_opts)
+            os_opts.update(self.catalog_opts)
+            self._test_options(opts, os_opts, flags=self.flags)
 
-        opts = {'auth-version': '2.0'}
-        self._test_options(opts, os_opts, flags=self.flags)
+            opts = {'auth-version': '2.0'}
+            self._test_options(opts, os_opts, flags=self.flags)
 
-        opts = {}
-        self.defaults['auth-version'] = '3'
-        self._test_options(opts, os_opts, flags=self.flags)
+            opts = {}
+            self.defaults['auth-version'] = '3'
+            self._test_options(opts, os_opts, flags=self.flags)
 
-        for o in ('user-domain-name', 'user-domain-id',
-                  'project-domain-name', 'project-domain-id'):
-            os_opts.pop(o)
-        self.defaults['auth-version'] = '2.0'
-        self._test_options(opts, os_opts, flags=self.flags)
+            for o in ('user-domain-name', 'user-domain-id',
+                      'project-domain-name', 'project-domain-id'):
+                os_opts.pop(o)
+            self.defaults['auth-version'] = '2.0'
+            self._test_options(opts, os_opts, flags=self.flags)
+        finally:
+            rootLogger.setLevel(orig_lvl)
 
     def test_catalog_options_and_flags_not_required_v3(self):
         # check that all possible command line args are passed to keystone
