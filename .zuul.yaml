@@ -33,6 +33,10 @@
     description: |
       Run functional tests of python-swiftclient under Python 2
     vars:
+      devstack_localrc:
+        # devstack dropped support for bionic, but we want it for easier py2 support.
+        # Set this so we install anyway.
+        FORCE: "yes"
       tox_envlist: py2func
 
 - project:
