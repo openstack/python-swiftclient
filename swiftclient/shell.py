@@ -552,7 +552,7 @@ def st_list(parser, args, output_manager, return_parser=False):
                         datestamp = '????-??-?? ??:??:??'
                     if not options['totals']:
                         output_manager.print_msg(
-                            "%5s %s %s %s", count, byte_str,
+                            "%12s %s %s %s", count, byte_str,
                             datestamp, item_name)
                 else:    # list container contents
                     subdir = item.get('subdir')
@@ -584,7 +584,7 @@ def st_list(parser, args, output_manager, return_parser=False):
         if options['long'] or human:
             if not container:
                 output_manager.print_msg(
-                    "%5s %s", prt_bytes(total_count, True),
+                    "%12s %s", prt_bytes(total_count, True),
                     prt_bytes(total_bytes, human))
             else:
                 output_manager.print_msg(

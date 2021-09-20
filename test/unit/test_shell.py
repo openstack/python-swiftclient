@@ -475,9 +475,10 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEqual(output.out,
-                             '    0    0 1970-01-01 00:00:01 container\n'
-                             '    0    0\n')
+            self.assertEqual(
+                output.out,
+                '           0    0 1970-01-01 00:00:01 container\n'
+                '           0    0\n')
 
         # Now test again, this time without returning metadata
         connection.return_value.head_container.return_value = {}
@@ -495,9 +496,10 @@ class TestShell(unittest.TestCase):
                      mock.call(marker='container', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
 
-            self.assertEqual(output.out,
-                             '    0    0 ????-??-?? ??:??:?? container\n'
-                             '    0    0\n')
+            self.assertEqual(
+                output.out,
+                '           0    0 ????-??-?? ??:??:?? container\n'
+                '           0    0\n')
 
     def test_list_account_totals_error(self):
         # No --lh provided: expect info message about incorrect --totals use
@@ -523,7 +525,7 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
             calls = [mock.call(marker='', prefix=None, headers={})]
             connection.return_value.get_account.assert_has_calls(calls)
-            self.assertEqual(output.out, '    6    3\n')
+            self.assertEqual(output.out, '           6    3\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_list_container(self, connection):
