@@ -1036,8 +1036,8 @@ class SwiftService(object):
                 version_marker = items[-1].get('version_id', '')
         except ClientException as err:
             traceback, err_time = report_traceback()
-            logger.exception(err)
             if err.http_status != 404:
+                logger.exception(err)
                 error = (err, traceback, err_time)
             else:
                 error = (
