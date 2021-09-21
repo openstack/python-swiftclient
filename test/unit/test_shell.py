@@ -547,9 +547,12 @@ class TestShell(unittest.TestCase):
 
             self.assertEqual(output.out, 'object_a\n')
 
-        # Test container listing with --long
+        # Test container listing with --long and multiple pages
         connection.return_value.get_container.side_effect = [
-            [None, [{'name': 'object_a', 'bytes': 0,
+            [None, [{'name': 'object_a', 'bytes': 3,
+                     'content_type': 'type/content',
+                     'last_modified': '123T456'}]],
+            [None, [{'name': 'object_b', 'bytes': 5,
                      'content_type': 'type/content',
                      'last_modified': '123T456'}]],
             [None, []],
@@ -567,9 +570,11 @@ class TestShell(unittest.TestCase):
             connection.return_value.get_container.assert_has_calls(calls)
 
             self.assertEqual(output.out,
-                             '           0        123      456'
+                             '           3        123      456'
                              '             type/content object_a\n'
-                             '           0\n')
+                             '           5        123      456'
+                             '             type/content object_b\n'
+                             '           8\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_list_container_with_headers(self, connection):

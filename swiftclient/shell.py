@@ -531,8 +531,7 @@ Optional arguments:
 
 def st_list(parser, args, output_manager, return_parser=False):
 
-    def _print_stats(options, stats, human):
-        total_count = total_bytes = 0
+    def _print_stats(options, stats, human, totals):
         container = stats.get("container", None)
         for item in stats["listing"]:
             item_name = item.get('name')
@@ -543,7 +542,7 @@ def st_list(parser, args, output_manager, return_parser=False):
                     item_bytes = item.get('bytes')
                     byte_str = prt_bytes(item_bytes, human)
                     count = item.get('count')
-                    total_count += count
+                    totals['count'] += count
                     try:
                         meta = item.get('meta')
                         utc = gmtime(float(meta.get('x-timestamp')))
@@ -578,17 +577,7 @@ def st_list(parser, args, output_manager, return_parser=False):
                             output_manager.print_msg(
                                 "%s %10s %8s %24s %s",
                                 byte_str, date, xtime, content_type, item_name)
-                total_bytes += item_bytes
-
-        # report totals
-        if options['long'] or human:
-            if not container:
-                output_manager.print_msg(
-                    "%12s %s", prt_bytes(total_count, True),
-                    prt_bytes(total_bytes, human))
-            else:
-                output_manager.print_msg(
-                    prt_bytes(total_bytes, human))
+                totals['bytes'] += item_bytes
 
     parser.add_argument(
         '-l', '--long', dest='long', action='store_true', default=False,
@@ -642,6 +631,7 @@ def st_list(parser, args, output_manager, return_parser=False):
         try:
             if not args:
                 stats_parts_gen = swift.list()
+                container = None
             else:
                 container = args[0]
                 args = args[1:]
@@ -667,11 +657,23 @@ def st_list(parser, args, output_manager, return_parser=False):
                     sort_keys=True, indent=2)
                 output_manager.print_msg('')
                 return
+
+            totals = {'count': 0, 'bytes': 0}
             for stats in stats_parts_gen:
                 if stats["success"]:
-                    _print_stats(options, stats, human)
+                    _print_stats(options, stats, human, totals)
                 else:
                     raise stats["error"]
+
+            # report totals
+            if options['long'] or human:
+                if container is None:
+                    output_manager.print_msg(
+                        "%12s %s", prt_bytes(totals['count'], True),
+                        prt_bytes(totals['bytes'], human))
+                else:
+                    output_manager.print_msg(
+                        prt_bytes(totals['bytes'], human))
 
         except SwiftError as e:
             output_manager.error(e.value)
