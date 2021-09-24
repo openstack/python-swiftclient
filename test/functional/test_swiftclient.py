@@ -207,7 +207,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('application/octet-stream',
                          hdrs.get('content-type'))
 
@@ -218,7 +218,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('text/plain',
                          hdrs.get('content-type'))
 
@@ -229,7 +229,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('text/plain',
                          hdrs.get('content-type'))
 
@@ -241,7 +241,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('image/jpeg',
                          hdrs.get('content-type'))
 
@@ -252,7 +252,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('application/octet-stream', hdrs.get('content-type'))
 
         # Content from File-like object
@@ -262,7 +262,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('application/octet-stream', hdrs.get('content-type'))
 
         # Content from File-like object, but read in chunks
@@ -274,7 +274,7 @@ class TestFunctional(unittest.TestCase):
         hdrs = self.conn.head_object(self.containername, self.objectname)
         self.assertEqual(str(len(self.test_data)),
                          hdrs.get('content-length'))
-        self.assertEqual(self.etag, hdrs.get('etag'))
+        self.assertEqual(self.etag, hdrs.get('etag').strip('"'))
         self.assertEqual('application/octet-stream', hdrs.get('content-type'))
 
         # Wrong etag arg, should raise an exception
