@@ -985,8 +985,9 @@ def st_copy(parser, args, output_manager, return_parser=False):
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
-                    [--meta <name:value>] [--header <header>] [--use-slo]
-                    [--ignore-checksum] [--object-name <object-name>]
+                    [--meta <name:value>] [--header <header>]
+                    [--use-slo] [--ignore-checksum] [--skip-container-put]
+                    [--object-name <object-name>]
                     <container> <file_or_directory> [<file_or_directory>] [...]
 '''
 
@@ -1032,11 +1033,13 @@ Optional arguments:
   --use-slo             When used in conjunction with --segment-size it will
                         create a Static Large Object instead of the default
                         Dynamic Large Object.
+  --ignore-checksum     Turn off checksum validation for uploads.
+  --skip-container-put  Assume all necessary containers already exist; don't
+                        automatically try to create them.
   --object-name <object-name>
                         Upload file and name object to <object-name> or upload
                         dir and use <object-name> as object prefix instead of
                         folder name.
-  --ignore-checksum     Turn off checksum validation for uploads.
 '''.strip('\n')
 
 
@@ -1051,6 +1054,10 @@ def st_upload(parser, args, output_manager, return_parser=False):
         '--skip-identical', action='store_true', dest='skip_identical',
         default=False, help='Skip uploading files that are identical on '
         'both sides.')
+    parser.add_argument(
+        '--skip-container-put', action='store_true', dest='skip_container_put',
+        default=False, help='Assume all necessary containers already exist; '
+        "don't automatically try to create them.")
     parser.add_argument(
         '-S', '--segment-size', dest='segment_size', help='Upload files '
         'in segments no larger than <size> (in Bytes) and then create a '

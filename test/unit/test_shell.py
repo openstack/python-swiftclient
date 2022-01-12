@@ -912,6 +912,48 @@ class TestShell(unittest.TestCase):
             query_string='multipart-manifest=put',
             response_dict=mock.ANY)
 
+    @mock.patch('swiftclient.shell.walk')
+    @mock.patch('swiftclient.service.Connection')
+    def test_upload_skip_container_put(self, connection, walk):
+        connection.return_value.head_object.return_value = {
+            'content-length': '0'}
+        connection.return_value.put_object.return_value = EMPTY_ETAG
+        connection.return_value.attempts = 0
+        argv = ["", "upload", "container", "--skip-container-put",
+                self.tmpfile, "-H", "X-Storage-Policy:one",
+                "--meta", "Color:Blue"]
+        swiftclient.shell.main(argv)
+        connection.return_value.put_container.assert_not_called()
+
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            mock.ANY,
+            content_length=0,
+            headers={'x-object-meta-mtime': mock.ANY,
+                     'X-Storage-Policy': 'one',
+                     'X-Object-Meta-Color': 'Blue'},
+            response_dict={})
+
+        # Upload in segments
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        argv = ["", "upload", "container", "--skip-container-put",
+                self.tmpfile, "-S", "10"]
+        with open(self.tmpfile, "wb") as fh:
+            fh.write(b'12345678901234567890')
+        swiftclient.shell.main(argv)
+        # Both base and segments container are assumed to exist already
+        connection.return_value.put_container.assert_not_called()
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            self.tmpfile.lstrip('/'),
+            '',
+            content_length=0,
+            headers={'x-object-manifest': mock.ANY,
+                     'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+
     @mock.patch('swiftclient.service.SwiftService.upload')
     def test_upload_object_with_account_readonly(self, upload):
         argv = ["", "upload", "container", self.tmpfile]
