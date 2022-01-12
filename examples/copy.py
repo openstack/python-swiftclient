@@ -9,17 +9,17 @@ logger = logging.getLogger(__name__)
 
 with SwiftService() as swift:
     try:
-        obj = SwiftCopyObject("c", {"Destination": "/cont/d"})
+        obj = SwiftCopyObject("c", {"destination": "/cont/d"})
         for i in swift.copy(
                 "cont", ["a", "b", obj],
-                {"meta": ["foo:bar"], "Destination": "/cc"}):
+                {"meta": ["foo:bar"], "destination": "/cc"}):
             if i["success"]:
                 if i["action"] == "copy_object":
                     print(
                         "object %s copied from /%s/%s" %
                         (i["destination"], i["container"], i["object"])
                     )
-                if i["action"] == "create_container":
+                elif i["action"] == "create_container":
                     print(
                         "container %s created" % i["container"]
                     )
