@@ -18,11 +18,9 @@ OpenStack Swift client library used internally
 """
 import socket
 import re
-import requests
 import logging
 import warnings
 
-from distutils.version import StrictVersion
 from requests.exceptions import RequestException, SSLError
 from six.moves import http_client
 from six.moves.urllib.parse import quote as _quote, unquote
@@ -32,6 +30,7 @@ import six
 
 from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
+from swiftclient.requests_compat import SwiftClientRequestsSession
 from swiftclient.utils import (
     iter_wrapper, LengthWrapper, ReadableToIterable, parse_api_response,
     get_body)
@@ -63,20 +62,6 @@ try:
     from keystoneauth1 import exceptions as ksauthexceptions
 except ImportError:
     pass
-
-# requests version 1.2.3 try to encode headers in ascii, preventing
-# utf-8 encoded header to be 'prepared'. This also affects all
-# (or at least most) versions of requests on py3
-if StrictVersion(requests.__version__) < StrictVersion('2.0.0') \
-        or not six.PY2:
-    from requests.structures import CaseInsensitiveDict
-
-    def prepare_unicode_headers(self, headers):
-        if headers:
-            self.headers = CaseInsensitiveDict(headers)
-        else:
-            self.headers = CaseInsensitiveDict()
-    requests.models.PreparedRequest.prepare_headers = prepare_unicode_headers
 
 logger = logging.getLogger("swiftclient")
 logger.addHandler(logging.NullHandler())
@@ -398,7 +383,7 @@ class HTTPConnection(object):
         self.host = self.parsed_url.netloc
         self.port = self.parsed_url.port
         self.requests_args = {}
-        self.request_session = requests.Session()
+        self.request_session = SwiftClientRequestsSession()
         # Don't use requests's default headers
         self.request_session.headers = None
         self.resp = None
@@ -1434,11 +1419,6 @@ def put_object(url, token=None, container=None, name=None, contents=None,
                 content_length = int(v)
     if content_type is not None:
         headers['Content-Type'] = content_type
-    elif 'Content-Type' not in headers:
-        if StrictVersion(requests.__version__) < StrictVersion('2.4.0'):
-            # python-requests sets application/x-www-form-urlencoded otherwise
-            # if using python3.
-            headers['Content-Type'] = ''
     if not contents:
         headers['Content-Length'] = '0'
 
