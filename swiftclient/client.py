@@ -48,25 +48,11 @@ USER_METADATA_TYPE = tuple('x-%s-meta-' % type_ for type_ in
 URI_PATTERN_INFO = re.compile(r'/info')
 URI_PATTERN_VERSION = re.compile(r'\/v\d+\.?\d*(\/.*)?')
 
-try:
-    from logging import NullHandler
-except ImportError:
-    # Added in Python 2.7
-    class NullHandler(logging.Handler):
-        def handle(self, record):
-            pass
-
-        def emit(self, record):
-            pass
-
-        def createLock(self):
-            self.lock = None
-
 ksexceptions = ksclient_v2 = ksclient_v3 = ksa_v3 = None
 try:
     from keystoneclient import exceptions as ksexceptions
     # prevent keystoneclient warning us that it has no log handlers
-    logging.getLogger('keystoneclient').addHandler(NullHandler())
+    logging.getLogger('keystoneclient').addHandler(logging.NullHandler())
     from keystoneclient.v2_0 import client as ksclient_v2
 except ImportError:
     pass
@@ -93,7 +79,7 @@ if StrictVersion(requests.__version__) < StrictVersion('2.0.0') \
     requests.models.PreparedRequest.prepare_headers = prepare_unicode_headers
 
 logger = logging.getLogger("swiftclient")
-logger.addHandler(NullHandler())
+logger.addHandler(logging.NullHandler())
 
 #: Default behaviour is to redact header values known to contain secrets,
 #: such as ``X-Auth-Key`` and ``X-Auth-Token``. Up to the first 16 chars

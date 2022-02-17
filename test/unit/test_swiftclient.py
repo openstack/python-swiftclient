@@ -1976,34 +1976,8 @@ class TestHTTPConnection(MockHttpTest):
         self.assertFalse(resp.read())
         self.assertTrue(resp.closed)
 
-    @unittest.skipIf(six.PY3, 'python2 specific test')
-    def test_response_python2_headers(self):
-        '''Test utf-8 headers in Python 2.
-        '''
-        _, conn = c.http_connection(u'http://www.test.com/')
-        conn.resp = MockHttpResponse(
-            status=200,
-            headers={
-                '\xd8\xaa-unicode': '\xd8\xaa-value',
-                'empty-header': ''
-            }
-        )
-
-        resp = conn.getresponse()
-        self.assertEqual(
-            '\xd8\xaa-value', resp.getheader('\xd8\xaa-unicode'))
-        self.assertEqual(
-            '\xd8\xaa-value', resp.getheader('\xd8\xaa-UNICODE'))
-        self.assertEqual('', resp.getheader('empty-header'))
-        self.assertEqual(
-            dict([('\xd8\xaa-unicode', '\xd8\xaa-value'),
-                  ('empty-header', ''),
-                  ('etag', '"%s"' % EMPTY_ETAG)]),
-            dict(resp.getheaders()))
-
-    @unittest.skipIf(six.PY2, 'python3 specific test')
     def test_response_python3_headers(self):
-        '''Test latin1-encoded headers in Python 3.
+        '''Test latin1-encoded headers.
         '''
         _, conn = c.http_connection(u'http://www.test.com/')
         conn.resp = MockHttpResponse(

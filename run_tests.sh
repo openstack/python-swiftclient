@@ -9,7 +9,7 @@ function usage {
   echo ""
   echo "This script is deprecated and currently retained for compatibility."
   echo 'You can run the full test suite for multiple environments by running "tox".'
-  echo 'You can run tests for only python 2.7 by running "tox -e py27", or run only'
+  echo 'You can run tests for only python 3.9 by running "tox -e py39", or run only'
   echo 'the pep8 tests with "tox -e pep8".'
   exit
 }
@@ -39,7 +39,7 @@ if [ $just_pep8 -eq 1 ]; then
   exit
 fi
 
-tox -e py27 $toxargs 2>&1 | tee run_tests.err.log  || exit
+tox -e py39 $toxargs 2>&1 | tee run_tests.err.log  || exit
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
   exit ${PIPESTATUS[0]}
 fi

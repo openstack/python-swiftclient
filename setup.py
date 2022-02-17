@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2013 Hewlett-Packard Development Company, L.P.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# THIS FILE IS MANAGED BY THE GLOBAL REQUIREMENTS REPO - DO NOT EDIT
-import setuptools, sys
-
-if sys.version_info < (2, 7):
-    sys.exit('Sorry, Python < 2.7 is not supported for'
-             ' python-swiftclient>=3.0')
+import setuptools
 
 setuptools.setup(
     setup_requires=['pbr'],
