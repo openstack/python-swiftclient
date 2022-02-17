@@ -21,6 +21,7 @@ from concurrent.futures import as_completed, CancelledError, TimeoutError
 from copy import deepcopy
 from errno import EEXIST, ENOENT
 from hashlib import md5
+from io import StringIO
 from os import environ, makedirs, stat, utime
 from os.path import (
     basename, dirname, getmtime, getsize, isdir, join, sep as os_path_sep
@@ -29,10 +30,9 @@ from posixpath import join as urljoin
 from random import shuffle
 from time import time
 from threading import Thread
-from six import Iterator, StringIO, string_types, text_type
-from six.moves.queue import Queue
-from six.moves.queue import Empty as QueueEmpty
-from six.moves.urllib.parse import quote
+from queue import Queue
+from queue import Empty as QueueEmpty
+from urllib.parse import quote
 
 import json
 
@@ -54,7 +54,7 @@ DISK_BUFFER = 2 ** 16
 logger = logging.getLogger("swiftclient.service")
 
 
-class ResultsIterator(Iterator):
+class ResultsIterator:
     def __init__(self, futures):
         self.futures = interruptable_as_completed(futures)
 
@@ -321,10 +321,10 @@ class SwiftUploadObject(object):
     options to be specified separately for each individual object.
     """
     def __init__(self, source, object_name=None, options=None):
-        if isinstance(source, string_types):
+        if isinstance(source, str):
             self.object_name = object_name or source
         elif source is None or hasattr(source, 'read'):
-            if not object_name or not isinstance(object_name, string_types):
+            if not object_name or not isinstance(object_name, str):
                 raise SwiftError('Object names must be specified as '
                                  'strings for uploads from None or file '
                                  'like objects.')
@@ -347,7 +347,7 @@ class SwiftPostObject(object):
     specified separately for each individual object.
     """
     def __init__(self, object_name, options=None):
-        if not (isinstance(object_name, string_types) and object_name):
+        if not (isinstance(object_name, str) and object_name):
             raise SwiftError(
                 "Object names must be specified as non-empty strings"
             )
@@ -361,7 +361,7 @@ class SwiftDeleteObject(object):
     specified separately for each individual object.
     """
     def __init__(self, object_name, options=None):
-        if not (isinstance(object_name, string_types) and object_name):
+        if not (isinstance(object_name, str) and object_name):
             raise SwiftError(
                 "Object names must be specified as non-empty strings"
             )
@@ -377,7 +377,7 @@ class SwiftCopyObject(object):
     destination and fresh_metadata should be set in options
     """
     def __init__(self, object_name, options=None):
-        if not (isinstance(object_name, string_types) and object_name):
+        if not (isinstance(object_name, str) and object_name):
             raise SwiftError(
                 "Object names must be specified as non-empty strings"
             )
@@ -835,7 +835,7 @@ class SwiftService(object):
         post_objects = []
 
         for o in objects:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 obj = SwiftPostObject(o)
                 post_objects.append(obj)
             elif isinstance(o, SwiftPostObject):
@@ -1637,7 +1637,7 @@ class SwiftService(object):
         upload_objects = []
 
         for o in objects:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 obj = SwiftUploadObject(o, urljoin(pseudo_folder,
                                                    o.lstrip('/')))
                 upload_objects.append(obj)
@@ -2035,7 +2035,7 @@ class SwiftService(object):
         segment_results.sort(key=lambda di: di['segment_index'])
         for seg in segment_results:
             seg_loc = seg['segment_location'].lstrip('/')
-            if isinstance(seg_loc, text_type):
+            if isinstance(seg_loc, str):
                 seg_loc = seg_loc.encode('utf-8')
 
         manifest_data = json.dumps([
@@ -2578,7 +2578,7 @@ class SwiftService(object):
         delete_objects = []
 
         for o in objects:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 obj = SwiftDeleteObject(o)
                 delete_objects.append(obj)
             elif isinstance(o, SwiftDeleteObject):
@@ -2933,7 +2933,7 @@ class SwiftService(object):
         copy_objects = []
 
         for o in objects:
-            if isinstance(o, string_types):
+            if isinstance(o, str):
                 obj = SwiftCopyObject(o, options)
                 copy_objects.append(obj)
             elif isinstance(o, SwiftCopyObject):

@@ -17,8 +17,6 @@ import unittest
 import time
 from io import BytesIO
 
-import six
-
 import swiftclient
 from . import TEST_CONFIG
 
@@ -417,12 +415,6 @@ class TestFunctional(unittest.TestCase):
         # https://bugs.python.org/issue37093
         # We'll have to settle for just testing that the POST doesn't blow up
         # with a UnicodeDecodeError
-        if six.PY2:
-            headers = self.conn.head_object(
-                self.containername, self.objectname)
-            self.assertIn(u'x-object-meta-\U0001f44d', headers)
-            self.assertEqual(u'\U0001f44d',
-                             headers.get(u'x-object-meta-\U0001f44d'))
 
     def test_copy_object(self):
         self.conn.put_object(

@@ -14,10 +14,10 @@
 # limitations under the License.
 
 import gzip
+import io
 import json
 import unittest
 import mock
-import six
 import tempfile
 from time import gmtime, localtime, mktime, strftime, strptime
 from hashlib import md5, sha1
@@ -142,7 +142,7 @@ class TestTempURL(unittest.TestCase):
         url = u.generate_temp_url(self.url, self.seconds,
                                   self.key, self.method)
         key = self.key
-        if not isinstance(key, six.binary_type):
+        if not isinstance(key, bytes):
             key = key.encode('utf-8')
         self.assertEqual(url, self.expected_url)
         self.assertEqual(hmac_mock.mock_calls, [
@@ -170,10 +170,10 @@ class TestTempURL(unittest.TestCase):
                                       self.key, self.method,
                                       ip_range=ip_range)
             key = self.key
-            if not isinstance(key, six.binary_type):
+            if not isinstance(key, bytes):
                 key = key.encode('utf-8')
 
-            if isinstance(ip_range, six.binary_type):
+            if isinstance(ip_range, bytes):
                 ip_range_expected_url = (
                     expected_url + ip_range.decode('utf-8')
                 )
@@ -215,7 +215,7 @@ class TestTempURL(unittest.TestCase):
         lt = localtime()
         expires = strftime(u.EXPIRES_ISO8601_FORMAT[:-1], lt)
 
-        if not isinstance(self.expected_url, six.string_types):
+        if not isinstance(self.expected_url, str):
             expected_url = self.expected_url.replace(
                 b'1400003600', bytes(str(int(mktime(lt))), encoding='ascii'))
         else:
@@ -228,7 +228,7 @@ class TestTempURL(unittest.TestCase):
         expires = strftime(u.SHORT_EXPIRES_ISO8601_FORMAT, lt)
         lt = strptime(expires, u.SHORT_EXPIRES_ISO8601_FORMAT)
 
-        if not isinstance(self.expected_url, six.string_types):
+        if not isinstance(self.expected_url, str):
             expected_url = self.expected_url.replace(
                 b'1400003600', bytes(str(int(mktime(lt))), encoding='ascii'))
         else:
@@ -246,11 +246,11 @@ class TestTempURL(unittest.TestCase):
                                   self.key, self.method,
                                   iso8601=True)
         key = self.key
-        if not isinstance(key, six.binary_type):
+        if not isinstance(key, bytes):
             key = key.encode('utf-8')
 
         expires = strftime(u.EXPIRES_ISO8601_FORMAT, gmtime(1400003600))
-        if not isinstance(self.url, six.string_types):
+        if not isinstance(self.url, str):
             self.assertTrue(url.endswith(bytes(expires, 'utf-8')))
         else:
             self.assertTrue(url.endswith(expires))
@@ -280,7 +280,7 @@ class TestTempURL(unittest.TestCase):
             url = u.generate_temp_url(path, self.seconds,
                                       self.key, self.method, prefix=True)
             key = self.key
-            if not isinstance(key, six.binary_type):
+            if not isinstance(key, bytes):
                 key = key.encode('utf-8')
             self.assertEqual(url, expected_url)
             self.assertEqual(hmac_mock.mock_calls, [
@@ -299,7 +299,7 @@ class TestTempURL(unittest.TestCase):
 
     @mock.patch('hmac.HMAC.hexdigest', return_value="temp_url_signature")
     def test_generate_absolute_expiry_temp_url(self, hmac_mock):
-        if isinstance(self.expected_url, six.binary_type):
+        if isinstance(self.expected_url, bytes):
             expected_url = self.expected_url.replace(
                 b'1400003600', b'2146636800')
         else:
@@ -486,7 +486,7 @@ class TestReadableToIterable(unittest.TestCase):
 class TestLengthWrapper(unittest.TestCase):
 
     def test_stringio(self):
-        contents = six.StringIO(u'a' * 50 + u'b' * 50)
+        contents = io.StringIO(u'a' * 50 + u'b' * 50)
         contents.seek(22)
         data = u.LengthWrapper(contents, 42, True)
         s = u'a' * 28 + u'b' * 14
@@ -506,7 +506,7 @@ class TestLengthWrapper(unittest.TestCase):
         self.assertEqual(md5(s.encode()).hexdigest(), data.get_md5sum())
 
     def test_bytesio(self):
-        contents = six.BytesIO(b'a' * 50 + b'b' * 50)
+        contents = io.BytesIO(b'a' * 50 + b'b' * 50)
         contents.seek(22)
         data = u.LengthWrapper(contents, 42, True)
         s = b'a' * 28 + b'b' * 14
@@ -613,7 +613,7 @@ class TestApiResponeParser(unittest.TestCase):
         self.assertEqual({u't\xe9st': u'\xff'}, result)
 
     def test_gzipped_utf8(self):
-        buf = six.BytesIO()
+        buf = io.BytesIO()
         gz = gzip.GzipFile(fileobj=buf, mode='w')
         gz.write(u'{"test": "\u2603"}'.encode('utf8'))
         gz.close()
@@ -631,7 +631,7 @@ class TestGetBody(unittest.TestCase):
         self.assertEqual({'test': u'\u2603'}, result)
 
     def test_gzipped_body(self):
-        buf = six.BytesIO()
+        buf = io.BytesIO()
         gz = gzip.GzipFile(fileobj=buf, mode='w')
         gz.write(u'{"test": "\u2603"}'.encode('utf8'))
         gz.close()

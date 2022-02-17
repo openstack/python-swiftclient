@@ -13,17 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
+
 from calendar import timegm
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+from collections.abc import Mapping
 import gzip
 import hashlib
 import hmac
+import io
 import json
 import logging
-import six
 import time
 import traceback
 
@@ -42,7 +40,7 @@ def config_true_value(value):
     This function comes from swift.common.utils.config_true_value()
     """
     return value is True or \
-        (isinstance(value, six.string_types) and value.lower() in TRUE_VALUES)
+        (isinstance(value, str) and value.lower() in TRUE_VALUES)
 
 
 def prt_bytes(num_bytes, human_flag):
@@ -134,7 +132,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     except ValueError:
         raise ValueError(TIME_ERRMSG)
 
-    if isinstance(path, six.binary_type):
+    if isinstance(path, bytes):
         try:
             path_for_body = path.decode('utf-8')
         except UnicodeDecodeError:
@@ -165,7 +163,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
                   ('prefix:' if prefix else '') + path_for_body]
 
     if ip_range:
-        if isinstance(ip_range, six.binary_type):
+        if isinstance(ip_range, bytes):
             try:
                 ip_range = ip_range.decode('utf-8')
             except UnicodeDecodeError:
@@ -177,7 +175,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     hmac_body = u'\n'.join(hmac_parts)
 
     # Encode to UTF-8 for py3 compatibility
-    if not isinstance(key, six.binary_type):
+    if not isinstance(key, bytes):
         key = key.encode('utf-8')
     sig = hmac.new(key, hmac_body.encode('utf-8'), hashlib.sha1).hexdigest()
 
@@ -194,7 +192,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     if prefix:
         temp_url += u'&temp_url_prefix={}'.format(parts[4])
     # Have return type match path from caller
-    if isinstance(path, six.binary_type):
+    if isinstance(path, bytes):
         return temp_url.encode('utf-8')
     else:
         return temp_url
@@ -202,7 +200,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
 
 def get_body(headers, body):
     if headers.get('content-encoding') == 'gzip':
-        with gzip.GzipFile(fileobj=six.BytesIO(body), mode='r') as gz:
+        with gzip.GzipFile(fileobj=io.BytesIO(body), mode='r') as gz:
             nbody = gz.read()
         return nbody
     return body
@@ -224,7 +222,7 @@ def split_request_headers(options, prefix=''):
     if isinstance(options, Mapping):
         options = options.items()
     for item in options:
-        if isinstance(item, six.string_types):
+        if isinstance(item, str):
             if ':' not in item:
                 raise ValueError(
                     "Metadata parameter %s must contain a ':'.\n"
@@ -401,8 +399,6 @@ def n_groups(seq, n):
 
 
 def normalize_manifest_path(path):
-    if six.PY2 and isinstance(path, six.text_type):
-        path = path.encode('utf-8')
     if path.startswith('/'):
         return path[1:]
     return path

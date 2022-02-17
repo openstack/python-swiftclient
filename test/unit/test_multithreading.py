@@ -12,13 +12,13 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from queue import Queue, Empty
 import sys
 import unittest
 import threading
-import six
 
 from concurrent.futures import as_completed
-from six.moves.queue import Queue, Empty
 from time import sleep
 
 from swiftclient import multithreading as mt
@@ -216,11 +216,7 @@ class TestOutputManager(unittest.TestCase):
         # The threads should have been cleaned up
         self.assertEqual(starting_thread_count, threading.active_count())
 
-        if six.PY3:
-            over_the = "over the '\u062a\u062a'\n"
-        else:
-            over_the = "over the u'\\u062a\\u062a'\n"
-            # We write to the CaptureStream so no decoding is performed
+        over_the = "over the '\u062a\u062a'\n"
         self.assertEqual(''.join([
             'one-argument\n',
             'one fish, 88 fish\n',

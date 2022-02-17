@@ -40,7 +40,7 @@ import datetime
 import json
 import time
 
-from six.moves.urllib.parse import urljoin
+from urllib.parse import urljoin
 
 # Note that while we import keystoneauth1 here, we *don't* need to add it to
 # requirements.txt -- this entire module only makes sense (and should only be

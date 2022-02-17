@@ -12,17 +12,19 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import functools
+import io
+import importlib
+import os
 import sys
-from requests import RequestException
-from requests.structures import CaseInsensitiveDict
 from time import sleep
 import unittest
+
+from requests import RequestException
+from requests.structures import CaseInsensitiveDict
 import mock
-import six
-import os
-from six.moves import reload_module
-from six.moves.urllib.parse import urlparse, ParseResult
+from urllib.parse import urlparse, ParseResult
 from swiftclient import client as c
 from swiftclient import shell as s
 from swiftclient.utils import EMPTY_ETAG
@@ -406,7 +408,7 @@ class MockHttpTest(unittest.TestCase):
         # un-hygienic mocking on the swiftclient.client module; which may lead
         # to some unfortunate test order dependency bugs by way of the broken
         # window theory if any other modules are similarly patched
-        reload_module(c)
+        importlib.reload(c)
 
 
 class CaptureStreamPrinter(object):
@@ -421,24 +423,20 @@ class CaptureStreamPrinter(object):
         # No encoding, just convert the raw bytes into a str for testing
         # The below call also validates that we have a byte string.
         self._captured_stream.write(
-            data if isinstance(data, six.binary_type) else data.encode('utf8'))
+            data if isinstance(data, bytes) else data.encode('utf8'))
 
 
 class CaptureStream(object):
 
     def __init__(self, stream):
         self.stream = stream
-        self._buffer = six.BytesIO()
+        self._buffer = io.BytesIO()
         self._capture = CaptureStreamPrinter(self._buffer)
         self.streams = [self._capture]
 
     @property
     def buffer(self):
-        if six.PY3:
-            return self._buffer
-        else:
-            raise AttributeError(
-                'Output stream has no attribute "buffer" in Python2')
+        return self._buffer
 
     def flush(self):
         pass

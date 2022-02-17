@@ -13,11 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
-from six.moves.queue import PriorityQueue
+from queue import PriorityQueue
 
 
 class OutputManager(object):
@@ -70,12 +69,8 @@ class OutputManager(object):
         self.print_pool.submit(self._write, data, self.print_stream)
 
     def _write(self, data, stream):
-        if six.PY3:
-            stream.buffer.write(data)
-            stream.flush()
-        if six.PY2:
-            stream.write(data)
-            stream.flush()
+        stream.buffer.write(data)
+        stream.flush()
 
     def print_msg(self, msg, *fmt_args):
         if fmt_args:
@@ -100,8 +95,6 @@ class OutputManager(object):
     def _print(self, item, stream=None):
         if stream is None:
             stream = self.print_stream
-        if six.PY2 and isinstance(item, six.text_type):
-            item = item.encode('utf8')
         print(item, file=stream)
 
     def _print_error(self, item, count=1):

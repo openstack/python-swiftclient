@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import contextlib
 from genericpath import getmtime
 import getpass
@@ -25,8 +26,6 @@ import tempfile
 import unittest
 import textwrap
 from time import localtime, mktime, strftime, strptime
-
-import six
 
 import swiftclient
 from swiftclient.service import SwiftError
@@ -46,10 +45,7 @@ try:
 except ImportError:
     InsecureRequestWarning = None
 
-if six.PY2:
-    BUILTIN_OPEN = '__builtin__.open'
-else:
-    BUILTIN_OPEN = 'builtins.open'
+BUILTIN_OPEN = 'builtins.open'
 
 mocked_os_environ = {
     'ST_AUTH': 'http://localhost:8080/auth/v1.0',
@@ -631,7 +627,7 @@ class TestShell(unittest.TestCase):
     @mock.patch('swiftclient.service.makedirs')
     @mock.patch('swiftclient.service.Connection')
     def test_download(self, connection, makedirs):
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         connection.return_value.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
@@ -666,7 +662,7 @@ class TestShell(unittest.TestCase):
         makedirs.reset_mock()
 
         # Test downloading single object
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         connection.return_value.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
@@ -682,7 +678,7 @@ class TestShell(unittest.TestCase):
         self.assertEqual([], makedirs.mock_calls)
 
         # Test downloading without md5 checks
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         connection.return_value.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
@@ -700,7 +696,7 @@ class TestShell(unittest.TestCase):
         self.assertEqual([], makedirs.mock_calls)
 
         # Test downloading single object to stdout
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         connection.return_value.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
@@ -3246,7 +3242,7 @@ class TestAuth(MockHttpTest):
         }
         mock_resp = self.fake_http_connection(200, headers=headers)
         with mock.patch('swiftclient.client.http_connection', new=mock_resp):
-            stdout = six.StringIO()
+            stdout = io.StringIO()
             with mock.patch('sys.stdout', new=stdout):
                 argv = [
                     '',
@@ -3265,7 +3261,7 @@ class TestAuth(MockHttpTest):
 
     def test_auth_verbose(self):
         with mock.patch('swiftclient.client.http_connection') as mock_conn:
-            stdout = six.StringIO()
+            stdout = io.StringIO()
             with mock.patch('sys.stdout', new=stdout):
                 argv = [
                     '',
@@ -3289,7 +3285,7 @@ class TestAuth(MockHttpTest):
         os_options = {'tenant_name': 'demo'}
         with mock.patch('swiftclient.client.get_auth_keystone',
                         new=fake_get_auth_keystone(os_options)):
-            stdout = six.StringIO()
+            stdout = io.StringIO()
             with mock.patch('sys.stdout', new=stdout):
                 argv = [
                     '',
@@ -3310,7 +3306,7 @@ class TestAuth(MockHttpTest):
     def test_auth_verbose_v2(self):
         with mock.patch('swiftclient.client.get_auth_keystone') \
                 as mock_keystone:
-            stdout = six.StringIO()
+            stdout = io.StringIO()
             with mock.patch('sys.stdout', new=stdout):
                 argv = [
                     '',

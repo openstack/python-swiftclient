@@ -17,15 +17,14 @@ import gzip
 import json
 import logging
 import mock
-import six
+import io
 import socket
 import string
 import unittest
 import warnings
 import tempfile
 from hashlib import md5
-from six import binary_type
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 from requests.exceptions import RequestException
 
 from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
@@ -214,12 +213,12 @@ class TestHttpHelpers(MockHttpTest):
 
         self.assertEqual(len(headers), len(r))
         # ensure non meta headers are not encoded
-        self.assertIs(type(r.get('abc')), binary_type)
+        self.assertIs(type(r.get('abc')), bytes)
         del r['abc']
 
         for k, v in r.items():
-            self.assertIs(type(k), binary_type)
-            self.assertIs(type(v), binary_type)
+            self.assertIs(type(k), bytes)
+            self.assertIs(type(v), bytes)
             self.assertIn(v, (b'123', b'12.3', b'True'))
 
     def test_set_user_agent_default(self):
@@ -1329,7 +1328,7 @@ class TestPutObject(MockHttpTest):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'TOKEN', 'container', 'obj', 'body', 4)
         value = c.put_object(*args)
-        self.assertIsInstance(value, six.string_types)
+        self.assertIsInstance(value, str)
         self.assertEqual(value, EMPTY_ETAG)
         self.assertRequests([
             ('PUT', '/container/obj', 'body', {
@@ -1340,7 +1339,7 @@ class TestPutObject(MockHttpTest):
 
     def test_unicode_ok(self):
         conn = c.http_connection(u'http://www.test.com/')
-        mock_file = six.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        mock_file = io.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
         args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
@@ -1354,7 +1353,7 @@ class TestPutObject(MockHttpTest):
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
         value = c.put_object(*args, headers=headers, http_conn=conn)
-        self.assertIsInstance(value, six.string_types)
+        self.assertIsInstance(value, str)
         # Test for RFC-2616 encoded symbols
         self.assertIn(("a-b", b".x:yz mn:fg:lp"),
                       resp.buffer)
@@ -1364,7 +1363,7 @@ class TestPutObject(MockHttpTest):
 
     def test_chunk_warning(self):
         conn = c.http_connection('http://www.test.com/')
-        mock_file = six.StringIO('asdf')
+        mock_file = io.StringIO('asdf')
         args = ('asdf', 'asdf', 'asdf', 'asdf', mock_file)
         resp = MockHttpResponse()
         conn[1].getresponse = resp.fake_response
@@ -1960,7 +1959,7 @@ class TestHTTPConnection(MockHttpTest):
         self.assertFalse(resp.read())
         self.assertTrue(resp.closed)
 
-    def test_response_python3_headers(self):
+    def test_response_headers(self):
         '''Test latin1-encoded headers.
         '''
         _, conn = c.http_connection(u'http://www.test.com/')
@@ -2547,7 +2546,7 @@ class TestConnection(MockHttpTest):
         class LocalContents(object):
 
             def __init__(self, tell_value=0):
-                self.data = six.BytesIO(string.ascii_letters.encode() * 10)
+                self.data = io.BytesIO(string.ascii_letters.encode() * 10)
                 self.data.seek(tell_value)
                 self.reads = []
                 self.seeks = []
@@ -2845,7 +2844,7 @@ class TestLogging(MockHttpTest):
         c.http_connection = self.fake_http_connection(200)
         args = ('http://www.test.com', 'asdf', 'asdf', 'asdf', 'asdf')
         value = c.put_object(*args)
-        self.assertIsInstance(value, six.string_types)
+        self.assertIsInstance(value, str)
 
     def test_head_error(self):
         c.http_connection = self.fake_http_connection(500)
@@ -2859,7 +2858,7 @@ class TestLogging(MockHttpTest):
         self.assertEqual(exc_context.exception.http_status, 404)
 
     def test_content_encoding_gzip_body_is_logged_decoded(self):
-        buf = six.BytesIO()
+        buf = io.BytesIO()
         gz = gzip.GzipFile(fileobj=buf, mode='w')
         data = {"test": u"\u2603"}
         decoded_body = json.dumps(data).encode('utf-8')

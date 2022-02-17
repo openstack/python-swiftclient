@@ -22,11 +22,10 @@ import logging
 import warnings
 
 from requests.exceptions import RequestException, SSLError
-from six.moves import http_client
-from six.moves.urllib.parse import quote as _quote, unquote
-from six.moves.urllib.parse import urljoin, urlparse, urlunparse
+import http.client as http_client
+from urllib.parse import quote as _quote, unquote
+from urllib.parse import urljoin, urlparse, urlunparse
 from time import sleep, time
-import six
 
 from swiftclient import version as swiftclient_version
 from swiftclient.exceptions import ClientException
@@ -165,34 +164,20 @@ def http_log(args, kwargs, resp, body):
 
 
 def parse_header_string(data):
-    if not isinstance(data, (six.text_type, six.binary_type)):
+    if not isinstance(data, (str, bytes)):
         data = str(data)
-    if six.PY2:
-        if isinstance(data, six.text_type):
-            # Under Python2 requests only returns binary_type, but if we get
-            # some stray text_type input, this should prevent unquote from
-            # interpreting %-encoded data as raw code-points.
-            data = data.encode('utf8')
+    if isinstance(data, bytes):
+        # Under Python3 requests only returns text_type and tosses (!) the
+        # rest of the headers. If that ever changes, this should be a sane
+        # approach.
         try:
-            unquoted = unquote(data).decode('utf8')
+            data = data.decode('ascii')
         except UnicodeDecodeError:
-            try:
-                return data.decode('utf8')
-            except UnicodeDecodeError:
-                return quote(data).decode('utf8')
-    else:
-        if isinstance(data, six.binary_type):
-            # Under Python3 requests only returns text_type and tosses (!) the
-            # rest of the headers. If that ever changes, this should be a sane
-            # approach.
-            try:
-                data = data.decode('ascii')
-            except UnicodeDecodeError:
-                data = quote(data)
-        try:
-            unquoted = unquote(data, errors='strict')
-        except UnicodeDecodeError:
-            return data
+            data = quote(data)
+    try:
+        unquoted = unquote(data, errors='strict')
+    except UnicodeDecodeError:
+        return data
     return unquoted
 
 
@@ -201,20 +186,18 @@ def quote(value, safe='/'):
     Patched version of urllib.quote that encodes utf8 strings before quoting.
     On Python 3, call directly urllib.parse.quote().
     """
-    if six.PY3:
-        return _quote(value, safe=safe)
-    return _quote(encode_utf8(value), safe)
+    return _quote(value, safe=safe)
 
 
 def encode_utf8(value):
-    if type(value) in six.integer_types + (float, bool):
+    if type(value) in (int, float, bool):
         # As of requests 2.11.0, headers must be byte- or unicode-strings.
         # Convert some known-good types as a convenience for developers.
         # Note that we *don't* convert subclasses, as they may have overriddden
         # __str__ or __repr__.
         # See https://github.com/kennethreitz/requests/pull/3366 for more info
         value = str(value)
-    if isinstance(value, six.text_type):
+    if isinstance(value, str):
         value = value.encode('utf8')
     return value
 
@@ -226,7 +209,7 @@ def encode_meta_headers(headers):
         value = encode_utf8(value)
         header = header.lower()
 
-        if (isinstance(header, six.string_types) and
+        if (isinstance(header, str) and
                 header.startswith(USER_METADATA_TYPE)):
             header = encode_utf8(header)
 
@@ -457,12 +440,12 @@ class HTTPConnection(object):
         old_getheader = self.resp.raw.getheader
 
         def _decode_header(string):
-            if string is None or six.PY2:
+            if string is None:
                 return string
             return string.encode('iso-8859-1').decode('utf-8')
 
         def _encode_header(string):
-            if string is None or six.PY2:
+            if string is None:
                 return string
             return string.encode('utf-8').decode('iso-8859-1')
 
@@ -1441,7 +1424,7 @@ def put_object(url, token=None, container=None, name=None, contents=None,
             warnings.warn(warn_msg, stacklevel=2)
         # Match requests's is_stream test
         if hasattr(contents, '__iter__') and not isinstance(contents, (
-                six.text_type, six.binary_type, list, tuple, dict)):
+                str, bytes, list, tuple, dict)):
             contents = iter_wrapper(contents)
         conn.request('PUT', path, contents, headers)
 

@@ -25,8 +25,7 @@ import warnings
 
 from os import environ, walk, _exit as os_exit
 from os.path import isfile, isdir, join
-from six import text_type, PY2
-from six.moves.urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse
 from sys import argv as sys_argv, exit, stderr, stdin
 from time import gmtime, strftime
 
@@ -191,10 +190,6 @@ def st_delete(parser, args, output_manager, return_parser=False):
                         for o, err in r.get('result', {}).get('Errors', []):
                             # o will be of the form quote("/<cont>/<obj>")
                             o = unquote(o)
-                            if PY2:
-                                # In PY3, unquote(unicode) uses utf-8 like we
-                                # want, but PY2 uses latin-1
-                                o = o.encode('latin-1').decode('utf-8')
                             output_manager.error('Error Deleting: {0}: {1}'
                                                  .format(o[1:], err))
                             try:
@@ -1931,7 +1926,7 @@ def add_default_args(parser):
 def main(arguments=None):
     argv = sys_argv if arguments is None else arguments
 
-    argv = [a if isinstance(a, text_type) else a.decode('utf-8') for a in argv]
+    argv = [a if isinstance(a, str) else a.decode('utf-8') for a in argv]
 
     parser = argparse.ArgumentParser(
         add_help=False, formatter_class=HelpFormatter, usage='''

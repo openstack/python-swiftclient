@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import mock
-from six import StringIO
+from io import StringIO
 import unittest
 
 from swiftclient import command_helpers as h

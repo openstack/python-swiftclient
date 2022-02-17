@@ -13,20 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 import contextlib
+import io
 import mock
 import os
-import six
 import tempfile
 import unittest
 import time
 import json
+from io import BytesIO
 
 from concurrent.futures import Future
 from hashlib import md5
 from mock import Mock, PropertyMock
-from six.moves.queue import Queue, Empty as QueueEmptyError
-from six import BytesIO
+from queue import Queue, Empty as QueueEmptyError
 from time import sleep
 
 import swiftclient
@@ -44,12 +45,6 @@ environ_prefixes = ('ST_', 'OS_')
 for key in os.environ:
     if any(key.startswith(m) for m in environ_prefixes):
         clean_os_environ[key] = ''
-
-
-if six.PY2:
-    import __builtin__ as builtins
-else:
-    import builtins
 
 
 class TestSwiftPostObject(unittest.TestCase):
@@ -1268,7 +1263,7 @@ class TestService(unittest.TestCase):
         for obj in objects:
             with mock.patch('swiftclient.service.Connection') as mock_conn, \
                     mock.patch.object(builtins, 'open') as mock_open:
-                mock_open.return_value = six.StringIO('asdf')
+                mock_open.return_value = io.StringIO('asdf')
                 mock_conn.return_value.head_object.side_effect = \
                     ClientException('Not Found', http_status=404)
                 mock_conn.return_value.put_object.return_value =\
@@ -2318,7 +2313,7 @@ class TestServiceDownload(_TestServiceBase):
 
     def test_download_object_job(self):
         mock_conn = self._get_mock_connection()
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         mock_conn.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991'},
@@ -2360,7 +2355,7 @@ class TestServiceDownload(_TestServiceBase):
 
     def test_download_object_job_with_mtime(self):
         mock_conn = self._get_mock_connection()
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         mock_conn.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991',
@@ -2406,7 +2401,7 @@ class TestServiceDownload(_TestServiceBase):
 
     def test_download_object_job_bad_mtime(self):
         mock_conn = self._get_mock_connection()
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         mock_conn.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991',
@@ -2451,7 +2446,7 @@ class TestServiceDownload(_TestServiceBase):
 
     def test_download_object_job_ignore_mtime(self):
         mock_conn = self._get_mock_connection()
-        objcontent = six.BytesIO(b'objcontent')
+        objcontent = io.BytesIO(b'objcontent')
         mock_conn.get_object.side_effect = [
             ({'content-type': 'text/plain',
               'etag': '2cbbfe139a744d6abbe695e17f3c1991',
