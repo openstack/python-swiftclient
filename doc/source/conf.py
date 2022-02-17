@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Swiftclient documentation build configuration file, created by
 # sphinx-quickstart on Tue Apr 17 02:17:37 2012.
 #
