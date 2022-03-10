@@ -26,19 +26,6 @@
       # swift can use different tox env names
       tox_envlist: func
 
-- job:
-    name: swiftclient-functional-py2
-    parent: swiftclient-functional
-    nodeset: openstack-single-node-bionic
-    description: |
-      Run functional tests of python-swiftclient under Python 2
-    vars:
-      devstack_localrc:
-        # devstack dropped support for bionic, but we want it for easier py2 support.
-        # Set this so we install anyway.
-        FORCE: "yes"
-      tox_envlist: py2func
-
 - project:
     templates:
       - check-requirements
@@ -51,14 +38,12 @@
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
-        - swiftclient-functional-py2
         - openstack-tox-py39:
             voting: true
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
-        - swiftclient-functional-py2
         - openstack-tox-py39:
             voting: true
     post:
