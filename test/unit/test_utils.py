@@ -304,7 +304,7 @@ class TestTempURL(unittest.TestCase):
                 b'1400003600', b'2146636800')
         else:
             expected_url = self.expected_url.replace(
-                u'1400003600', u'2146636800')
+                '1400003600', '2146636800')
         url = u.generate_temp_url(self.url, 2146636800, self.key, self.method,
                                   absolute=True)
         self.assertEqual(url, expected_url)
@@ -372,32 +372,32 @@ class TestTempURL(unittest.TestCase):
 
 
 class TestTempURLUnicodePathAndKey(TestTempURL):
-    url = u'/v1/\u00e4/c/\u00f3'
-    key = u'k\u00e9y'
-    expected_url = (u'%s?temp_url_sig=temp_url_signature'
-                    u'&temp_url_expires=1400003600') % url
-    expected_body = u'\n'.join([
-        u'GET',
-        u'1400003600',
+    url = '/v1/\u00e4/c/\u00f3'
+    key = 'k\u00e9y'
+    expected_url = ('%s?temp_url_sig=temp_url_signature'
+                    '&temp_url_expires=1400003600') % url
+    expected_body = '\n'.join([
+        'GET',
+        '1400003600',
         url,
     ]).encode('utf-8')
 
 
 class TestTempURLUnicodePathBytesKey(TestTempURL):
-    url = u'/v1/\u00e4/c/\u00f3'
-    key = u'k\u00e9y'.encode('utf-8')
-    expected_url = (u'%s?temp_url_sig=temp_url_signature'
-                    u'&temp_url_expires=1400003600') % url
+    url = '/v1/\u00e4/c/\u00f3'
+    key = 'k\u00e9y'.encode('utf-8')
+    expected_url = ('%s?temp_url_sig=temp_url_signature'
+                    '&temp_url_expires=1400003600') % url
     expected_body = '\n'.join([
-        u'GET',
-        u'1400003600',
+        'GET',
+        '1400003600',
         url,
     ]).encode('utf-8')
 
 
 class TestTempURLBytesPathUnicodeKey(TestTempURL):
-    url = u'/v1/\u00e4/c/\u00f3'.encode('utf-8')
-    key = u'k\u00e9y'
+    url = '/v1/\u00e4/c/\u00f3'.encode('utf-8')
+    key = 'k\u00e9y'
     expected_url = url + (b'?temp_url_sig=temp_url_signature'
                           b'&temp_url_expires=1400003600')
     expected_body = b'\n'.join([
@@ -408,8 +408,8 @@ class TestTempURLBytesPathUnicodeKey(TestTempURL):
 
 
 class TestTempURLBytesPathAndKey(TestTempURL):
-    url = u'/v1/\u00e4/c/\u00f3'.encode('utf-8')
-    key = u'k\u00e9y'.encode('utf-8')
+    url = '/v1/\u00e4/c/\u00f3'.encode('utf-8')
+    key = 'k\u00e9y'.encode('utf-8')
     expected_url = url + (b'?temp_url_sig=temp_url_signature'
                           b'&temp_url_expires=1400003600')
     expected_body = b'\n'.join([
@@ -420,7 +420,7 @@ class TestTempURLBytesPathAndKey(TestTempURL):
 
 
 class TestTempURLBytesPathAndNonUtf8Key(TestTempURL):
-    url = u'/v1/\u00e4/c/\u00f3'.encode('utf-8')
+    url = '/v1/\u00e4/c/\u00f3'.encode('utf-8')
     key = b'k\xffy'
     expected_url = url + (b'?temp_url_sig=temp_url_signature'
                           b'&temp_url_expires=1400003600')
@@ -463,7 +463,7 @@ class TestReadableToIterable(unittest.TestCase):
 
     def test_unicode(self):
         # Check no errors are raised if unicode data is feed in.
-        unicode_data = u'abc'
+        unicode_data = 'abc'
         actual_md5sum = md5(unicode_data.encode()).hexdigest()
         chunk_size = 2
 
@@ -486,11 +486,11 @@ class TestReadableToIterable(unittest.TestCase):
 class TestLengthWrapper(unittest.TestCase):
 
     def test_stringio(self):
-        contents = io.StringIO(u'a' * 50 + u'b' * 50)
+        contents = io.StringIO('a' * 50 + 'b' * 50)
         contents.seek(22)
         data = u.LengthWrapper(contents, 42, True)
-        s = u'a' * 28 + u'b' * 14
-        read_data = u''.join(iter(data.read, ''))
+        s = 'a' * 28 + 'b' * 14
+        read_data = ''.join(iter(data.read, ''))
 
         self.assertEqual(42, len(data))
         self.assertEqual(42, len(read_data))
@@ -500,7 +500,7 @@ class TestLengthWrapper(unittest.TestCase):
         data.reset()
         self.assertEqual(md5().hexdigest(), data.get_md5sum())
 
-        read_data = u''.join(iter(data.read, ''))
+        read_data = ''.join(iter(data.read, ''))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
         self.assertEqual(md5(s.encode()).hexdigest(), data.get_md5sum())
@@ -591,12 +591,12 @@ class TestApiResponeParser(unittest.TestCase):
 
     def test_utf8_default(self):
         result = u.parse_api_response(
-            {}, u'{"test": "\u2603"}'.encode('utf8'))
-        self.assertEqual({'test': u'\u2603'}, result)
+            {}, '{"test": "\u2603"}'.encode('utf8'))
+        self.assertEqual({'test': '\u2603'}, result)
 
         result = u.parse_api_response(
-            {}, u'{"test": "\\u2603"}'.encode('utf8'))
-        self.assertEqual({'test': u'\u2603'}, result)
+            {}, '{"test": "\\u2603"}'.encode('utf8'))
+        self.assertEqual({'test': '\u2603'}, result)
 
     def test_bad_json(self):
         self.assertRaises(ValueError, u.parse_api_response,
@@ -610,35 +610,35 @@ class TestApiResponeParser(unittest.TestCase):
         result = u.parse_api_response(
             {'content-type': 'application/json; charset=iso8859-1'},
             b'{"t\xe9st": "\xff"}')
-        self.assertEqual({u't\xe9st': u'\xff'}, result)
+        self.assertEqual({'t\xe9st': '\xff'}, result)
 
     def test_gzipped_utf8(self):
         buf = io.BytesIO()
         gz = gzip.GzipFile(fileobj=buf, mode='w')
-        gz.write(u'{"test": "\u2603"}'.encode('utf8'))
+        gz.write('{"test": "\u2603"}'.encode('utf8'))
         gz.close()
         result = u.parse_api_response(
             {'content-encoding': 'gzip'},
             buf.getvalue())
-        self.assertEqual({'test': u'\u2603'}, result)
+        self.assertEqual({'test': '\u2603'}, result)
 
 
 class TestGetBody(unittest.TestCase):
 
     def test_not_gzipped(self):
         result = u.parse_api_response(
-            {}, u'{"test": "\\u2603"}'.encode('utf8'))
-        self.assertEqual({'test': u'\u2603'}, result)
+            {}, '{"test": "\\u2603"}'.encode('utf8'))
+        self.assertEqual({'test': '\u2603'}, result)
 
     def test_gzipped_body(self):
         buf = io.BytesIO()
         gz = gzip.GzipFile(fileobj=buf, mode='w')
-        gz.write(u'{"test": "\u2603"}'.encode('utf8'))
+        gz.write('{"test": "\u2603"}'.encode('utf8'))
         gz.close()
         result = u.parse_api_response(
             {'content-encoding': 'gzip'},
             buf.getvalue())
-        self.assertEqual({'test': u'\u2603'}, result)
+        self.assertEqual({'test': '\u2603'}, result)
 
 
 class JSONTracker:

@@ -172,7 +172,7 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
                 )
         hmac_parts.insert(0, "ip=%s" % ip_range)
 
-    hmac_body = u'\n'.join(hmac_parts)
+    hmac_body = '\n'.join(hmac_parts)
 
     # Encode to UTF-8 for py3 compatibility
     if not isinstance(key, bytes):
@@ -183,14 +183,14 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         expiration = time.strftime(
             EXPIRES_ISO8601_FORMAT, time.gmtime(expiration))
 
-    temp_url = u'{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
+    temp_url = '{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
         path=path_for_body, sig=sig, exp=expiration)
 
     if ip_range:
-        temp_url += u'&temp_url_ip_range={}'.format(ip_range)
+        temp_url += '&temp_url_ip_range={}'.format(ip_range)
 
     if prefix:
-        temp_url += u'&temp_url_prefix={}'.format(parts[4])
+        temp_url += '&temp_url_prefix={}'.format(parts[4])
     # Have return type match path from caller
     if isinstance(path, bytes):
         return temp_url.encode('utf-8')

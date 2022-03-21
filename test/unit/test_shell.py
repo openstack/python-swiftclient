@@ -400,7 +400,7 @@ class TestShell(unittest.TestCase):
     def test_list_json(self, connection):
         connection.return_value.get_account.side_effect = [
             [None, [{'name': 'container'}]],
-            [None, [{'name': u'\u263A', 'some-custom-key': 'and value'}]],
+            [None, [{'name': '\u263A', 'some-custom-key': 'and value'}]],
             [None, []],
         ]
 
@@ -412,7 +412,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.get_account.assert_has_calls(calls)
 
         listing = [{'name': 'container'},
-                   {'name': u'\u263A', 'some-custom-key': 'and value'}]
+                   {'name': '\u263A', 'some-custom-key': 'and value'}]
         expected = json.dumps(listing, sort_keys=True, indent=2) + '\n'
         self.assertEqual(output.out, expected)
 

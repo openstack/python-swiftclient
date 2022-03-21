@@ -409,7 +409,7 @@ class TestFunctional(unittest.TestCase):
     def test_post_object_unicode_header_name(self):
         self.conn.post_object(self.containername,
                               self.objectname,
-                              {u'x-object-meta-\U0001f44d': u'\U0001f44d'})
+                              {'x-object-meta-\U0001f44d': '\U0001f44d'})
 
         # Note that we can't actually read this header back on py3; see
         # https://bugs.python.org/issue37093

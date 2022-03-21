@@ -564,7 +564,7 @@ class TestServiceDelete(_TestServiceBase):
             stub_headers, json.dumps(stub_resp).encode('utf8'))
         obj_list = ['x%02d' % i for i in range(100)]
         expected = [{
-            'action': u'bulk_delete',
+            'action': 'bulk_delete',
             'attempts': 0,
             'container': 'c',
             'objects': list(objs),
@@ -594,7 +594,7 @@ class TestServiceDelete(_TestServiceBase):
         obj_list = [SwiftDeleteObject('x%02d' % i, options={'version_id': i})
                     for i in range(100)]
         expected = [{
-            'action': u'delete_object',
+            'action': 'delete_object',
             'attempts': 0,
             'container': 'c',
             'object': obj.object_name,

@@ -163,34 +163,34 @@ class TestHttpHelpers(MockHttpTest):
         self.assertEqual('bytes%FF', c.quote(value))
         value = 'native string'
         self.assertEqual('native%20string', c.quote(value))
-        value = u'unicode string'
+        value = 'unicode string'
         self.assertEqual('unicode%20string', c.quote(value))
-        value = u'unicode:\xe9\u20ac'
+        value = 'unicode:\xe9\u20ac'
         self.assertEqual('unicode%3A%C3%A9%E2%82%AC', c.quote(value))
 
     def test_parse_header_string(self):
         value = b'bytes'
-        self.assertEqual(u'bytes', c.parse_header_string(value))
-        value = u'unicode:\xe9\u20ac'
-        self.assertEqual(u'unicode:\xe9\u20ac', c.parse_header_string(value))
+        self.assertEqual('bytes', c.parse_header_string(value))
+        value = 'unicode:\xe9\u20ac'
+        self.assertEqual('unicode:\xe9\u20ac', c.parse_header_string(value))
         value = 'native%20string'
-        self.assertEqual(u'native string', c.parse_header_string(value))
+        self.assertEqual('native string', c.parse_header_string(value))
 
         value = b'encoded%20bytes%E2%82%AC'
-        self.assertEqual(u'encoded bytes\u20ac', c.parse_header_string(value))
+        self.assertEqual('encoded bytes\u20ac', c.parse_header_string(value))
         value = 'encoded%20unicode%E2%82%AC'
-        self.assertEqual(u'encoded unicode\u20ac',
+        self.assertEqual('encoded unicode\u20ac',
                          c.parse_header_string(value))
 
         value = b'bad%20bytes%ff%E2%82%AC'
-        self.assertEqual(u'bad%20bytes%ff%E2%82%AC',
+        self.assertEqual('bad%20bytes%ff%E2%82%AC',
                          c.parse_header_string(value))
-        value = u'bad%20unicode%ff\u20ac'
-        self.assertEqual(u'bad%20unicode%ff\u20ac',
+        value = 'bad%20unicode%ff\u20ac'
+        self.assertEqual('bad%20unicode%ff\u20ac',
                          c.parse_header_string(value))
 
         value = b'really%20bad\xffbytes'
-        self.assertEqual(u'really%2520bad%FFbytes',
+        self.assertEqual('really%2520bad%FFbytes',
                          c.parse_header_string(value))
 
     def test_http_connection(self):
@@ -205,9 +205,9 @@ class TestHttpHelpers(MockHttpTest):
 
     def test_encode_meta_headers(self):
         headers = {'abc': '123',
-                   u'x-container-meta-\u0394': 123,
-                   u'x-account-meta-\u0394': 12.3,
-                   u'x-object-meta-\u0394': True}
+                   'x-container-meta-\u0394': 123,
+                   'x-account-meta-\u0394': 12.3,
+                   'x-object-meta-\u0394': True}
 
         r = swiftclient.encode_meta_headers(headers)
 
@@ -1111,9 +1111,9 @@ class TestGetObject(MockHttpTest):
         conn = c.http_connection('http://www.test.com')
         headers, data = c.get_object('url_is_irrelevant', 'TOKEN',
                                      'container', 'object', http_conn=conn)
-        self.assertEqual(u't\xe9st', headers.get('x-utf-8-header', ''))
-        self.assertEqual(u'%ff', headers.get('x-non-utf-8-header', ''))
-        self.assertEqual(u'%FF', headers.get('x-binary-header', ''))
+        self.assertEqual('t\xe9st', headers.get('x-utf-8-header', ''))
+        self.assertEqual('%ff', headers.get('x-non-utf-8-header', ''))
+        self.assertEqual('%FF', headers.get('x-binary-header', ''))
 
     def test_chunk_size_read_method(self):
         conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
@@ -1338,14 +1338,14 @@ class TestPutObject(MockHttpTest):
         ])
 
     def test_unicode_ok(self):
-        conn = c.http_connection(u'http://www.test.com/')
-        mock_file = io.StringIO(u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
-        args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+        conn = c.http_connection('http://www.test.com/')
+        mock_file = io.StringIO('\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        args = ('\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
                 mock_file)
-        text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+        text = '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
         headers = {'X-Header1': text,
                    'X-2': '1', 'X-3': "{'a': 'b'}", 'a-b': '.x:yz mn:fg:lp'}
 
@@ -1410,7 +1410,7 @@ class TestPutObject(MockHttpTest):
 
     def test_raw_upload(self):
         # Raw upload happens when content_length is passed to put_object
-        conn = c.http_connection(u'http://www.test.com/')
+        conn = c.http_connection('http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
@@ -1432,7 +1432,7 @@ class TestPutObject(MockHttpTest):
 
     def test_chunk_upload(self):
         # Chunked upload happens when no content_length is passed to put_object
-        conn = c.http_connection(u'http://www.test.com/')
+        conn = c.http_connection('http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
@@ -1457,7 +1457,7 @@ class TestPutObject(MockHttpTest):
         def data():
             for chunk in ('foo', '', 'bar'):
                 yield chunk
-        conn = c.http_connection(u'http://www.test.com/')
+        conn = c.http_connection('http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
@@ -1524,7 +1524,7 @@ class TestPutObject(MockHttpTest):
             self.assertEqual(etag, contents.get_md5sum())
 
     def test_params(self):
-        conn = c.http_connection(u'http://www.test.com/')
+        conn = c.http_connection('http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
@@ -1535,8 +1535,8 @@ class TestPutObject(MockHttpTest):
         self.assertEqual(request_header['etag'], b'1234-5678')
         self.assertEqual(request_header['content-type'], b'text/plain')
 
-    def test_no_content_type_requests(self):
-        conn = c.http_connection(u'http://www.test.com/')
+    def test_no_content_type(self):
+        conn = c.http_connection('http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
@@ -1546,7 +1546,7 @@ class TestPutObject(MockHttpTest):
         self.assertNotIn('content-type', request_header)
 
     def test_content_type_in_headers(self):
-        conn = c.http_connection(u'http://www.test.com/')
+        conn = c.http_connection('http://www.test.com/')
         resp = MockHttpResponse(status=200)
         conn[1].getresponse = resp.fake_response
         conn[1]._request = resp._fake_request
@@ -1586,12 +1586,12 @@ class TestPostObject(MockHttpTest):
         })
 
     def test_unicode_ok(self):
-        conn = c.http_connection(u'http://www.test.com/')
-        args = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
-                u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
-        text = u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+        conn = c.http_connection('http://www.test.com/')
+        args = ('\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91',
+                '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91')
+        text = '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
         headers = {'X-Header1': text,
                    b'X-Header2': 'value',
                    'X-2': '1', 'X-3': "{'a': 'b'}", 'a-b': '.x:yz mn:kl:qr',
@@ -1890,66 +1890,66 @@ class TestGetCapabilities(MockHttpTest):
 class TestHTTPConnection(MockHttpTest):
 
     def test_bad_url_scheme(self):
-        url = u'www.test.com'
+        url = 'www.test.com'
         with self.assertRaises(c.ClientException) as exc_context:
             c.http_connection(url)
         exc = exc_context.exception
-        expected = u'Unsupported scheme "" in url "www.test.com"'
+        expected = 'Unsupported scheme "" in url "www.test.com"'
         self.assertEqual(expected, str(exc))
 
-        url = u'://www.test.com'
+        url = '://www.test.com'
         with self.assertRaises(c.ClientException) as exc_context:
             c.http_connection(url)
         exc = exc_context.exception
-        expected = u'Unsupported scheme "" in url "://www.test.com"'
+        expected = 'Unsupported scheme "" in url "://www.test.com"'
         self.assertEqual(expected, str(exc))
 
-        url = u'blah://www.test.com'
+        url = 'blah://www.test.com'
         with self.assertRaises(c.ClientException) as exc_context:
             c.http_connection(url)
         exc = exc_context.exception
-        expected = u'Unsupported scheme "blah" in url "blah://www.test.com"'
+        expected = 'Unsupported scheme "blah" in url "blah://www.test.com"'
         self.assertEqual(expected, str(exc))
 
     def test_ok_url_scheme(self):
         for scheme in ('http', 'https', 'HTTP', 'HTTPS'):
-            url = u'%s://www.test.com' % scheme
+            url = '%s://www.test.com' % scheme
             parsed_url, conn = c.http_connection(url)
             self.assertEqual(scheme.lower(), parsed_url.scheme)
-            self.assertEqual(u'%s://www.test.com' % scheme, conn.url)
+            self.assertEqual('%s://www.test.com' % scheme, conn.url)
 
     def test_ok_proxy(self):
-        conn = c.http_connection(u'http://www.test.com/',
+        conn = c.http_connection('http://www.test.com/',
                                  proxy='http://localhost:8080')
         self.assertEqual(conn[1].requests_args['proxies']['http'],
                          'http://localhost:8080')
 
     def test_bad_proxy(self):
         try:
-            c.http_connection(u'http://www.test.com/', proxy='localhost:8080')
+            c.http_connection('http://www.test.com/', proxy='localhost:8080')
         except c.ClientException as e:
             self.assertEqual(e.msg, "Proxy's missing scheme")
 
     def test_cacert(self):
-        conn = c.http_connection(u'http://www.test.com/',
+        conn = c.http_connection('http://www.test.com/',
                                  cacert='/dev/urandom')
         self.assertEqual(conn[1].requests_args['verify'], '/dev/urandom')
 
     def test_insecure(self):
-        conn = c.http_connection(u'http://www.test.com/', insecure=True)
+        conn = c.http_connection('http://www.test.com/', insecure=True)
         self.assertEqual(conn[1].requests_args['verify'], False)
 
     def test_cert(self):
-        conn = c.http_connection(u'http://www.test.com/', cert='minnie')
+        conn = c.http_connection('http://www.test.com/', cert='minnie')
         self.assertEqual(conn[1].requests_args['cert'], 'minnie')
 
     def test_cert_key(self):
         conn = c.http_connection(
-            u'http://www.test.com/', cert='minnie', cert_key='mickey')
+            'http://www.test.com/', cert='minnie', cert_key='mickey')
         self.assertEqual(conn[1].requests_args['cert'], ('minnie', 'mickey'))
 
     def test_response_connection_released(self):
-        _parsed_url, conn = c.http_connection(u'http://www.test.com/')
+        _parsed_url, conn = c.http_connection('http://www.test.com/')
         conn.resp = MockHttpResponse()
         conn.resp.raw = mock.Mock()
         conn.resp.raw.read.side_effect = ["Chunk", ""]
@@ -1962,7 +1962,7 @@ class TestHTTPConnection(MockHttpTest):
     def test_response_headers(self):
         '''Test latin1-encoded headers.
         '''
-        _, conn = c.http_connection(u'http://www.test.com/')
+        _, conn = c.http_connection('http://www.test.com/')
         conn.resp = MockHttpResponse(
             status=200,
             headers={
@@ -2860,7 +2860,7 @@ class TestLogging(MockHttpTest):
     def test_content_encoding_gzip_body_is_logged_decoded(self):
         buf = io.BytesIO()
         gz = gzip.GzipFile(fileobj=buf, mode='w')
-        data = {"test": u"\u2603"}
+        data = {"test": "\u2603"}
         decoded_body = json.dumps(data).encode('utf-8')
         gz.write(decoded_body)
         gz.close()
@@ -2877,7 +2877,7 @@ class TestLogging(MockHttpTest):
             self.assertEqual(exc_context.exception.http_status, 500)
         # it will log the decoded body
         self.assertEqual([
-            mock.call('REQ: %s', u'curl -i http://www.test.com/asdf/asdf '
+            mock.call('REQ: %s', 'curl -i http://www.test.com/asdf/asdf '
                       '-X GET -H "X-Auth-Token: ..."'),
             mock.call('RESP STATUS: %s %s', 500, 'Fake'),
             mock.call('RESP HEADERS: %s', {'content-encoding': 'gzip'}),
@@ -2888,9 +2888,9 @@ class TestLogging(MockHttpTest):
         with mock.patch('swiftclient.client.logger.debug') as mock_log:
             token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
             token_encoded = token_value.encode('utf8')
-            unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
-                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
-                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
+            unicode_token_value = ('\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   '\u5929\u7a7a\u4e2d\u7684\u4e4c')
             unicode_token_encoded = unicode_token_value.encode('utf8')
             set_cookie_value = 'X-Auth-Token=%s' % token_value
             set_cookie_encoded = set_cookie_value.encode('utf8')
@@ -2914,8 +2914,8 @@ class TestLogging(MockHttpTest):
             out = []
             for _, args, kwargs in mock_log.mock_calls:
                 for arg in args:
-                    out.append(u'%s' % arg)
-            output = u''.join(out)
+                    out.append('%s' % arg)
+            output = ''.join(out)
             self.assertIn('X-Auth-Token', output)
             self.assertIn(token_value[:16] + '...', output)
             self.assertIn('X-Storage-Token', output)
@@ -2930,9 +2930,9 @@ class TestLogging(MockHttpTest):
         with mock.patch('swiftclient.client.logger.debug') as mock_log:
             token_value = 'tkee96b40a8ca44fc5ad72ec5a7c90d9b'
             token_encoded = token_value.encode('utf8')
-            unicode_token_value = (u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
-                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
-                                   u'\u5929\u7a7a\u4e2d\u7684\u4e4c')
+            unicode_token_value = ('\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   '\u5929\u7a7a\u4e2d\u7684\u4e4c\u4e91'
+                                   '\u5929\u7a7a\u4e2d\u7684\u4e4c')
             c.logger_settings['redact_sensitive_headers'] = False
             unicode_token_encoded = unicode_token_value.encode('utf8')
             c.http_log(
@@ -2954,8 +2954,8 @@ class TestLogging(MockHttpTest):
             out = []
             for _, args, kwargs in mock_log.mock_calls:
                 for arg in args:
-                    out.append(u'%s' % arg)
-            output = u''.join(out)
+                    out.append('%s' % arg)
+            output = ''.join(out)
             self.assertIn('X-Auth-Token', output)
             self.assertIn(token_value, output)
             self.assertIn('X-Storage-Token', output)
@@ -2963,12 +2963,12 @@ class TestLogging(MockHttpTest):
 
     @mock.patch('swiftclient.client.logger.debug')
     def test_unicode_path(self, mock_log):
-        path = u'http://swift/v1/AUTH_account-\u062a'.encode('utf-8')
+        path = 'http://swift/v1/AUTH_account-\u062a'.encode('utf-8')
         c.http_log(['GET', path], {},
                    MockHttpResponse(status=200, headers=[]), '')
         request_log_line = mock_log.mock_calls[0]
         self.assertEqual('REQ: %s', request_log_line[1][0])
-        self.assertEqual(u'curl -i -X GET %s' % path.decode('utf-8'),
+        self.assertEqual('curl -i -X GET %s' % path.decode('utf-8'),
                          request_log_line[1][1])
 
 
