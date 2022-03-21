@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import PriorityQueue
 
 
-class OutputManager(object):
+class OutputManager:
     """
     One object to manage and provide helper functions for output.
 
@@ -108,7 +108,7 @@ class OutputManager(object):
         self.error_print_pool.submit(self._print_error, msg, count=0)
 
 
-class MultiThreadingManager(object):
+class MultiThreadingManager:
     """
     One object to manage context for multi-threading.  This should make
     bin/swift less error-prone and allow us to test this code.

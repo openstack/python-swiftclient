@@ -254,7 +254,7 @@ def report_traceback():
         return None, None
 
 
-class NoopMD5(object):
+class NoopMD5:
     def __init__(self, *a, **kw):
         pass
 
@@ -265,7 +265,7 @@ class NoopMD5(object):
         return ''
 
 
-class ReadableToIterable(object):
+class ReadableToIterable:
     """
     Wrap a filelike object and act as an iterator.
 
@@ -314,7 +314,7 @@ class ReadableToIterable(object):
         return self
 
 
-class LengthWrapper(object):
+class LengthWrapper:
     """
     Wrap a filelike object with a maximum length.
 

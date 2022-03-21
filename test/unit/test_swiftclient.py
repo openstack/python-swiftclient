@@ -101,7 +101,7 @@ class TestClientException(unittest.TestCase):
         self.assertIn('(txn: some-other-id)', str(exc))
 
 
-class MockHttpResponse(object):
+class MockHttpResponse:
     def __init__(self, status=0, headers=None, verify=False):
         self.status = status
         self.status_code = status
@@ -115,7 +115,7 @@ class MockHttpResponse(object):
             self.headers.update(headers)
         self.closed = False
 
-        class Raw(object):
+        class Raw:
             def __init__(self, headers):
                 self.headers = headers
 
@@ -586,10 +586,10 @@ class TestGetAuth(MockHttpTest):
             "application_credential_id": "proejct_id",
             "application_credential_secret": "secret"}
 
-        class FakeEndpointData(object):
+        class FakeEndpointData:
             catalog_url = 'http://swift.cluster/v1/KEY_project_id'
 
-        class FakeKeystoneuth1v3Session(object):
+        class FakeKeystoneuth1v3Session:
 
             def __init__(self, auth):
                 self.auth = auth
@@ -2543,7 +2543,7 @@ class TestConnection(MockHttpTest):
 
     def test_reset_stream(self):
 
-        class LocalContents(object):
+        class LocalContents:
 
             def __init__(self, tell_value=0):
                 self.data = io.BytesIO(string.ascii_letters.encode() * 10)
@@ -2565,7 +2565,7 @@ class TestConnection(MockHttpTest):
                 self.reads.append((size, read_data))
                 return read_data
 
-        class LocalConnection(object):
+        class LocalConnection:
 
             def __init__(self, parsed_url=None):
                 self.reason = ""

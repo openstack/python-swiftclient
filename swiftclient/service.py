@@ -315,7 +315,7 @@ def split_headers(options, prefix=''):
     return headers
 
 
-class SwiftUploadObject(object):
+class SwiftUploadObject:
     """
     Class for specifying an object upload, allowing the object source, name and
     options to be specified separately for each individual object.
@@ -341,7 +341,7 @@ class SwiftUploadObject(object):
         self.source = source
 
 
-class SwiftPostObject(object):
+class SwiftPostObject:
     """
     Class for specifying an object post, allowing the headers/metadata to be
     specified separately for each individual object.
@@ -355,7 +355,7 @@ class SwiftPostObject(object):
         self.options = options
 
 
-class SwiftDeleteObject(object):
+class SwiftDeleteObject:
     """
     Class for specifying an object delete, allowing the headers/metadata to be
     specified separately for each individual object.
@@ -369,7 +369,7 @@ class SwiftDeleteObject(object):
         self.options = options
 
 
-class SwiftCopyObject(object):
+class SwiftCopyObject:
     """
     Class for specifying an object copy,
     allowing the destination/headers/metadata/fresh_metadata to be specified
@@ -405,7 +405,7 @@ class SwiftCopyObject(object):
                 )
 
 
-class _SwiftReader(object):
+class _SwiftReader:
     """
     Class for downloading objects from swift and raising appropriate
     errors on failures caused by either invalid md5sum or size of the
@@ -470,7 +470,7 @@ class _SwiftReader(object):
         return self._actual_read
 
 
-class SwiftService(object):
+class SwiftService:
     """
     Service for performing swift operations
     """

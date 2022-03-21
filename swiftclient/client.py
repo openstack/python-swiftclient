@@ -217,7 +217,7 @@ def encode_meta_headers(headers):
     return ret
 
 
-class _ObjectBody(object):
+class _ObjectBody:
     """
     Readable and iterable object body response wrapper.
     """
@@ -331,7 +331,7 @@ class _RetryBody(_ObjectBody):
         return buf
 
 
-class HTTPConnection(object):
+class HTTPConnection:
     def __init__(self, url, proxy=None, cacert=None, insecure=False,
                  cert=None, cert_key=None, ssl_compression=False,
                  default_user_agent=None, timeout=None):
@@ -1634,7 +1634,7 @@ def get_capabilities(http_conn):
     return parse_api_response(resp_headers, body)
 
 
-class Connection(object):
+class Connection:
 
     """
     Convenience class to make requests that will also retry the request

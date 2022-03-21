@@ -641,7 +641,7 @@ class TestGetBody(unittest.TestCase):
         self.assertEqual({'test': u'\u2603'}, result)
 
 
-class JSONTracker(object):
+class JSONTracker:
     def __init__(self, data):
         self.data = data
         self.calls = []

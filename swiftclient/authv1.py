@@ -68,7 +68,7 @@ UTC = _UTC()
 del _UTC
 
 
-class ServiceCatalogV1(object):
+class ServiceCatalogV1:
     def __init__(self, auth_url, storage_url, account):
         self.auth_url = auth_url
         self._storage_url = storage_url
@@ -148,7 +148,7 @@ class ServiceCatalogV1(object):
         raise exceptions.EndpointNotFound(msg)
 
 
-class AccessInfoV1(object):
+class AccessInfoV1:
     """An object for encapsulating a raw v1 auth token."""
 
     def __init__(self, auth_url, storage_url, account, username, auth_token,

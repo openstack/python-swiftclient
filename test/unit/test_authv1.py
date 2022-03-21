@@ -22,7 +22,7 @@ from keystoneauth1 import exceptions
 from swiftclient import authv1
 
 
-class TestDataNoAccount(object):
+class TestDataNoAccount:
     options = dict(
         auth_url='http://saio:8080/auth/v1.0',
         username='test:tester',
@@ -32,7 +32,7 @@ class TestDataNoAccount(object):
     token = 'token'
 
 
-class TestDataWithAccount(object):
+class TestDataWithAccount:
     options = dict(
         auth_url='http://saio:8080/auth/v1.0',
         username='test2:tester2',
