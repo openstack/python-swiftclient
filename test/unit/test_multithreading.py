@@ -216,12 +216,11 @@ class TestOutputManager(unittest.TestCase):
         # The threads should have been cleaned up
         self.assertEqual(starting_thread_count, threading.active_count())
 
-        over_the = "over the '\u062a\u062a'\n"
         self.assertEqual(''.join([
             'one-argument\n',
             'one fish, 88 fish\n',
             'some\n', 'where\n',
-            over_the,
+            "over the '\u062a\u062a'\n",
             'some raw bytes: \u062a\u062a',
             '           key: value\n',
             '        object: O\u0308bject\n'

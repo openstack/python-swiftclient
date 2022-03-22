@@ -2034,11 +2034,6 @@ class SwiftService:
         if headers is None:
             headers = {}
         segment_results.sort(key=lambda di: di['segment_index'])
-        for seg in segment_results:
-            seg_loc = seg['segment_location'].lstrip('/')
-            if isinstance(seg_loc, str):
-                seg_loc = seg_loc.encode('utf-8')
-
         manifest_data = json.dumps([
             {
                 'path': d['segment_location'],

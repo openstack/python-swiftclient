@@ -23,7 +23,7 @@ import warnings
 
 from requests.exceptions import RequestException, SSLError
 import http.client as http_client
-from urllib.parse import quote as _quote, unquote
+from urllib.parse import quote, unquote
 from urllib.parse import urljoin, urlparse, urlunparse
 from time import sleep, time
 
@@ -179,14 +179,6 @@ def parse_header_string(data):
     except UnicodeDecodeError:
         return data
     return unquoted
-
-
-def quote(value, safe='/'):
-    """
-    Patched version of urllib.quote that encodes utf8 strings before quoting.
-    On Python 3, call directly urllib.parse.quote().
-    """
-    return _quote(value, safe=safe)
 
 
 def encode_utf8(value):

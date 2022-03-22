@@ -1622,7 +1622,7 @@ class TestShell(unittest.TestCase):
         with mock.patch('swiftclient.shell.SwiftService.delete') as mock_func:
             with CaptureOutput() as out:
                 mock_func.return_value = [res]
-                swiftclient.shell.main(base_argv + [container.encode('utf-8')])
+                swiftclient.shell.main(base_argv + [container])
 
                 mock_func.assert_called_once_with(container=container)
                 self.assertTrue(out.out.find(
@@ -1635,7 +1635,7 @@ class TestShell(unittest.TestCase):
         with mock.patch('swiftclient.shell.SwiftService.delete') as mock_func:
             with CaptureOutput() as out:
                 mock_func.return_value = [res]
-                swiftclient.shell.main(base_argv + [container.encode('utf-8')])
+                swiftclient.shell.main(base_argv + [container])
 
                 mock_func.assert_called_once_with(container=container)
                 self.assertTrue(out.out.find(
