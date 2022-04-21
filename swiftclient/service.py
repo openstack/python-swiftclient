@@ -273,6 +273,7 @@ def get_conn(options):
     return Connection(options['auth'],
                       options['user'],
                       options['key'],
+                      timeout=options.get('timeout'),
                       retries=options['retries'],
                       auth_version=options['auth_version'],
                       os_options=options['os_options'],

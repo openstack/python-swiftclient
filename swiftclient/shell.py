@@ -1728,6 +1728,9 @@ def add_default_args(parser):
     parser.add_argument('-K', '--key', dest='key',
                         default=environ.get('ST_KEY'),
                         help='Key for obtaining an auth token.')
+    parser.add_argument('-T', '--timeout', type=int, dest='timeout',
+                        default=None,
+                        help='Timeout in seconds to wait for response.')
     parser.add_argument('-R', '--retries', type=int, default=5, dest='retries',
                         help='The number of times to retry a failed '
                              'connection.')
