@@ -20,10 +20,10 @@ import getpass
 import hashlib
 import json
 import logging
-import mock
 import os
 import tempfile
 import unittest
+from unittest import mock
 import textwrap
 from time import localtime, mktime, strftime, strptime
 

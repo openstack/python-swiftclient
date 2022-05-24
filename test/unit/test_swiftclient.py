@@ -16,11 +16,11 @@
 import gzip
 import json
 import logging
-import mock
 import io
 import socket
 import string
 import unittest
+from unittest import mock
 import warnings
 import tempfile
 from hashlib import md5

@@ -20,10 +20,10 @@ import os
 import sys
 from time import sleep
 import unittest
+from unittest import mock
 
 from requests import RequestException
 from requests.structures import CaseInsensitiveDict
-import mock
 from urllib.parse import urlparse, ParseResult
 from swiftclient import client as c
 from swiftclient import shell as s

@@ -14,8 +14,8 @@
 
 import datetime
 import json
-import mock
 import unittest
+from unittest import mock
 from keystoneauth1 import plugin
 from keystoneauth1 import loading
 from keystoneauth1 import exceptions

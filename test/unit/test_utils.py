@@ -17,7 +17,7 @@ import gzip
 import io
 import json
 import unittest
-import mock
+from unittest import mock
 import tempfile
 from time import gmtime, localtime, mktime, strftime, strptime
 from hashlib import md5, sha1
