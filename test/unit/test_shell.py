@@ -2035,7 +2035,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=False, prefix=False, ip_range=None)
+            iso8601=False, prefix=False, ip_range=None, digest='sha256')
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_prefix_based(self, temp_url):
@@ -2044,7 +2044,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=False, prefix=True, ip_range=None)
+            iso8601=False, prefix=True, ip_range=None, digest='sha256')
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_iso8601_in(self, temp_url):
@@ -2056,7 +2056,7 @@ class TestShell(unittest.TestCase):
             swiftclient.shell.main(argv)
             temp_url.assert_called_with(
                 '/v1/AUTH_account/c/', d, 'secret_key', 'GET', absolute=False,
-                iso8601=False, prefix=False, ip_range=None)
+                iso8601=False, prefix=False, ip_range=None, digest='sha256')
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_iso8601_out(self, temp_url):
@@ -2065,7 +2065,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=True, prefix=False, ip_range=None)
+            iso8601=True, prefix=False, ip_range=None, digest='sha256')
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_absolute_expiry_temp_url(self, temp_url):
@@ -2074,7 +2074,7 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=True,
-            iso8601=False, prefix=False, ip_range=None)
+            iso8601=False, prefix=False, ip_range=None, digest='sha256')
 
     @mock.patch('swiftclient.shell.generate_temp_url', return_value='')
     def test_temp_url_with_ip_range(self, temp_url):
@@ -2083,11 +2083,11 @@ class TestShell(unittest.TestCase):
         swiftclient.shell.main(argv)
         temp_url.assert_called_with(
             '/v1/AUTH_account/c/o', "60", 'secret_key', 'GET', absolute=False,
-            iso8601=False, prefix=False, ip_range='1.2.3.4')
+            iso8601=False, prefix=False, ip_range='1.2.3.4', digest='sha256')
 
     def test_temp_url_output(self):
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
-                "secret_key", "--absolute"]
+                "secret_key", "--absolute", "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
         sig = "63bc77a473a1c2ce956548cacf916f292eb9eac3"
@@ -2095,14 +2095,14 @@ class TestShell(unittest.TestCase):
         self.assertEqual(expected, output.out)
 
         argv = ["", "tempurl", "GET", "60", "http://saio:8080/v1/a/c/o",
-                "secret_key", "--absolute"]
+                "secret_key", "--absolute", "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
         expected = "http://saio:8080%s" % expected
         self.assertEqual(expected, output.out)
 
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/",
-                "secret_key", "--absolute", "--prefix"]
+                "secret_key", "--absolute", "--prefix", "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
         sig = '00008c4be1573ba74fc2ab9bce02e3a93d04b349'
@@ -2111,7 +2111,8 @@ class TestShell(unittest.TestCase):
         self.assertEqual(expected, output.out)
 
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/",
-                "secret_key", "--absolute", "--prefix", '--iso8601']
+                "secret_key", "--absolute", "--prefix", '--iso8601',
+                "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
         sig = '00008c4be1573ba74fc2ab9bce02e3a93d04b349'
@@ -2124,7 +2125,7 @@ class TestShell(unittest.TestCase):
                  strftime(EXPIRES_ISO8601_FORMAT[:-1], localtime(60)))
         for d in dates:
             argv = ["", "tempurl", "GET", d, "/v1/a/c/o",
-                    "secret_key"]
+                    "secret_key", "--digest", "sha1"]
             with CaptureOutput(suppress_systemexit=True) as output:
                 swiftclient.shell.main(argv)
             sig = "63bc77a473a1c2ce956548cacf916f292eb9eac3"
@@ -2135,19 +2136,20 @@ class TestShell(unittest.TestCase):
             mktime(strptime('2005-05-01', SHORT_EXPIRES_ISO8601_FORMAT))))
 
         argv = ["", "tempurl", "GET", ts, "/v1/a/c/",
-                "secret_key", "--absolute"]
+                "secret_key", "--absolute", "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
             expected = output.out
 
         argv = ["", "tempurl", "GET", '2005-05-01', "/v1/a/c/",
-                "secret_key", "--absolute"]
+                "secret_key", "--absolute", "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
             self.assertEqual(expected, output.out)
 
         argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
-                "secret_key", "--absolute", "--ip-range", "1.2.3.4"]
+                "secret_key", "--absolute", "--ip-range", "1.2.3.4",
+                "--digest", "sha1"]
         with CaptureOutput(suppress_systemexit=True) as output:
             swiftclient.shell.main(argv)
         sig = "6a6ec8efa4be53904ecba8d055d841e24a937c98"
@@ -2155,6 +2157,39 @@ class TestShell(unittest.TestCase):
             "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60"
             "&temp_url_ip_range=1.2.3.4\n" % sig
         )
+        self.assertEqual(expected, output.out)
+
+    def test_temp_url_digests_output(self):
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
+                "secret_key", "--absolute"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        s = "db04994a589b1a2538bff694f0a4f57c7a397617ac2cb49f924d222bbe2b3e01"
+        expected = "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60\n" % s
+        self.assertEqual(expected, output.out)
+
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
+                "secret_key", "--absolute", "--digest", "sha256"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        # same signature/expectation
+        self.assertEqual(expected, output.out)
+
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
+                "secret_key", "--absolute", "--digest", "sha1"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        sig = "63bc77a473a1c2ce956548cacf916f292eb9eac3"
+        expected = "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60\n" % sig
+        self.assertEqual(expected, output.out)
+
+        argv = ["", "tempurl", "GET", "60", "/v1/a/c/o",
+                "secret_key", "--absolute", "--digest", "sha512"]
+        with CaptureOutput(suppress_systemexit=True) as output:
+            swiftclient.shell.main(argv)
+        sig = ("sha512:nMXwEAHu3jzlCZi4wWO1juEq4DikFlX8a729PLJVvUp"
+               "vg0GpgkJnX5uCG1x-v2KfTrmRtLOcT7KBK2RXLW1uKw")
+        expected = "/v1/a/c/o?temp_url_sig=%s&temp_url_expires=60\n" % sig
         self.assertEqual(expected, output.out)
 
     def test_temp_url_error_output(self):

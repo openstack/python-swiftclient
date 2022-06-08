@@ -20,7 +20,7 @@ import unittest
 from unittest import mock
 import tempfile
 from time import gmtime, localtime, mktime, strftime, strptime
-from hashlib import md5, sha1
+import hashlib
 
 from swiftclient import utils as u
 
@@ -127,17 +127,65 @@ class TestTempURL(unittest.TestCase):
     seconds = 3600
     key = 'correcthorsebatterystaple'
     method = 'GET'
-    expected_url = url + ('?temp_url_sig=temp_url_signature'
-                          '&temp_url_expires=1400003600')
     expected_body = '\n'.join([
         method,
         '1400003600',
         url,
     ]).encode('utf-8')
 
+    @property
+    def expected_url(self):
+        if isinstance(self.url, bytes):
+            return self.url + (b'?temp_url_sig=temp_url_signature'
+                               b'&temp_url_expires=1400003600')
+        return self.url + (u'?temp_url_sig=temp_url_signature'
+                           u'&temp_url_expires=1400003600')
+
+    @property
+    def expected_sha512_url(self):
+        if isinstance(self.url, bytes):
+            return self.url + (b'?temp_url_sig=sha512:dGVtcF91cmxfc2lnbmF0dXJl'
+                               b'&temp_url_expires=1400003600')
+        return self.url + (u'?temp_url_sig=sha512:dGVtcF91cmxfc2lnbmF0dXJl'
+                           u'&temp_url_expires=1400003600')
+
     @mock.patch('hmac.HMAC')
     @mock.patch('time.time', return_value=1400000000)
-    def test_generate_temp_url(self, time_mock, hmac_mock):
+    def test_generate_sha1_temp_url(self, time_mock, hmac_mock):
+        hmac_mock().hexdigest.return_value = 'temp_url_signature'
+        url = u.generate_temp_url(self.url, self.seconds,
+                                  self.key, self.method, digest='sha1')
+        key = self.key
+        if not isinstance(key, bytes):
+            key = key.encode('utf-8')
+        self.assertEqual(url, self.expected_url)
+        self.assertEqual(hmac_mock.mock_calls, [
+            mock.call(),
+            mock.call(key, self.expected_body, hashlib.sha1),
+            mock.call().hexdigest(),
+        ])
+        self.assertIsInstance(url, type(self.url))
+
+    @mock.patch('hmac.HMAC')
+    @mock.patch('time.time', return_value=1400000000)
+    def test_generate_sha512_temp_url(self, time_mock, hmac_mock):
+        hmac_mock().digest.return_value = b'temp_url_signature'
+        url = u.generate_temp_url(self.url, self.seconds,
+                                  self.key, self.method, digest=hashlib.sha512)
+        key = self.key
+        if not isinstance(key, bytes):
+            key = key.encode('utf-8')
+        self.assertEqual(url, self.expected_sha512_url)
+        self.assertEqual(hmac_mock.mock_calls, [
+            mock.call(),
+            mock.call(key, self.expected_body, hashlib.sha512),
+            mock.call().digest(),
+        ])
+        self.assertIsInstance(url, type(self.url))
+
+    @mock.patch('hmac.HMAC')
+    @mock.patch('time.time', return_value=1400000000)
+    def test_generate_sha256_temp_url_by_default(self, time_mock, hmac_mock):
         hmac_mock().hexdigest.return_value = 'temp_url_signature'
         url = u.generate_temp_url(self.url, self.seconds,
                                   self.key, self.method)
@@ -147,7 +195,7 @@ class TestTempURL(unittest.TestCase):
         self.assertEqual(url, self.expected_url)
         self.assertEqual(hmac_mock.mock_calls, [
             mock.call(),
-            mock.call(key, self.expected_body, sha1),
+            mock.call(key, self.expected_body, hashlib.sha256),
             mock.call().hexdigest(),
         ])
         self.assertIsInstance(url, type(self.url))
@@ -195,7 +243,7 @@ class TestTempURL(unittest.TestCase):
             self.assertEqual(url, ip_range_expected_url)
 
             self.assertEqual(hmac_mock.mock_calls, [
-                mock.call(key, expected_body, sha1),
+                mock.call(key, expected_body, hashlib.sha256),
                 mock.call().hexdigest(),
             ])
             self.assertIsInstance(url, type(path))
@@ -256,7 +304,7 @@ class TestTempURL(unittest.TestCase):
             self.assertTrue(url.endswith(expires))
         self.assertEqual(hmac_mock.mock_calls, [
             mock.call(),
-            mock.call(key, self.expected_body, sha1),
+            mock.call(key, self.expected_body, hashlib.sha256),
             mock.call().hexdigest(),
         ])
         self.assertIsInstance(url, type(self.url))
@@ -284,7 +332,7 @@ class TestTempURL(unittest.TestCase):
                 key = key.encode('utf-8')
             self.assertEqual(url, expected_url)
             self.assertEqual(hmac_mock.mock_calls, [
-                mock.call(key, expected_body, sha1),
+                mock.call(key, expected_body, hashlib.sha256),
                 mock.call().hexdigest(),
             ])
 
@@ -374,8 +422,6 @@ class TestTempURL(unittest.TestCase):
 class TestTempURLUnicodePathAndKey(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'
     key = 'k\u00e9y'
-    expected_url = ('%s?temp_url_sig=temp_url_signature'
-                    '&temp_url_expires=1400003600') % url
     expected_body = '\n'.join([
         'GET',
         '1400003600',
@@ -386,8 +432,6 @@ class TestTempURLUnicodePathAndKey(TestTempURL):
 class TestTempURLUnicodePathBytesKey(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'
     key = 'k\u00e9y'.encode('utf-8')
-    expected_url = ('%s?temp_url_sig=temp_url_signature'
-                    '&temp_url_expires=1400003600') % url
     expected_body = '\n'.join([
         'GET',
         '1400003600',
@@ -398,8 +442,6 @@ class TestTempURLUnicodePathBytesKey(TestTempURL):
 class TestTempURLBytesPathUnicodeKey(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'.encode('utf-8')
     key = 'k\u00e9y'
-    expected_url = url + (b'?temp_url_sig=temp_url_signature'
-                          b'&temp_url_expires=1400003600')
     expected_body = b'\n'.join([
         b'GET',
         b'1400003600',
@@ -410,8 +452,6 @@ class TestTempURLBytesPathUnicodeKey(TestTempURL):
 class TestTempURLBytesPathAndKey(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'.encode('utf-8')
     key = 'k\u00e9y'.encode('utf-8')
-    expected_url = url + (b'?temp_url_sig=temp_url_signature'
-                          b'&temp_url_expires=1400003600')
     expected_body = b'\n'.join([
         b'GET',
         b'1400003600',
@@ -422,8 +462,6 @@ class TestTempURLBytesPathAndKey(TestTempURL):
 class TestTempURLBytesPathAndNonUtf8Key(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'.encode('utf-8')
     key = b'k\xffy'
-    expected_url = url + (b'?temp_url_sig=temp_url_signature'
-                          b'&temp_url_expires=1400003600')
     expected_body = b'\n'.join([
         b'GET',
         b'1400003600',
@@ -436,7 +474,7 @@ class TestReadableToIterable(unittest.TestCase):
     def test_iter(self):
         chunk_size = 4
         write_data = tuple(x.encode() for x in ('a', 'b', 'c', 'd'))
-        actual_md5sum = md5()
+        actual_md5sum = hashlib.md5()
 
         with tempfile.TemporaryFile() as f:
             for x in write_data:
@@ -454,8 +492,8 @@ class TestReadableToIterable(unittest.TestCase):
     def test_md5_creation(self):
         # Check creation with a real and noop md5 class
         data = u.ReadableToIterable(None, None, md5=True)
-        self.assertEqual(md5().hexdigest(), data.get_md5sum())
-        self.assertIs(type(md5()), type(data.md5sum))
+        self.assertEqual(hashlib.md5().hexdigest(), data.get_md5sum())
+        self.assertIs(type(hashlib.md5()), type(data.md5sum))
 
         data = u.ReadableToIterable(None, None, md5=False)
         self.assertEqual('', data.get_md5sum())
@@ -464,7 +502,7 @@ class TestReadableToIterable(unittest.TestCase):
     def test_unicode(self):
         # Check no errors are raised if unicode data is feed in.
         unicode_data = 'abc'
-        actual_md5sum = md5(unicode_data.encode()).hexdigest()
+        actual_md5sum = hashlib.md5(unicode_data.encode()).hexdigest()
         chunk_size = 2
 
         with tempfile.TemporaryFile(mode='w+') as f:
@@ -495,15 +533,17 @@ class TestLengthWrapper(unittest.TestCase):
         self.assertEqual(42, len(data))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
-        self.assertEqual(md5(s.encode()).hexdigest(), data.get_md5sum())
+        self.assertEqual(hashlib.md5(s.encode()).hexdigest(),
+                         data.get_md5sum())
 
         data.reset()
-        self.assertEqual(md5().hexdigest(), data.get_md5sum())
+        self.assertEqual(hashlib.md5().hexdigest(), data.get_md5sum())
 
         read_data = ''.join(iter(data.read, ''))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
-        self.assertEqual(md5(s.encode()).hexdigest(), data.get_md5sum())
+        self.assertEqual(hashlib.md5(s.encode()).hexdigest(),
+                         data.get_md5sum())
 
     def test_bytesio(self):
         contents = io.BytesIO(b'a' * 50 + b'b' * 50)
@@ -515,7 +555,7 @@ class TestLengthWrapper(unittest.TestCase):
         self.assertEqual(42, len(data))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
-        self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+        self.assertEqual(hashlib.md5(s).hexdigest(), data.get_md5sum())
 
     def test_tempfile(self):
         with tempfile.NamedTemporaryFile(mode='wb') as f:
@@ -529,7 +569,7 @@ class TestLengthWrapper(unittest.TestCase):
                 self.assertEqual(42, len(data))
                 self.assertEqual(42, len(read_data))
                 self.assertEqual(s, read_data)
-                self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+                self.assertEqual(hashlib.md5(s).hexdigest(), data.get_md5sum())
 
     def test_segmented_file(self):
         with tempfile.NamedTemporaryFile(mode='wb') as f:
@@ -548,15 +588,18 @@ class TestLengthWrapper(unittest.TestCase):
                     self.assertEqual(segment_length, len(data))
                     self.assertEqual(segment_length, len(read_data))
                     self.assertEqual(s, read_data)
-                    self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+                    self.assertEqual(hashlib.md5(s).hexdigest(),
+                                     data.get_md5sum())
 
                     data.reset()
-                    self.assertEqual(md5().hexdigest(), data.get_md5sum())
+                    self.assertEqual(hashlib.md5().hexdigest(),
+                                     data.get_md5sum())
                     read_data = b''.join(iter(data.read, ''))
                     self.assertEqual(segment_length, len(data))
                     self.assertEqual(segment_length, len(read_data))
                     self.assertEqual(s, read_data)
-                    self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
+                    self.assertEqual(hashlib.md5(s).hexdigest(),
+                                     data.get_md5sum())
 
 
 class TestGroupers(unittest.TestCase):

@@ -14,6 +14,7 @@
 # limitations under the License.
 """Miscellaneous utility functions for use with Swift."""
 
+import base64
 from calendar import timegm
 from collections.abc import Mapping
 import gzip
@@ -70,7 +71,8 @@ def prt_bytes(num_bytes, human_flag):
 
 
 def generate_temp_url(path, seconds, key, method, absolute=False,
-                      prefix=False, iso8601=False, ip_range=None):
+                      prefix=False, iso8601=False, ip_range=None,
+                      digest='sha256'):
     """Generates a temporary URL that gives unauthenticated access to the
     Swift object.
 
@@ -95,7 +97,11 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         instead of a UNIX timestamp will be created.
     :param ip_range: if a valid ip range, restricts the temporary URL to the
         range of ips.
-    :raises ValueError: if timestamp or path is not in valid format.
+    :param digest: digest algorithm to use. Must be one of ``sha1``,
+                   ``sha256``, or ``sha512``.
+    :raises ValueError: if timestamp or path is not in valid format,
+                        or if digest is not one of ``sha1``, ``sha256``, or
+                        ``sha512``.
     :return: the path portion of a temporary URL
     """
     try:
@@ -140,6 +146,11 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     else:
         path_for_body = path
 
+    if isinstance(digest, str) and digest in ('sha1', 'sha256', 'sha512'):
+        digest = getattr(hashlib, digest)
+    if digest not in (hashlib.sha1, hashlib.sha256, hashlib.sha512):
+        raise ValueError('digest must be one of sha1, sha256, or sha512')
+
     parts = path_for_body.split('/', 4)
     if len(parts) != 5 or parts[0] or not all(parts[1:(4 if prefix else 5)]):
         if prefix:
@@ -177,7 +188,12 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
     # Encode to UTF-8 for py3 compatibility
     if not isinstance(key, bytes):
         key = key.encode('utf-8')
-    sig = hmac.new(key, hmac_body.encode('utf-8'), hashlib.sha1).hexdigest()
+    mac = hmac.new(key, hmac_body.encode('utf-8'), digest)
+    if digest == hashlib.sha512:
+        sig = 'sha512:' + base64.urlsafe_b64encode(
+            mac.digest()).decode('ascii').strip('=')
+    else:
+        sig = mac.hexdigest()
 
     if iso8601:
         expiration = time.strftime(

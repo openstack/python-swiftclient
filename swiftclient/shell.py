@@ -1427,6 +1427,8 @@ Optional arguments:
                         ISO 8601 UTC timestamp instead of a Unix timestamp.
   --ip-range            If present, the temporary URL will be restricted to the
                         given ip or ip range.
+  --digest              The digest algorithm to use. Defaults to sha256, but
+                        older clusters may only support sha1.
 '''.strip('\n')
 
 
@@ -1456,6 +1458,12 @@ def st_tempurl(parser, args, thread_manager, return_parser=False):
         help=("If present, the temporary URL will be restricted to the "
               "given ip or ip range."),
     )
+    parser.add_argument(
+        '--digest', choices=('sha1', 'sha256', 'sha512'),
+        default='sha256',
+        help=("The digest algorithm to use. Defaults to sha256, but "
+              "older clusters may only support sha1."),
+    )
 
     # We return the parser to build up the bash_completion
     if return_parser:
@@ -1480,7 +1488,8 @@ def st_tempurl(parser, args, thread_manager, return_parser=False):
                                  absolute=options['absolute_expiry'],
                                  iso8601=options['iso8601'],
                                  prefix=options['prefix_based'],
-                                 ip_range=options['ip_range'])
+                                 ip_range=options['ip_range'],
+                                 digest=options['digest'])
     except ValueError as err:
         thread_manager.error(err)
         return
