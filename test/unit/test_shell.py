@@ -160,6 +160,34 @@ class TestShell(unittest.TestCase):
                              '     Bytes: 3\n')
 
     @mock.patch('swiftclient.service.Connection')
+    def test_stat_account_with_quota(self, connection):
+        argv = ["", "stat", "--lh"]
+        return_headers = {
+            'x-account-container-count': '2000',
+            'x-account-object-count': '3000',
+            'x-account-bytes-used': '4000000',
+            'x-account-storage-policy-gold-bytes-used': '4000',
+            'x-account-meta-quota-bytes': '5000000',
+            'x-account-quota-bytes-policy-gold': '5000',
+            'content-length': 0,
+            'date': ''}
+        connection.return_value.head_account.return_value = return_headers
+        connection.return_value.url = 'http://127.0.0.1/v1/AUTH_account'
+        with CaptureOutput() as output:
+            swiftclient.shell.main(argv)
+
+            self.assertEqual(
+                output.out,
+                '                      Account: AUTH_account\n'
+                '                   Containers: 2000\n'
+                '                      Objects: 2.9K\n'
+                '                        Bytes: 3.8M\n'
+                '                  Quota Bytes: 4.8M\n'
+                '     Objects in policy "gold": 0\n'
+                '       Bytes in policy "gold": 3.9K\n'
+                'Quota Bytes for policy "gold": 4.9K\n')
+
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_account_with_headers(self, connection):
         argv = ["", "stat", "-H", "Skip-Middleware: Test"]
         return_headers = {
