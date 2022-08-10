@@ -1833,7 +1833,7 @@ class Connection:
                     self.http_conn = None
                 elif 500 <= err.http_status <= 599:
                     pass
-                elif self.retry_on_ratelimit and err.http_status == 498:
+                elif self.retry_on_ratelimit and err.http_status in (498, 429):
                     pass
                 else:
                     raise
