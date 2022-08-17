@@ -155,6 +155,7 @@ def _build_default_global_options():
         "user": environ.get('ST_USER'),
         "key": environ.get('ST_KEY'),
         "retries": 5,
+        "retry_on_ratelimit": True,
         "force_auth_retry": False,
         "os_username": environ.get('OS_USERNAME'),
         "os_user_id": environ.get('OS_USER_ID'),
@@ -270,10 +271,12 @@ def get_conn(options):
     """
     Return a connection building it from the options.
     """
+    options = dict(_default_global_options, **options)
     return Connection(options['auth'],
                       options['user'],
                       options['key'],
                       timeout=options.get('timeout'),
+                      retry_on_ratelimit=options['retry_on_ratelimit'],
                       retries=options['retries'],
                       auth_version=options['auth_version'],
                       os_options=options['os_options'],
