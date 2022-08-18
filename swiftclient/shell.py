@@ -1938,8 +1938,6 @@ def add_default_args(parser):
 def main(arguments=None):
     argv = sys_argv if arguments is None else arguments
 
-    argv = [a if isinstance(a, str) else a.decode('utf-8') for a in argv]
-
     parser = argparse.ArgumentParser(
         add_help=False, formatter_class=HelpFormatter, usage='''
 %(prog)s [--version] [--help] [--os-help] [--snet] [--verbose]
