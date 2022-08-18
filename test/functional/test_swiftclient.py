@@ -332,7 +332,7 @@ class TestFunctional(unittest.TestCase):
                                           resp_chunk_size=resp_chunk_size)
         data = next(body)
         self.assertEqual(self.test_data[:resp_chunk_size], data)
-        self.assertTrue(1, self.conn.attempts)
+        self.assertEqual(1, self.conn.attempts)
         for chunk in body.resp:
             # Flush remaining data from underlying response
             # (simulate a dropped connection)
@@ -369,13 +369,13 @@ class TestFunctional(unittest.TestCase):
         hdrs, body = self.conn.get_object(self.containername, self.objectname)
         data = body
         self.assertEqual(self.test_data, data)
-        self.assertTrue(1, self.conn.attempts)
+        self.assertEqual(1, self.conn.attempts)
 
         hdrs, body = self.conn.get_object(self.containername, self.objectname,
                                           resp_chunk_size=0)
         data = body
         self.assertEqual(self.test_data, data)
-        self.assertTrue(1, self.conn.attempts)
+        self.assertEqual(1, self.conn.attempts)
 
     def test_post_account(self):
         self.conn.post_account({'x-account-meta-data': 'Something'})
