@@ -1646,7 +1646,7 @@ class Connection:
                  starting_backoff=1, max_backoff=64, tenant_name=None,
                  os_options=None, auth_version="1", cacert=None,
                  insecure=False, cert=None, cert_key=None,
-                 ssl_compression=True, retry_on_ratelimit=False,
+                 ssl_compression=True, retry_on_ratelimit=True,
                  timeout=None, session=None, force_auth_retry=False):
         """
         :param authurl: authentication URL
@@ -1678,9 +1678,9 @@ class Connection:
                                 will be made. This may provide a performance
                                 increase for https upload/download operations.
         :param retry_on_ratelimit: by default, a ratelimited connection will
-                                   raise an exception to the caller. Setting
-                                   this parameter to True will cause a retry
-                                   after a backoff.
+                                   retry after a backoff. Setting this
+                                   parameter to False will cause an exception
+                                   to be raised to the caller.
         :param timeout: The connect timeout for the HTTP connection.
         :param session: A keystoneauth session object.
         :param force_auth_retry: reset auth info even if client got unexpected

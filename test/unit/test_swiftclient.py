@@ -2149,7 +2149,8 @@ class TestConnection(MockHttpTest):
         c.http_connection = self.fake_http_connection(
             200, 498,
             headers=auth_resp_headers)
-        conn = c.Connection('http://www.test.com/auth/v1.0', 'asdf', 'asdf')
+        conn = c.Connection('http://www.test.com/auth/v1.0', 'asdf', 'asdf',
+                            retry_on_ratelimit=False)
         with self.assertRaises(c.ClientException) as exc_context:
             conn.head_account()
         self.assertIn('Account HEAD failed', str(exc_context.exception))
