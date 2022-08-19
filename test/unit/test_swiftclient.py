@@ -2130,31 +2130,37 @@ class TestConnection(MockHttpTest):
             pass
         c.sleep = quick_sleep
 
-        # test retries
-        conn = c.Connection('http://www.test.com/auth/v1.0', 'asdf', 'asdf',
-                            retry_on_ratelimit=True)
-        code_iter = [200] + [498] * (conn.retries + 1)
-        auth_resp_headers = {
-            'x-auth-token': 'asdf',
-            'x-storage-url': 'http://storage/v1/test',
-        }
-        c.http_connection = self.fake_http_connection(
-            *code_iter, headers=auth_resp_headers)
-        with self.assertRaises(c.ClientException) as exc_context:
-            conn.head_account()
-        self.assertIn('Account HEAD failed', str(exc_context.exception))
-        self.assertEqual(conn.attempts, conn.retries + 1)
+        def test_status_code(code):
+            # test retries
+            conn = c.Connection('http://www.test.com/auth/v1.0',
+                                'asdf', 'asdf', retry_on_ratelimit=True)
+            code_iter = [200] + [code] * (conn.retries + 1)
+            auth_resp_headers = {
+                'x-auth-token': 'asdf',
+                'x-storage-url': 'http://storage/v1/test',
+            }
+            c.http_connection = self.fake_http_connection(
+                *code_iter, headers=auth_resp_headers)
+            with self.assertRaises(c.ClientException) as exc_context:
+                conn.head_account()
+            self.assertIn('Account HEAD failed', str(exc_context.exception))
+            self.assertEqual(code, exc_context.exception.http_status)
+            self.assertEqual(conn.attempts, conn.retries + 1)
 
-        # test default no-retry
-        c.http_connection = self.fake_http_connection(
-            200, 498,
-            headers=auth_resp_headers)
-        conn = c.Connection('http://www.test.com/auth/v1.0', 'asdf', 'asdf',
-                            retry_on_ratelimit=False)
-        with self.assertRaises(c.ClientException) as exc_context:
-            conn.head_account()
-        self.assertIn('Account HEAD failed', str(exc_context.exception))
-        self.assertEqual(conn.attempts, 1)
+            # test default no-retry
+            c.http_connection = self.fake_http_connection(
+                200, code,
+                headers=auth_resp_headers)
+            conn = c.Connection('http://www.test.com/auth/v1.0',
+                                'asdf', 'asdf', retry_on_ratelimit=False)
+            with self.assertRaises(c.ClientException) as exc_context:
+                conn.head_account()
+            self.assertIn('Account HEAD failed', str(exc_context.exception))
+            self.assertEqual(code, exc_context.exception.http_status)
+            self.assertEqual(conn.attempts, 1)
+
+        test_status_code(498)
+        test_status_code(429)
 
     def test_retry_with_socket_error(self):
         def quick_sleep(*args):
