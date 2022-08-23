@@ -202,6 +202,7 @@ _default_local_options = {
     'leave_segments': False,
     'changed': None,
     'skip_identical': False,
+    'skip_container_put': False,
     'version_id': None,
     'yes_all': False,
     'read_acl': None,
@@ -1465,6 +1466,7 @@ class SwiftService:
                                 'leave_segments': False,
                                 'changed': None,
                                 'skip_identical': False,
+                                'skip_container_put': False,
                                 'fail_fast': False,
                                 'dir_marker': False  # Only for None sources
                             }
@@ -1490,54 +1492,57 @@ class SwiftService:
         # the object name. (same as passing --object-name).
         container, _sep, pseudo_folder = container.partition('/')
 
-        # Try to create the container, just in case it doesn't exist. If this
-        # fails, it might just be because the user doesn't have container PUT
-        # permissions, so we'll ignore any error. If there's really a problem,
-        # it'll surface on the first object PUT.
-        policy_header = {}
-        _header = split_headers(options["header"])
-        if POLICY in _header:
-            policy_header[POLICY] = \
-                _header[POLICY]
-        create_containers = [
-            self.thread_manager.container_pool.submit(
-                self._create_container_job, container, headers=policy_header)
-        ]
+        if not options['skip_container_put']:
+            # Try to create the container, just in case it doesn't exist. If
+            # this fails, it might just be because the user doesn't have
+            # container PUT permissions, so we'll ignore any error. If there's
+            # really a problem, it'll surface on the first object PUT.
+            policy_header = {}
+            _header = split_headers(options["header"])
+            if POLICY in _header:
+                policy_header[POLICY] = \
+                    _header[POLICY]
+            create_containers = [
+                self.thread_manager.container_pool.submit(
+                    self._create_container_job, container,
+                    headers=policy_header)
+            ]
 
-        # wait for first container job to complete before possibly attempting
-        # segment container job because segment container job may attempt
-        # to HEAD the first container
-        for r in interruptable_as_completed(create_containers):
-            res = r.result()
-            yield res
+            # wait for first container job to complete before possibly
+            # attempting segment container job because segment container job
+            # may attempt to HEAD the first container
+            for r in interruptable_as_completed(create_containers):
+                res = r.result()
+                yield res
 
-        if segment_size:
-            seg_container = container + '_segments'
-            if options['segment_container']:
-                seg_container = options['segment_container']
-            if seg_container != container:
-                if not policy_header:
-                    # Since no storage policy was specified on the command
-                    # line, rather than just letting swift pick the default
-                    # storage policy, we'll try to create the segments
-                    # container with the same policy as the upload container
-                    create_containers = [
-                        self.thread_manager.container_pool.submit(
-                            self._create_container_job, seg_container,
-                            policy_source=container
-                        )
-                    ]
-                else:
-                    create_containers = [
-                        self.thread_manager.container_pool.submit(
-                            self._create_container_job, seg_container,
-                            headers=policy_header
-                        )
-                    ]
+            if segment_size:
+                seg_container = container + '_segments'
+                if options['segment_container']:
+                    seg_container = options['segment_container']
+                if seg_container != container:
+                    if not policy_header:
+                        # Since no storage policy was specified on the command
+                        # line, rather than just letting swift pick the default
+                        # storage policy, we'll try to create the segments
+                        # container with the same policy as the upload
+                        # container
+                        create_containers = [
+                            self.thread_manager.container_pool.submit(
+                                self._create_container_job, seg_container,
+                                policy_source=container
+                            )
+                        ]
+                    else:
+                        create_containers = [
+                            self.thread_manager.container_pool.submit(
+                                self._create_container_job, seg_container,
+                                headers=policy_header
+                            )
+                        ]
 
-                for r in interruptable_as_completed(create_containers):
-                    res = r.result()
-                    yield res
+                    for r in interruptable_as_completed(create_containers):
+                        res = r.result()
+                        yield res
 
         # We maintain a results queue here and a separate thread to monitor
         # the futures because we want to get results back from potential
