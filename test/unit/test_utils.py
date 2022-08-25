@@ -122,6 +122,43 @@ class TestPrtBytes(unittest.TestCase):
         self.assertEqual('1024Y', u.prt_bytes(bytes_, True).lstrip())
 
 
+class TestParseTimestamp(unittest.TestCase):
+    def test_int(self):
+        self.assertEqual((1234, False), u.parse_timestamp(1234, False))
+        self.assertEqual((3600, False), u.parse_timestamp('3600', False))
+
+    def test_suffixed(self):
+        self.assertEqual((54, False), u.parse_timestamp('54.321s', False))
+        self.assertEqual((int(54.321 * 60), False),
+                         u.parse_timestamp('54.321m', False))
+        self.assertEqual((900, False),
+                         u.parse_timestamp('15min', False))
+        self.assertEqual((int(54.321 * 60 * 60), False),
+                         u.parse_timestamp('54.321h', False))
+        self.assertEqual((7200, False),
+                         u.parse_timestamp('2hr', False))
+        self.assertEqual((60 * 60 * 24, False), u.parse_timestamp('1d', False))
+
+    def test_str(self):
+        self.assertEqual((1615852800, True),
+                         u.parse_timestamp('2021-03-16T00:00:00Z', False))
+
+    def test_absolute(self):
+        self.assertEqual((1234, True), u.parse_timestamp(1234, True))
+        self.assertEqual((1615852800, True),
+                         u.parse_timestamp('2021-03-16T00:00:00Z', True))
+
+    def test_error(self):
+        with self.assertRaises(ValueError):
+            u.parse_timestamp('asdf', False)
+        with self.assertRaises(ValueError):
+            u.parse_timestamp(12.34, False)
+        with self.assertRaises(ValueError):
+            u.parse_timestamp('54.321', True)
+        with self.assertRaises(ValueError):
+            u.parse_timestamp(-1, False)
+
+
 class TestTempURL(unittest.TestCase):
     url = '/v1/AUTH_account/c/o'
     seconds = 3600
@@ -422,6 +459,7 @@ class TestTempURL(unittest.TestCase):
 class TestTempURLUnicodePathAndKey(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'
     key = 'k\u00e9y'
+    seconds = '1hr'
     expected_body = '\n'.join([
         'GET',
         '1400003600',
@@ -432,6 +470,7 @@ class TestTempURLUnicodePathAndKey(TestTempURL):
 class TestTempURLUnicodePathBytesKey(TestTempURL):
     url = '/v1/\u00e4/c/\u00f3'
     key = 'k\u00e9y'.encode('utf-8')
+    seconds = '60m'
     expected_body = '\n'.join([
         'GET',
         '1400003600',
