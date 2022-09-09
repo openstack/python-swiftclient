@@ -6,6 +6,7 @@
    :maxdepth: 1
 
    current
+   zed
    yoga
    xena
    wallaby
