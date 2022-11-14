@@ -1410,7 +1410,7 @@ class TestServiceUpload(_TestServiceBase):
             self.assertTrue(fp.closed,
                             'Failed to close open(%s)' % formatted_args)
 
-    def test_upload_object_job_file_with_unicode_path(self):
+    def test_upload_dlo_job_file_with_unicode_path(self):
         # Uploading a file results in the file object being wrapped in a
         # LengthWrapper. This test sets the options in such a way that much
         # of _upload_object_job is skipped bringing the critical path down
@@ -1470,6 +1470,84 @@ class TestServiceUpload(_TestServiceBase):
                                                     content_length=0,
                                                     headers={},
                                                     response_dict={})
+
+    def test_upload_slo_job_file_with_unicode_path(self):
+        # Uploading a file results in the file object being wrapped in a
+        # LengthWrapper. This test sets the options in such a way that much
+        # of _upload_object_job is skipped bringing the critical path down
+        # to around 60 lines to ease testing.
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(b'a' * 30)
+            f.flush()
+            expected_r = {
+                'action': 'upload_object',
+                'attempts': 2,
+                'container': 'test_c',
+                'headers': {},
+                'large_object': True,
+                'object': 'テスト/dummy.dat',
+                'manifest_response_dict': {},
+                'segment_results': [
+                    {'action': 'upload_segment',
+                     'success': True,
+                     'segment_index': i,
+                     'segment_location': 'test_c+segments/slo/%d' % i,
+                     'segment_etag': 'part-etag',
+                     'segment_size': 1000 + i}
+                    for i in range(3)],
+                'status': 'uploaded',
+                'success': True,
+            }
+            expected_mtime = '%f' % os.path.getmtime(f.name)
+
+            mock_conn = mock.Mock()
+            mock_conn.put_object.return_value = ''
+            type(mock_conn).attempts = mock.PropertyMock(return_value=2)
+
+            s = SwiftService()
+            with mock.patch.object(s, '_upload_segment_job') as mock_job:
+                mock_job.side_effect = [
+                    {'action': 'upload_segment',
+                     'success': True,
+                     'segment_index': i,
+                     'segment_location': 'test_c+segments/slo/%d' % i,
+                     'segment_etag': 'part-etag',
+                     'segment_size': 1000 + i}
+                    for i in range(3)]
+
+                r = s._upload_object_job(conn=mock_conn,
+                                         container='test_c',
+                                         source=f.name,
+                                         obj='テスト/dummy.dat',
+                                         options=dict(s._options,
+                                                      segment_size=10,
+                                                      leave_segments=True,
+                                                      use_slo=True))
+
+            mtime = r['headers']['x-object-meta-mtime']
+            self.assertEqual(expected_mtime, mtime)
+            del r['headers']['x-object-meta-mtime']
+
+            self.assertEqual(r['path'], f.name)
+            del r['path']
+
+            self.assertEqual(r, expected_r)
+            self.assertEqual(mock_conn.put_object.call_count, 1)
+            mock_conn.put_object.assert_called_with(
+                'test_c',
+                'テスト/dummy.dat',
+                ' '.join([
+                    '[{"path": "test_c+segments/slo/0",',
+                    '"etag": "part-etag", "size_bytes": 1000},',
+                    '{"path": "test_c+segments/slo/1",',
+                    '"etag": "part-etag", "size_bytes": 1001},',
+                    '{"path": "test_c+segments/slo/2",',
+                    '"etag": "part-etag", "size_bytes": 1002}]',
+                ]),
+                query_string='multipart-manifest=put',
+                headers={},
+                response_dict={},
+            )
 
     def test_upload_segment_job(self):
         with tempfile.NamedTemporaryFile() as f:

@@ -978,8 +978,8 @@ def st_copy(parser, args, output_manager, return_parser=False):
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
                     [--segment-container <container>] [--leave-segments]
                     [--object-threads <thread>] [--segment-threads <threads>]
-                    [--meta <name:value>] [--header <header>]
-                    [--use-slo] [--ignore-checksum] [--skip-container-put]
+                    [--meta <name:value>] [--header <header>] [--use-slo]
+                    [--use-dlo] [--ignore-checksum] [--skip-container-put]
                     [--object-name <object-name>]
                     <container> <file_or_directory> [<file_or_directory>] [...]
 '''
@@ -1024,8 +1024,11 @@ Optional arguments:
                         repeated. Example: -H "content-type:text/plain"
                          -H "Content-Length: 4000".
   --use-slo             When used in conjunction with --segment-size it will
-                        create a Static Large Object instead of the default
-                        Dynamic Large Object.
+                        create a Static Large Object. Deprecated; this is now
+                        the default behavior when the cluster supports it.
+  --use-dlo             When used in conjunction with --segment-size it will
+                        create a Dynamic Large Object. May be useful with old
+                        swift clusters.
   --ignore-checksum     Turn off checksum validation for uploads.
   --skip-container-put  Assume all necessary containers already exist; don't
                         automatically try to create them.
@@ -1087,10 +1090,13 @@ def st_upload(parser, args, output_manager, return_parser=False):
         ' This option may be repeated. Example: -H "content-type:text/plain" '
         '-H "Content-Length: 4000"')
     parser.add_argument(
-        '--use-slo', action='store_true', default=False,
+        '--use-slo', action='store_true', default=None,
         help='When used in conjunction with --segment-size, it will '
-        'create a Static Large Object instead of the default '
-        'Dynamic Large Object.')
+        'create a Static Large Object.')
+    parser.add_argument(
+        '--use-dlo', action='store_false', dest="use_slo", default=None,
+        help='When used in conjunction with --segment-size, it will '
+        'create a Dynamic Large Object.')
     parser.add_argument(
         '--object-name', dest='object_name',
         help='Upload file and name object to <object-name> or upload dir and '
