@@ -10,6 +10,9 @@
     # for installation.
     required-projects:
       - opendev.org/openstack/python-swiftclient
+    vars:
+      # New tox keeps breaking things as of 2023-01
+      ensure_tox_version: '<4'
 
 - job:
     name: swiftclient-functional
