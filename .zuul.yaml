@@ -36,6 +36,11 @@
       - openstack-python3-zed-jobs
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
+    experimental:
+      # on-demand pipeline used to test older (but still supported) versions of python
+      jobs:
+        - openstack-tox-py36
+        - openstack-tox-py37
     check:
       jobs:
         - swiftclient-swift-functional
