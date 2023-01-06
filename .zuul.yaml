@@ -42,11 +42,15 @@
         - swiftclient-functional
         - openstack-tox-py39:
             voting: true
+        - openstack-tox-py310:
+            voting: true
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
         - openstack-tox-py39:
+            voting: true
+        - openstack-tox-py310:
             voting: true
     post:
       jobs:
