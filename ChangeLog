@@ -1,3 +1,104 @@
+4.1.0
+-----
+
+* Tempurl times may now include suffixes: 's', 'm', 'h', or 'd' to indicate
+  seconds, minutes, hours, or days respectively. Times with no suffix
+  continue to be interpretted as seconds.
+
+* Rate-limit responses (498, 429) are now retried.
+
+* Added a `--skip-container-put` option when uploading.
+
+
+4.0.1
+-----
+
+* Added a new `--digest` option to `swift tempurl` to select the signature
+  algorithm to use. Default is sha256, which has been supported by default
+  since Swift 2.17.0, though older clusters may require sha1 (the previous
+  default). Use `swift capabilities` to check the `allowed_digests`.
+
+
+4.0.0
+-----
+
+* Drop support for Python 2.
+
+* Added a `--timeout` option. By default, operations wait indefinitely.
+
+* Swiftclient no longer monkey-patches the requests library.
+
+
+3.13.1
+-----
+
+* This is the final release to support Python 2.
+
+* Fix some example code.
+
+
+3.13.0
+-----
+
+* Improve account-listing formatting when containers have billions of objects.
+
+* Include storage policy information in long-formatted account listings.
+
+* Fix aggregation when listings include more than 10,000 items.
+
+* Suppress traceback logging for 404s.
+
+
+3.12.0
+-----
+
+* Various minor bug fixes and improvements.
+
+
+3.11.1
+-----
+
+* Various minor bug fixes and improvements.
+
+
+3.11.0
+-----
+
+* Fixed a file descriptor leak on Python 2 that was introduced in 3.9.0.
+
+* Transaction IDs are now included in more exceptions.
+
+* Fixed a socket leak when using some module-level functions.
+
+* `swift delete --all` now implies `--versions` to delete all old versions
+  of objects as well.
+
+* Now tested under Python 3.9.
+
+
+3.10.1
+-----
+
+* Tolerate some password-based values for `OS_AUTH_TYPE`.
+
+* Added `max_backoff` and `starting_backoff` options in the `SwiftService` API.
+
+
+3.10.0
+-----
+
+* Added support for the new object-versioning API to the `list`, `stat`,
+  `delete`, and `download` subcommands. This optional API was introduced
+  in Swift 2.24.0; for more information on the API, see
+  https://docs.openstack.org/swift/latest/middleware.html#object-versioning-api
+
+* Added support for Keystone v3 application credentials using
+  `--os-auth-type v3applicationcredential`.
+
+* Fixed an issue with capabilities-endpoint discovery when Swift is exposed as
+  a subpath on the server.
+
+
 3.9.0
 -----
 
