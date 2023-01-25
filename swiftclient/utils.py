@@ -173,7 +173,11 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         raise ValueError('digest must be one of sha1, sha256, or sha512')
 
     parts = path_for_body.split('/', 4)
-    if len(parts) != 5 or parts[0] or not all(parts[1:(4 if prefix else 5)]):
+    if path_for_body == '/info':
+        # /info signatures do not support prefixes or ip ranges
+        prefix = False
+        ip_range = None
+    elif len(parts) != 5 or parts[0] or not all(parts[1:(4 if prefix else 5)]):
         if prefix:
             raise ValueError('path must at least contain /v1/a/c/')
         else:
@@ -220,8 +224,12 @@ def generate_temp_url(path, seconds, key, method, absolute=False,
         expiration = time.strftime(
             EXPIRES_ISO8601_FORMAT, time.gmtime(expiration))
 
-    temp_url = '{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
-        path=path_for_body, sig=sig, exp=expiration)
+    if path_for_body == '/info':
+        temp_url = '{path}?swiftinfo_sig={sig}&swiftinfo_expires={exp}'.format(
+            path=path_for_body, sig=sig, exp=expiration)
+    else:
+        temp_url = '{path}?temp_url_sig={sig}&temp_url_expires={exp}'.format(
+            path=path_for_body, sig=sig, exp=expiration)
 
     if ip_range:
         temp_url += '&temp_url_ip_range={}'.format(ip_range)

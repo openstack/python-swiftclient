@@ -508,6 +508,32 @@ class TestTempURLBytesPathAndNonUtf8Key(TestTempURL):
     ])
 
 
+class TestTempURLInfoPath(TestTempURL):
+    url = '/info'.encode('utf-8')
+    expected_body = b'\n'.join([
+        b'GET',
+        b'1400003600',
+        url,
+    ])
+
+    @property
+    def expected_url(self):
+        if isinstance(self.url, bytes):
+            return self.url + (b'?swiftinfo_sig=temp_url_signature'
+                               b'&swiftinfo_expires=1400003600')
+        return self.url + (u'?swiftinfo_sig=temp_url_signature'
+                           u'&swiftinfo_expires=1400003600')
+
+    @property
+    def expected_sha512_url(self):
+        if isinstance(self.url, bytes):
+            return self.url + (
+                b'?swiftinfo_sig=sha512:dGVtcF91cmxfc2lnbmF0dXJl'
+                b'&swiftinfo_expires=1400003600')
+        return self.url + (u'?swiftinfo_sig=sha512:dGVtcF91cmxfc2lnbmF0dXJl'
+                           u'&swiftinfo_expires=1400003600')
+
+
 class TestReadableToIterable(unittest.TestCase):
 
     def test_iter(self):
