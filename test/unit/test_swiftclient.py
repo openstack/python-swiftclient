@@ -2224,6 +2224,7 @@ class TestConnection(MockHttpTest):
         do_test(401, 2)
         # others will be tried until retry limits
         do_test(408, 6)
+        do_test(499, 6)
         do_test(500, 6)
         do_test(503, 6)
 

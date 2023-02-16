@@ -1821,7 +1821,9 @@ class Connection:
                     retried_auth = True
                 elif self.attempts > self.retries or err.http_status is None:
                     raise
-                elif err.http_status == 408:
+                elif err.http_status in (408, 499):
+                    # Server hit a timeout, so HTTP request/response framing
+                    # are likely in a bad state; trash the connection
                     self.http_conn = None
                 elif 500 <= err.http_status <= 599:
                     pass
