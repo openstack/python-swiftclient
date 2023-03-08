@@ -6,6 +6,7 @@
    :maxdepth: 1
 
    current
+   2023.1
    zed
    yoga
    xena
