@@ -196,8 +196,24 @@ class TestSwiftReader(unittest.TestCase):
 
         # Check error is raised if SwiftReader doesn't read the same length
         # as the content length it is created with
-        sr = self.sr('path', BytesIO(b'body'), {'content-length': 5})
-        self.assertRaises(SwiftError, _consume, sr)
+        sr = self.sr('path', BytesIO(b'body'), {'content-length': 5,
+                                                'etag': 'bad etag'})
+        with self.assertRaises(SwiftError) as cm:
+            _consume(sr)
+        self.assertEqual(
+            "'Error downloading path: read_length != content_length, 4 != 5'",
+            str(cm.exception))
+
+        # Check error is raised if SwiftReader doesn't calculate the expected
+        # hash
+        sr = self.sr('path', BytesIO(b'body'), {'content-length': 4,
+                                                'etag': 'bad etag'})
+        with self.assertRaises(SwiftError) as cm:
+            _consume(sr)
+        self.assertEqual(
+            "'Error downloading path: md5sum != etag, "
+            "841a2d689ad86bd1611447453c22c6fc != bad etag'",
+            str(cm.exception))
 
         sr = self.sr('path', BytesIO(b'body'), {'content-length': 4})
         _consume(sr)
