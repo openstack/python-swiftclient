@@ -2759,6 +2759,92 @@ class TestParsing(TestBase):
                 swiftclient.shell.main(args)
         self._verify_opts(result[0], expected_opts, expected_os_opts, {})
 
+    def test_os_auth_type_password_implies_version(self):
+        args = ["", "stat"]
+        env = {
+            'OS_AUTH_URL': 'http://example.com/auth',
+            'OS_AUTH_TYPE': 'v1password',
+            'OS_USERNAME': 'user',
+            'OS_PASSWORD': 'secret',
+        }
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], {
+            'auth_version': '1.0',
+            'user': 'user',
+            'key': 'secret',
+        }, {
+            'auth_url': 'http://example.com/auth',
+            'auth_type': 'v1password',
+            'username': 'user',
+            'password': 'secret',
+        }, {
+            'auth_url': 'http://example.com/auth',
+            'auth_type': 'v1password',
+            'username': 'user',
+            'password': 'secret',
+            'identity_api_version': '1.0',
+        })
+
+        env = {
+            'OS_AUTH_URL': 'http://example.com/auth',
+            'OS_AUTH_TYPE': 'v2password',
+            'OS_USERNAME': 'user',
+            'OS_PASSWORD': 'secret',
+        }
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], {
+            'auth_version': '2.0',
+            'user': 'user',
+            'key': 'secret',
+        }, {
+            'auth_url': 'http://example.com/auth',
+            'auth_type': 'v2password',
+            'username': 'user',
+            'password': 'secret',
+        }, {
+            'auth_url': 'http://example.com/auth',
+            'auth_type': 'v2password',
+            'username': 'user',
+            'password': 'secret',
+            'identity_api_version': '2.0',
+        })
+
+        env = {
+            'OS_AUTH_URL': 'http://example.com/auth',
+            'OS_AUTH_TYPE': 'v3password',
+            'OS_USERNAME': 'user',
+            'OS_PASSWORD': 'secret',
+        }
+        result = [None, None]
+        fake_command = self._make_fake_command(result)
+        with mock.patch.dict(os.environ, env):
+            with mock.patch('swiftclient.shell.st_stat', fake_command):
+                swiftclient.shell.main(args)
+        self._verify_opts(result[0], {
+            'auth_version': '3',
+            'user': 'user',
+            'key': 'secret',
+        }, {
+            'auth_url': 'http://example.com/auth',
+            'auth_type': 'v3password',
+            'username': 'user',
+            'password': 'secret',
+        }, {
+            'auth_url': 'http://example.com/auth',
+            'auth_type': 'v3password',
+            'username': 'user',
+            'password': 'secret',
+            'identity_api_version': '3',
+        })
+
     def test_args_v3(self):
         opts = {"auth_version": "3"}
         os_opts = {"password": "secret",
