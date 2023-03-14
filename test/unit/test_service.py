@@ -201,7 +201,19 @@ class TestSwiftReader(unittest.TestCase):
         with self.assertRaises(SwiftError) as cm:
             _consume(sr)
         self.assertEqual(
-            "'Error downloading path: read_length != content_length, 4 != 5'",
+            "'Error downloading path: read_length != content_length, "
+            "4 != 5 (txn: unknown)'",
+            str(cm.exception))
+
+        # Check error includes txn id if available
+        sr = self.sr('path', BytesIO(b'body'), {'content-length': 5,
+                                                'etag': 'bad etag',
+                                                'x-trans-id': 'uuid'})
+        with self.assertRaises(SwiftError) as cm:
+            _consume(sr)
+        self.assertEqual(
+            "'Error downloading path: read_length != content_length, "
+            "4 != 5 (txn: uuid)'",
             str(cm.exception))
 
         # Check error is raised if SwiftReader doesn't calculate the expected
@@ -212,7 +224,7 @@ class TestSwiftReader(unittest.TestCase):
             _consume(sr)
         self.assertEqual(
             "'Error downloading path: md5sum != etag, "
-            "841a2d689ad86bd1611447453c22c6fc != bad etag'",
+            "841a2d689ad86bd1611447453c22c6fc != bad etag (txn: unknown)'",
             str(cm.exception))
 
         sr = self.sr('path', BytesIO(b'body'), {'content-length': 4})

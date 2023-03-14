@@ -419,6 +419,9 @@ class _SwiftReader:
     def __init__(self, path, body, headers, checksum=True):
         self._path = path
         self._body = body
+        self._txn_id = headers.get('x-openstack-request-id')
+        if self._txn_id is None:
+            self._txn_id = headers.get('x-trans-id')
         self._actual_read = 0
         self._content_length = None
         self._actual_md5 = None
@@ -459,17 +462,20 @@ class _SwiftReader:
     def _check_contents(self):
         if (self._content_length is not None and
                 self._actual_read != self._content_length):
-            raise SwiftError('Error downloading {0}: read_length != '
-                             'content_length, {1:d} != {2:d}'.format(
-                                 self._path, self._actual_read,
-                                 self._content_length))
+            raise SwiftError(
+                'Error downloading {0}: read_length != content_length, '
+                '{1:d} != {2:d} (txn: {3})'.format(
+                    self._path, self._actual_read, self._content_length,
+                    self._txn_id or 'unknown'))
 
         if self._actual_md5 and self._expected_md5:
             etag = self._actual_md5.hexdigest()
             if etag != self._expected_md5:
-                raise SwiftError('Error downloading {0}: md5sum != etag, '
-                                 '{1} != {2}'.format(
-                                     self._path, etag, self._expected_md5))
+                raise SwiftError(
+                    'Error downloading {0}: md5sum != etag, '
+                    '{1} != {2} (txn: {3})'.format(
+                        self._path, etag, self._expected_md5,
+                        self._txn_id or 'unknown'))
 
     def bytes_read(self):
         return self._actual_read
