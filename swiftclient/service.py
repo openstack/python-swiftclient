@@ -457,19 +457,19 @@ class _SwiftReader:
         self._check_contents()
 
     def _check_contents(self):
-        if self._actual_md5 and self._expected_md5:
-            etag = self._actual_md5.hexdigest()
-            if etag != self._expected_md5:
-                raise SwiftError('Error downloading {0}: md5sum != etag, '
-                                 '{1} != {2}'.format(
-                                     self._path, etag, self._expected_md5))
-
         if (self._content_length is not None and
                 self._actual_read != self._content_length):
             raise SwiftError('Error downloading {0}: read_length != '
                              'content_length, {1:d} != {2:d}'.format(
                                  self._path, self._actual_read,
                                  self._content_length))
+
+        if self._actual_md5 and self._expected_md5:
+            etag = self._actual_md5.hexdigest()
+            if etag != self._expected_md5:
+                raise SwiftError('Error downloading {0}: md5sum != etag, '
+                                 '{1} != {2}'.format(
+                                     self._path, etag, self._expected_md5))
 
     def bytes_read(self):
         return self._actual_read
