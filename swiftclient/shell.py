@@ -31,7 +31,7 @@ from time import gmtime, strftime
 
 from swiftclient import RequestException
 from swiftclient.utils import config_true_value, generate_temp_url, \
-    prt_bytes, JSONableIterable
+    prt_bytes, parse_timeout, JSONableIterable
 from swiftclient.multithreading import OutputManager
 from swiftclient.exceptions import ClientException
 from swiftclient import __version__ as client_version
@@ -1746,7 +1746,7 @@ def add_default_args(parser):
     parser.add_argument('-K', '--key', dest='key',
                         default=environ.get('ST_KEY'),
                         help='Key for obtaining an auth token.')
-    parser.add_argument('-T', '--timeout', type=int, dest='timeout',
+    parser.add_argument('-T', '--timeout', type=parse_timeout, dest='timeout',
                         default=None,
                         help='Timeout in seconds to wait for response.')
     parser.add_argument('-R', '--retries', type=int, default=5, dest='retries',

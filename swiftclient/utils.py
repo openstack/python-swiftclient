@@ -70,6 +70,20 @@ def prt_bytes(num_bytes, human_flag):
         return '%.1f%s' % (num, suffix)
 
 
+def parse_timeout(value):
+    for suffix, multiplier in (
+        ('s', 1),
+        ('m', 60),
+        ('min', 60),
+        ('h', 60 * 60),
+        ('hr', 60 * 60),
+        ('d', 24 * 60 * 60),
+    ):
+        if value.endswith(suffix):
+            return multiplier * float(value[:-len(suffix)])
+    return float(value)
+
+
 def parse_timestamp(seconds, absolute=False):
     try:
         try:

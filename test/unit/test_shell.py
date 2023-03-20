@@ -2424,6 +2424,27 @@ class TestDebugAndInfoOptions(unittest.TestCase):
                           % (mock_logging.call_args_list, argv))
 
 
+@mock.patch.dict(os.environ, mocked_os_environ)
+class TestTimeoutOption(unittest.TestCase):
+    @mock.patch('swiftclient.service.Connection')
+    def test_timeout_parsing(self, connection):
+        for timeout, expected in (
+            ("12", 12),
+            ("12.3", 12.3),
+            ("5s", 5),
+            ("25.6s", 25.6),
+            ("2m", 120),
+            ("2.5min", 150),
+            ("1h", 3600),
+            (".5hr", 1800),
+        ):
+            connection.reset_mock()
+            with self.subTest(timeout=timeout):
+                swiftclient.shell.main(["", "stat", "--timeout", timeout])
+                self.assertEqual(connection.mock_calls[0].kwargs['timeout'],
+                                 expected)
+
+
 class TestBase(unittest.TestCase):
     """
     Provide some common methods to subclasses
