@@ -1798,8 +1798,13 @@ class Connection:
                           service_token=self.service_token, **kwargs)
                 self._add_response_dict(caller_response_dict, kwargs)
                 return rv
-            except SSLError:
-                raise
+            except SSLError as e:
+                self._add_response_dict(caller_response_dict, kwargs)
+                if ('certificate verify' in str(e)) or \
+                        ('hostname' in str(e)) or \
+                        self.attempts > self.retries:
+                    raise
+                self.http_conn = None
             except (socket.error, RequestException):
                 self._add_response_dict(caller_response_dict, kwargs)
                 if self.attempts > self.retries:

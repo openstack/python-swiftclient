@@ -25,7 +25,7 @@ import warnings
 import tempfile
 from hashlib import md5
 from urllib.parse import urlparse
-from requests.exceptions import RequestException
+from requests.exceptions import RequestException, SSLError
 
 from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
                     FakeKeystone)
@@ -2172,6 +2172,62 @@ class TestConnection(MockHttpTest):
                 mock.patch('swiftclient.client.get_auth_1_0') as mock_auth:
             mock_auth.return_value = ('http://mock.com', 'mock_token')
             fake_http_connection.side_effect = socket.error
+            self.assertRaises(socket.error, conn.head_account)
+        self.assertEqual(mock_auth.call_count, 1)
+        self.assertEqual(conn.attempts, conn.retries + 1)
+
+    def test_no_retry_with_cert_sslerror(self):
+        def quick_sleep(*args):
+            pass
+        c.sleep = quick_sleep
+        for err in (
+            # Taken from real testing (requests==2.25.1, urllib3==1.26.5,
+            # pyOpenSSL==21.0.0) but note that these are actually way more
+            # messy/wrapped up in other exceptions
+            SSLError(
+                '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: '
+                'certificate has expired (_ssl.c:997)'),
+            SSLError(
+                "hostname 'wrong.host.badssl.com' doesn't match either of "
+                "'*.badssl.com', 'badssl.com'"),
+            SSLError(
+                '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: '
+                'self-signed certificate (_ssl.c:997)'),
+            SSLError(
+                '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: '
+                'self-signed certificate in certificate chain (_ssl.c:997)'),
+            SSLError(
+                '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: '
+                'unable to get local issuer certificate (_ssl.c:997)'),
+            SSLError(
+                '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: '
+                'CA signature digest algorithm too weak (_ssl.c:997)'),
+        ):
+            conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
+            with self.subTest(err=err), mock.patch(
+                    'swiftclient.client.http_connection') as \
+                    fake_http_connection, \
+                    mock.patch('swiftclient.client.get_auth_1_0') as mock_auth:
+                mock_auth.return_value = ('http://mock.com', 'mock_token')
+                fake_http_connection.side_effect = err
+                self.assertRaises(socket.error, conn.head_account)
+                self.assertEqual(mock_auth.call_count, 1)
+                self.assertEqual(conn.attempts, 1)
+
+    def test_retry_with_non_cert_sslerror(self):
+        def quick_sleep(*args):
+            pass
+        c.sleep = quick_sleep
+        conn = c.Connection('http://www.test.com', 'asdf', 'asdf')
+        with mock.patch('swiftclient.client.http_connection') as \
+                fake_http_connection, \
+                mock.patch('swiftclient.client.get_auth_1_0') as mock_auth:
+            mock_auth.return_value = ('http://mock.com', 'mock_token')
+            fake_http_connection.side_effect = SSLError(
+                "HTTPSConnectionPool(host='example.com', port=443): "
+                "Max retries exceeded with url: /v1/AUTH_test (Caused by "
+                "SSLError(SSLZeroReturnError(6, 'TLS/SSL connection has "
+                "been closed (EOF) (_ssl.c:997)')))")
             self.assertRaises(socket.error, conn.head_account)
         self.assertEqual(mock_auth.call_count, 1)
         self.assertEqual(conn.attempts, conn.retries + 1)
