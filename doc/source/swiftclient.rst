@@ -4,6 +4,7 @@ swiftclient
 ==============
 
 .. automodule:: swiftclient
+   :inherited-members:
 
 swiftclient.authv1
 ==================
@@ -15,16 +16,19 @@ swiftclient.client
 ==================
 
 .. automodule:: swiftclient.client
+   :inherited-members:
 
 swiftclient.service
 ===================
 
 .. automodule:: swiftclient.service
+   :inherited-members:
 
 swiftclient.exceptions
 ======================
 
 .. automodule:: swiftclient.exceptions
+   :inherited-members:
 
 swiftclient.multithreading
 ==========================
@@ -35,3 +39,4 @@ swiftclient.utils
 =================
 
 .. automodule:: swiftclient.utils
+   :inherited-members:
