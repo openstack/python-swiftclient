@@ -861,7 +861,8 @@ class TestShell(unittest.TestCase):
         # Upload in segments
         connection.return_value.head_container.return_value = {
             'x-storage-policy': 'one'}
-        argv = ["", "upload", "container", self.tmpfile, "-S", "10"]
+        argv = ["", "upload", "container", self.tmpfile,
+                "-S", "10", "--use-dlo"]
         with open(self.tmpfile, "wb") as fh:
             fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
@@ -907,6 +908,62 @@ class TestShell(unittest.TestCase):
             query_string='multipart-manifest=put',
             response_dict=mock.ANY)
 
+        # detect no SLO
+        connection.reset_mock()
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        argv = ["", "upload", "container/pseudo-folder/nested",
+                self.tmpfile, "-S", "10"]
+        with open(self.tmpfile, "wb") as fh:
+            fh.write(b'12345678901234567890')
+        connection.return_value.get_capabilities.return_value = {}
+        swiftclient.shell.main(argv)
+        expected_calls = [mock.call('container',
+                                    {},
+                                    response_dict={}),
+                          mock.call('container_segments',
+                                    {'X-Storage-Policy': 'one'},
+                                    response_dict={})]
+        connection.return_value.put_container.assert_has_calls(expected_calls)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            'pseudo-folder/nested' + self.tmpfile,
+            '',
+            content_length=0,
+            headers={'x-object-manifest': mock.ANY,
+                     'x-object-meta-mtime': mock.ANY},
+            response_dict={})
+
+        # detect SLO
+        connection.reset_mock()
+        connection.return_value.head_container.return_value = {
+            'x-storage-policy': 'one'}
+        argv = ["", "upload", "container/pseudo-folder/nested",
+                self.tmpfile, "-S", "10"]
+        with open(self.tmpfile, "wb") as fh:
+            fh.write(b'12345678901234567890')
+        connection.return_value.get_capabilities.return_value = {
+            'slo': {},
+        }
+        swiftclient.shell.main(argv)
+        expected_calls = [mock.call('container',
+                                    {},
+                                    response_dict={}),
+                          mock.call('container_segments',
+                                    {'X-Storage-Policy': 'one'},
+                                    response_dict={})]
+        print(connection.return_value.mock_calls)
+        connection.return_value.put_container.assert_has_calls(expected_calls)
+        connection.return_value.put_object.assert_called_with(
+            'container',
+            'pseudo-folder/nested' + self.tmpfile,
+            mock.ANY,
+            headers={
+                'x-object-meta-mtime': mock.ANY,
+            },
+            query_string='multipart-manifest=put',
+            response_dict=mock.ANY)
+
     @mock.patch('swiftclient.shell.walk')
     @mock.patch('swiftclient.service.Connection')
     def test_upload_skip_container_put(self, connection, walk):
@@ -934,7 +991,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_container.return_value = {
             'x-storage-policy': 'one'}
         argv = ["", "upload", "container", "--skip-container-put",
-                self.tmpfile, "-S", "10"]
+                self.tmpfile, "-S", "10", "--use-dlo"]
         with open(self.tmpfile, "wb") as fh:
             fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
@@ -1187,7 +1244,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.attempts = 0
         connection.return_value.put_object.return_value = EMPTY_ETAG
         argv = ["", "upload", "container", self.tmpfile, "-S", "10",
-                "-C", "container"]
+                "-C", "container", "--use-dlo"]
         with open(self.tmpfile, "wb") as fh:
             fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
@@ -3581,6 +3638,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
         args, env = self._make_cmd('upload',
                                    cmd_args=[self.cont, self.obj,
+                                             '--use-dlo',
                                              '--leave-segments',
                                              '--segment-size=10',
                                              '--segment-container=%s'
@@ -3621,6 +3679,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
 
         args, env = self._make_cmd('upload',
                                    cmd_args=[self.cont, self.obj,
+                                             '--use-dlo',
                                              '--leave-segments',
                                              '--segment-size=10'])
         with mock.patch('swiftclient.client.ksclient_v3', self.fake_ks):

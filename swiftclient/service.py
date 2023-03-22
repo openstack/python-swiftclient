@@ -196,7 +196,7 @@ _default_global_options = _build_default_global_options()
 _default_local_options = {
     'sync_to': None,
     'sync_key': None,
-    'use_slo': False,
+    'use_slo': None,
     'segment_size': None,
     'segment_container': None,
     'leave_segments': False,
@@ -1467,7 +1467,7 @@ class SwiftService:
                                 'meta': [],
                                 'header': [],
                                 'segment_size': None,
-                                'use_slo': False,
+                                'use_slo': True,
                                 'segment_container': None,
                                 'leave_segments': False,
                                 'changed': None,
@@ -1492,6 +1492,18 @@ class SwiftService:
                                options['segment_size'])
         except ValueError:
             raise SwiftError('Segment size should be an integer value')
+
+        if segment_size and options['use_slo'] is None:
+            try:
+                cap_result = self.capabilities()
+            except ClientException:
+                # pre-info swift, maybe? assume no slo middleware
+                options['use_slo'] = False
+            else:
+                if not cap_result['success']:
+                    options['use_slo'] = False
+                else:
+                    options['use_slo'] = 'slo' in cap_result['capabilities']
 
         # Incase we have a psudeo-folder path for <container> arg, derive
         # the container name from the top path and prepend the rest to
