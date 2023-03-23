@@ -1168,7 +1168,7 @@ def st_upload(parser, args, output_manager, return_parser=False):
         return
 
     if from_stdin:
-        if not options['use_slo']:
+        if options['use_slo'] is None:
             options['use_slo'] = True
         if not options['segment_size']:
             options['segment_size'] = DEFAULT_STDIN_SEGMENT
