@@ -122,26 +122,27 @@ def process_options(options):
 
     # Specific OpenStack options
     options['os_options'] = {
-        'user_id': options['os_user_id'],
-        'user_domain_id': options['os_user_domain_id'],
-        'user_domain_name': options['os_user_domain_name'],
-        'tenant_id': options['os_tenant_id'],
-        'tenant_name': options['os_tenant_name'],
-        'project_id': options['os_project_id'],
-        'project_name': options['os_project_name'],
-        'project_domain_id': options['os_project_domain_id'],
-        'project_domain_name': options['os_project_domain_name'],
-        'service_type': options['os_service_type'],
-        'endpoint_type': options['os_endpoint_type'],
-        'auth_token': options['os_auth_token'],
-        'object_storage_url': options['os_storage_url'],
-        'region_name': options['os_region_name'],
-        'auth_type': options['os_auth_type'],
-        'application_credential_id':
-        options['os_application_credential_id'],
-        'application_credential_secret':
-        options['os_application_credential_secret'],
+        opt: options['os_' + opt] for opt in (
+            'user_id',
+            'user_domain_id',
+            'user_domain_name',
+            'tenant_id',
+            'tenant_name',
+            'project_id',
+            'project_name',
+            'project_domain_id',
+            'project_domain_name',
+            'service_type',
+            'endpoint_type',
+            'auth_token',
+            'region_name',
+            'auth_type',
+            'application_credential_id',
+            'application_credential_secret',
+        )
     }
+    # this one doesn't follow the same convention
+    options['os_options']['object_storage_url'] = options['os_storage_url']
 
 
 def _build_default_global_options():
