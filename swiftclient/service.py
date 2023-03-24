@@ -90,14 +90,26 @@ class SwiftError(Exception):
 
 
 def process_options(options):
+    auth_types_to_versions = {
+        'v1password': '1.0',
+        'v2password': '2.0',
+        'v3password': '3',
+        'v3applicationcredential': '3',
+    }
+
+    version_from_type = auth_types_to_versions.get(options['os_auth_type'])
+    if version_from_type:
+        options['auth_version'] = version_from_type
+
     # tolerate sloppy auth_version
     if options.get('auth_version') == '3.0':
         options['auth_version'] = '3'
     elif options.get('auth_version') == '2':
         options['auth_version'] = '2.0'
 
-    if options.get('auth_version') not in ('2.0', '3') and not all(
-            options.get(key) for key in ('auth', 'user', 'key')):
+    if options.get('auth_version') not in ('2.0', '3') and \
+            options.get('os_auth_type') != 'v1password' and \
+            not all(options.get(key) for key in ('auth', 'user', 'key')):
         # Use keystone auth if any of the new-style args are present
         if any(options.get(k) for k in (
                 'os_user_domain_id',
@@ -108,9 +120,6 @@ def process_options(options):
             options['auth_version'] = '3'
         else:
             options['auth_version'] = '2.0'
-
-    if options.get('os_auth_type', None) == 'v3applicationcredential':
-        options['auth_version'] == '3'
 
     # Use new-style args if old ones not present
     if not options['auth'] and options['os_auth_url']:
