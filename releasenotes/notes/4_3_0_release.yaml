@@ -1,0 +1,40 @@
+---
+features:
+  - |
+    Static Large Objects will now be used by default for segmented uploads
+    to clusters that support them. The new ``--use-dlo`` option may be used to
+    create Dynamic Large Objects, as was the previous behavior without
+    ``--use-slo``.
+
+  - |
+    Uploads from stdin may now be Dynamic Large Objects by using the new
+    ``--use-dlo`` option.
+
+  - |
+    The ``--timeout`` option may now include 's', 'm', and 'h' suffixes similar
+    to the ``tempurl`` ``<time>`` argument.
+
+fixes:
+  - |
+    ``499 Client Disconnect`` responses are now retried in a manner similar to
+    ``408 Request Timeout`` responses.
+
+  - |
+    Requests are retried for more SSL errors. Only certificate validation
+    errors will not be retried.
+
+  - |
+    If downloaded content does not match the Content-Length from response
+    headers, the reported error will now highlight Content-Length rather than
+    ETag.
+
+  - |
+    Transaction IDs are now included when downloaded content does not match
+    the expectations set by response headers.
+
+  - |
+    Fix an import error for some distributions by using ``importlib`` rather than
+    ``pkg_resources`` when possible.
+
+  - |
+    Various other minor bug fixes and improvements.
