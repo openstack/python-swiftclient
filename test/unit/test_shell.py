@@ -2498,7 +2498,7 @@ class TestTimeoutOption(unittest.TestCase):
             connection.reset_mock()
             with self.subTest(timeout=timeout):
                 swiftclient.shell.main(["", "stat", "--timeout", timeout])
-                self.assertEqual(connection.mock_calls[0].kwargs['timeout'],
+                self.assertEqual(connection.mock_calls[0][2]['timeout'],
                                  expected)
 
 
