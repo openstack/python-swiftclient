@@ -579,7 +579,10 @@ class TestGetAuth(MockHttpTest):
         self.assertTrue(token)
 
     def test_auth_v3applicationcredential(self):
-        from keystoneauth1 import exceptions as ksauthexceptions
+        try:
+            from keystoneauth1 import exceptions as ksauthexceptions
+        except ImportError:
+            raise unittest.SkipTest('keystoneauth1 is not available')
 
         os_options = {
             "auth_type": "v3applicationcredential",

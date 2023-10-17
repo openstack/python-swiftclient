@@ -16,10 +16,13 @@ import datetime
 import json
 import unittest
 from unittest import mock
-from keystoneauth1 import plugin
-from keystoneauth1 import loading
-from keystoneauth1 import exceptions
-from swiftclient import authv1
+try:
+    from keystoneauth1 import plugin
+    from keystoneauth1 import loading
+    from keystoneauth1 import exceptions
+    from swiftclient import authv1
+except ImportError:
+    plugin = loading = exceptions = authv1 = None
 
 
 class TestDataNoAccount:
@@ -44,6 +47,10 @@ class TestDataWithAccount:
 
 
 class TestPluginLoading(TestDataNoAccount, unittest.TestCase):
+    def setUp(self):
+        if authv1 is None:
+            raise unittest.SkipTest('keystoneauth1 is not available')
+
     def test_can_load(self):
         loader = loading.get_plugin_loader('v1password')
         self.assertIsInstance(loader, authv1.PasswordLoader)
@@ -120,6 +127,8 @@ class TestPluginLoadingWithAccount(TestDataWithAccount, TestPluginLoading):
 
 class TestPlugin(TestDataNoAccount, unittest.TestCase):
     def setUp(self):
+        if authv1 is None:
+            raise unittest.SkipTest('keystoneauth1 is not available')
         self.mock_session = mock.MagicMock()
         self.mock_response = self.mock_session.get.return_value
         self.mock_response.status_code = 200
