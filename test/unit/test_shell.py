@@ -15,17 +15,21 @@
 
 import io
 import contextlib
+import socket
 from genericpath import getmtime
 import getpass
 import hashlib
 import json
 import logging
 import os
+from requests.structures import CaseInsensitiveDict
 import tempfile
 import unittest
 from unittest import mock
 import textwrap
 from time import localtime, mktime, strftime, strptime
+from requests.exceptions import RequestException
+from urllib3.exceptions import HTTPError
 
 import swiftclient
 from swiftclient.service import SwiftError
@@ -208,6 +212,28 @@ class TestShell(unittest.TestCase):
                              ' Sync Key: secret\n')
 
     @mock.patch('swiftclient.service.Connection')
+    def test_stat_container_not_found(self, connection):
+        connection.return_value.head_container.side_effect = \
+            swiftclient.ClientException(
+                'test',
+                http_status=404,
+                http_response_headers=CaseInsensitiveDict({
+                    'x-trans-id': 'someTransId'})
+            )
+        argv = ["", "stat", "container"]
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+                connection.return_value.head_container.assert_called_with(
+                    'container', headers={}, resp_chunk_size=65536,
+                    response_dict={})
+
+            self.assertIn('Container \'container\' not found\n'
+                          'Failed Transaction ID: someTransId',
+                          output.err)
+
+    @mock.patch('swiftclient.service.Connection')
     def test_stat_container_with_headers(self, connection):
         return_headers = {
             'x-container-object-count': '1',
@@ -284,6 +310,27 @@ class TestShell(unittest.TestCase):
                              ' Last Modified: yesterday\n'
                              '          ETag: md5\n'
                              '      Manifest: manifest\n')
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_stat_object_not_found(self, connection):
+        connection.return_value.head_object.side_effect = \
+            swiftclient.ClientException(
+                'test', http_status=404,
+                http_response_headers=CaseInsensitiveDict({
+                    'x-trans-id': 'someTransId'})
+            )
+        argv = ["", "stat", "container", "object"]
+
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                swiftclient.shell.main(argv)
+                connection.return_value.head_object.assert_called_with(
+                    'container', 'object', headers={}, resp_chunk_size=65536,
+                    response_dict={})
+
+            self.assertIn('test: 404\n'
+                          'Failed Transaction ID: someTransId',
+                          output.err)
 
     @mock.patch('swiftclient.service.Connection')
     def test_stat_object_with_headers(self, connection):
@@ -706,6 +753,117 @@ class TestShell(unittest.TestCase):
             argv = ["", "download", "--output", "-", "container", "object"]
             swiftclient.shell.main(argv)
             self.assertEqual('objcontent', output.out)
+
+    def _do_test_download_clientexception(self, exc):
+        retry_calls = []
+
+        def _fake_retry(conn, *args, **kwargs):
+            retry_calls.append((args, kwargs))
+            conn.attempts += 1
+
+            body = mock.MagicMock()
+            body.resp.read.side_effect = RequestException('test_exc')
+            return (CaseInsensitiveDict({
+                'content-type': 'text/plain',
+                'etag': '2cbbfe139a744d6abbe695e17f3c1991',
+                'x-trans-id': 'someTransId'}),
+                body)
+
+        argv = ["", "download", "container", "object", "--retries", "1"]
+        with CaptureOutput() as output:
+            with mock.patch(BUILTIN_OPEN) as mock_open:
+                with mock.patch("swiftclient.service.Connection._retry",
+                                _fake_retry):
+                    with self.assertRaises(SystemExit):
+                        swiftclient.shell.main(argv)
+                    mock_open.assert_called_with('object', 'wb', 65536)
+            self.assertEqual([
+                ((None, swiftclient.client.get_object, 'container', 'object'),
+                 {'headers': {},
+                  'query_string': None,
+                  'resp_chunk_size': 65536,
+                  'response_dict': {}}),
+                ((None, swiftclient.client.get_object, 'container', 'object'),
+                 {'attempts': 1,
+                  'headers': {'If-Match': mock.ANY, 'Range': 'bytes=0-'},
+                  'query_string': None,
+                  'resp_chunk_size': 65536,
+                  'response_dict': {}})],
+                retry_calls)
+            self.assertIn('Error downloading object \'container/object\': '
+                          'test_exc',
+                          str(output.err))
+            self.assertIn('someTransId', str(output.err))
+
+    def test_download_request_exception(self):
+        self._do_test_download_clientexception(RequestException('text_exc'))
+
+    def test_download_socket_error(self):
+        self._do_test_download_clientexception(socket.error())
+
+    def test_download_http_error(self):
+        self._do_test_download_clientexception(HTTPError)
+
+    def test_download_request_exception_retries_0(self):
+        retry_calls = []
+
+        def _fake_retry(conn, *args, **kwargs):
+            retry_calls.append((args, kwargs))
+            conn.attempts += 1
+
+            body = mock.MagicMock()
+            body.__iter__.side_effect = RequestException('test_exc')
+            return (CaseInsensitiveDict({
+                'content-type': 'text/plain',
+                'etag': '2cbbfe139a744d6abbe695e17f3c1991',
+                'x-trans-id': 'someTransId'}),
+                body)
+
+        argv = ["", "download", "container", "object", "--retries", "0"]
+        with CaptureOutput() as output:
+            with mock.patch(BUILTIN_OPEN) as mock_open:
+                with mock.patch("swiftclient.service.Connection._retry",
+                                _fake_retry):
+                    with self.assertRaises(SystemExit):
+                        swiftclient.shell.main(argv)
+                    mock_open.assert_called_with('object', 'wb', 65536)
+            self.assertEqual([
+                ((None, swiftclient.client.get_object, 'container', 'object'),
+                 {'headers': {},
+                  'query_string': None,
+                  'resp_chunk_size': 65536,
+                  'response_dict': {}}), ],
+                retry_calls)
+            self.assertIn('Error downloading object \'container/object\': '
+                          'test_exc',
+                          str(output.err))
+            self.assertIn('someTransId', str(output.err))
+
+    @mock.patch('swiftclient.service.Connection')
+    def test_download_bad_content_length(self, connection):
+        objcontent = io.BytesIO(b'objcontent')
+        connection.return_value.get_object.side_effect = [
+            (CaseInsensitiveDict({
+                'content-type': 'text/plain',
+                'content-length': 'BAD',
+                'etag': '2cbbfe139a744d6abbe695e17f3c1991',
+                'x-trans-id': 'someTransId'}),
+             objcontent)
+        ]
+        with CaptureOutput() as output:
+            with self.assertRaises(SystemExit):
+                with mock.patch(BUILTIN_OPEN) as mock_open:
+                    argv = ["", "download", "container", "object"]
+                    swiftclient.shell.main(argv)
+                connection.return_value.get_object.assert_called_with(
+                    'container', 'object', headers={}, resp_chunk_size=65536,
+                    response_dict={})
+                mock_open.assert_called_with('object', 'wb', 65536)
+
+            self.assertIn("Error downloading object \'container/object\': "
+                          "'content-length header must be an integer'"
+                          "\nFailed Transaction ID: someTransId",
+                          str(output.err))
 
     @mock.patch('swiftclient.service.shuffle')
     @mock.patch('swiftclient.service.Connection')
@@ -1901,7 +2059,9 @@ class TestShell(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 swiftclient.shell.main(argv)
 
-            self.assertEqual(output.err, 'Account not found\n')
+            self.assertEqual(
+                output.err,
+                'Account not found\nFailed Transaction ID: unknown\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_post_container(self, connection):
@@ -2093,7 +2253,8 @@ class TestShell(unittest.TestCase):
             self.assertEqual(
                 output.err,
                 'Combination of multiple objects and destination '
-                'including object is invalid\n')
+                'including object is invalid\n'
+                'Failed Transaction ID: unknown\n')
 
     @mock.patch('swiftclient.service.Connection')
     def test_copy_object_bad_auth(self, connection):

@@ -27,6 +27,7 @@ from unittest import mock
 from concurrent.futures import Future
 from hashlib import md5
 from queue import Queue, Empty as QueueEmptyError
+from requests.structures import CaseInsensitiveDict
 from time import sleep
 
 import swiftclient
@@ -167,8 +168,10 @@ class TestSwiftReader(unittest.TestCase):
         self.assertIsNone(sr._actual_md5)
 
         # Check Contentlength raises error if it isn't an integer
-        self.assertRaises(SwiftError, self.sr, 'path', 'body',
-                          {'content-length': 'notanint'})
+        with self.assertRaises(SwiftError) as cm:
+            self.sr('path', 'body', {'content-length': 'notanint'})
+        self.assertEqual("'content-length header must be an integer'",
+                         str(cm.exception))
 
     def test_iterator_usage(self):
         def _consume(sr):
@@ -653,6 +656,7 @@ class TestSwiftError(unittest.TestCase):
         self.assertIsNone(se.exception)
 
         self.assertEqual(str(se), '5')
+        self.assertNotIn(str(se), 'Transaction ID')
 
     def test_swifterror_creation(self):
         test_exc = Exception('test exc')
@@ -665,6 +669,25 @@ class TestSwiftError(unittest.TestCase):
         self.assertEqual(se.exception, test_exc)
 
         self.assertEqual(str(se), '5 container:con object:obj segment:seg')
+        self.assertNotIn(str(se), 'Transaction ID')
+
+    def test_swifterror_clientexception_creation(self):
+        test_exc = ClientException(
+            Exception('test exc'),
+            http_response_headers=CaseInsensitiveDict({
+                'x-trans-id': 'someTransId'})
+        )
+        se = SwiftError(5, 'con', 'obj', 'seg', test_exc)
+
+        self.assertEqual(se.value, 5)
+        self.assertEqual(se.container, 'con')
+        self.assertEqual(se.obj, 'obj')
+        self.assertEqual(se.segment, 'seg')
+        self.assertEqual(se.exception, test_exc)
+
+        self.assertEqual('someTransId', se.transaction_id)
+        self.assertNotIn('someTransId', str(se))
+        self.assertIn('5 container:con object:obj segment:seg', str(se))
 
 
 class TestServiceUtils(unittest.TestCase):

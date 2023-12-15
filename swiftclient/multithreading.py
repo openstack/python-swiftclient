@@ -89,6 +89,10 @@ class OutputManager:
             msg = msg % fmt_args
         self.error_print_pool.submit(self._print_error, msg)
 
+    def error_with_txn_id(self, swift_err):
+        self.error("{}\nFailed Transaction ID: {}".format(
+            swift_err.value, swift_err.transaction_id or 'unknown'))
+
     def get_error_count(self):
         return self.error_count
 

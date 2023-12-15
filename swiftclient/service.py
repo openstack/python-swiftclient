@@ -32,6 +32,9 @@ from time import time
 from threading import Thread
 from queue import Queue
 from queue import Empty as QueueEmpty
+from requests.exceptions import RequestException
+from socket import error as socket_error
+from urllib3.exceptions import HTTPError as urllib_http_error
 from urllib.parse import quote
 
 import json
@@ -68,12 +71,16 @@ class ResultsIterator:
 
 class SwiftError(Exception):
     def __init__(self, value, container=None, obj=None,
-                 segment=None, exc=None):
+                 segment=None, exc=None, transaction_id=None):
         self.value = value
         self.container = container
         self.obj = obj
         self.segment = segment
         self.exception = exc
+        if transaction_id is None:
+            self.transaction_id = getattr(exc, 'transaction_id', None)
+        else:
+            self.transaction_id = transaction_id
 
     def __str__(self):
         value = repr(self.value)
@@ -459,7 +466,9 @@ class _SwiftReader:
             try:
                 self._content_length = int(headers.get('content-length'))
             except ValueError:
-                raise SwiftError('content-length header must be an integer')
+                raise SwiftError(
+                    'content-length header must be an integer',
+                    transaction_id=self._txn_id)
 
     def __iter__(self):
         for chunk in self._body:
@@ -1306,9 +1315,15 @@ class SwiftService:
                             else:
                                 pseudodir = True
 
-                for chunk in obj_body:
-                    if fp is not None:
-                        fp.write(chunk)
+                try:
+                    for chunk in obj_body:
+                        if fp is not None:
+                            fp.write(chunk)
+                except (socket_error,
+                        urllib_http_error,
+                        RequestException) as err:
+                    raise ClientException(
+                        str(err), http_response_headers=headers)
 
                 finish_time = time()
 
