@@ -867,12 +867,13 @@ class TestShell(unittest.TestCase):
             fh.write(b'12345678901234567890')
         swiftclient.shell.main(argv)
         expected_calls = [mock.call('container',
-                                    {'X-Storage-Policy': mock.ANY},
+                                    {'X-Storage-Policy': 'one'},
                                     response_dict={}),
                           mock.call('container_segments',
-                                    {'X-Storage-Policy': mock.ANY},
+                                    {'X-Storage-Policy': 'one'},
                                     response_dict={})]
-        connection.return_value.put_container.has_calls(expected_calls)
+        connection.return_value.put_container.assert_has_calls(expected_calls,
+                                                               any_order=True)
         connection.return_value.put_object.assert_called_with(
             'container',
             self.tmpfile.lstrip('/'),
