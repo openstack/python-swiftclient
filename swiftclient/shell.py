@@ -754,7 +754,7 @@ def st_stat(parser, args, output_manager, return_parser=False):
                                     items, headers, output_manager
                                 )
                             else:
-                                raise(stat_result["error"])
+                                raise stat_result["error"]
                     else:
                         output_manager.error(
                             'Usage: %s stat %s\n%s', BASENAME,
@@ -768,7 +768,7 @@ st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to <sync-to>
                   [--sync-key <sync-key>] [--meta <name:value>]
                   [--header <header>]
                   [<container> [<object>]]
-'''
+'''  # noqa
 
 st_post_help = '''
 Updates meta information for the account, container, or object.
@@ -864,7 +864,7 @@ def st_post(parser, args, output_manager, return_parser=False):
                 else:
                     result = swift.post(container=container)
             if not result["success"]:
-                raise(result["error"])
+                raise result["error"]
 
         except SwiftError as e:
             output_manager.error(e.value)
@@ -1520,7 +1520,7 @@ st_bash_completion_help = '''Retrieve command specific flags used by bash_comple
 
 Optional positional arguments:
   <command>           Swift client command to filter the flags by.
-'''.strip('\n')
+'''.strip('\n')  # noqa
 
 
 st_bash_completion_options = '''[command]
