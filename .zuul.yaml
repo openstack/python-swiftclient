@@ -43,8 +43,15 @@
         - openstack-tox-py37
     check:
       jobs:
-        - swiftclient-swift-functional
-        - swiftclient-functional
+        - swiftclient-functional:
+            irrelevant-files: &functest-irrelevant-files
+              - ^(doc|releasenotes)/.*$
+              - ^test/unit/.*$
+              - ^(.gitreview|.mailmap|AUTHORS|ChangeLog|.*\.rst)$
+        - swiftclient-swift-functional:
+            irrelevant-files: *functest-irrelevant-files
+        - tempest-full-py3:
+            irrelevant-files: *functest-irrelevant-files
         - openstack-tox-py311:
             voting: true
     gate:
