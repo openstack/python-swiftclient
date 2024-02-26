@@ -1330,7 +1330,7 @@ class TestService(unittest.TestCase):
             options)
         responses = [x for x in resp_iter]
         for resp in responses:
-            self.assertFalse('error' in resp)
+            self.assertNotIn('error', resp)
             self.assertTrue(resp['success'])
         self.assertEqual(5, len(responses))
         container_resp, segment_container_resp = responses[0:2]

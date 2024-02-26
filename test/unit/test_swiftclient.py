@@ -2000,7 +2000,7 @@ class TestConnection(MockHttpTest):
                 'authurl': 'http://www.test.com',
                 'tenant_name': 'atenant'}
         conn = c.Connection(**args)
-        self.assertEqual(type(conn), c.Connection)
+        self.assertIsInstance(conn, c.Connection)
 
     def test_instance_kwargs_token(self):
         args = {'preauthtoken': 'atoken123',
@@ -3056,7 +3056,7 @@ class TestCloseConnection(MockHttpTest):
         conn = c.Connection(url, 'asdf', 'asdf')
         self.assertIsNone(conn.http_conn)
         conn.http_conn = c.http_connection(url)
-        self.assertEqual(type(conn.http_conn), tuple)
+        self.assertIsInstance(conn.http_conn, tuple)
         self.assertEqual(len(conn.http_conn), 2)
         http_conn_obj = conn.http_conn[1]
         self.assertIsInstance(http_conn_obj, c.HTTPConnection)

@@ -711,7 +711,7 @@ class TestShell(unittest.TestCase):
     @mock.patch('swiftclient.service.Connection')
     def test_download_shuffle(self, connection, mock_shuffle):
         # Test that the container and object lists are shuffled
-        mock_shuffle.side_effect = lambda l: l
+        mock_shuffle.side_effect = lambda to_shuffle: to_shuffle
         connection.return_value.get_object.return_value = [
             {'content-type': 'text/plain',
              'etag': EMPTY_ETAG},
