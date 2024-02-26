@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    ``swift stat --lh`` now prints account quotas (including per-policy quotas)
+    in human-readable units, similar to account usage values.
+
+  - |
+    Modernized some aspects of packaging, allowing wheels to be built with more
+    (and more recent) tools.
+fixes:
+  - |
+    Various other minor bug fixes and improvements.
