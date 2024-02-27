@@ -15,6 +15,7 @@ from swiftclient.utils import prt_bytes, split_request_headers
 
 
 POLICY_HEADER_PREFIX = 'x-account-storage-policy-'
+PER_POLICY_QUOTA_HEADER_PREFIX = 'x-account-quota-bytes-policy-'
 
 
 def stat_account(conn, options):
@@ -38,6 +39,10 @@ def stat_account(conn, options):
         ('Objects', object_count),
         ('Bytes', bytes_used),
     ])
+    if headers.get('x-account-meta-quota-bytes'):
+        quota_bytes = prt_bytes(headers.get('x-account-meta-quota-bytes'),
+                                options['human']).lstrip()
+        items.append(('Quota Bytes', quota_bytes))
 
     policies = set()
     for header_key, header_value in headers.items():
@@ -68,6 +73,10 @@ def stat_account(conn, options):
                  options['human']
              ).lstrip()),
         ))
+        policy_quota = headers.get(PER_POLICY_QUOTA_HEADER_PREFIX + policy)
+        if policy_quota:
+            items.append(('Quota Bytes for policy "' + policy + '"',
+                          prt_bytes(policy_quota, options['human']).lstrip()))
 
     return items, headers
 
@@ -75,7 +84,10 @@ def stat_account(conn, options):
 def print_account_stats(items, headers, output_manager):
     exclude_policy_headers = []
     for header_key, header_value in headers.items():
-        if header_key.lower().startswith(POLICY_HEADER_PREFIX):
+        if header_key.lower().startswith((
+                POLICY_HEADER_PREFIX,
+                PER_POLICY_QUOTA_HEADER_PREFIX,
+        )):
             exclude_policy_headers.append(header_key)
 
     items.extend(headers_to_items(
@@ -84,7 +96,8 @@ def print_account_stats(items, headers, output_manager):
             'content-length', 'date',
             'x-account-container-count',
             'x-account-object-count',
-            'x-account-bytes-used'] + exclude_policy_headers)))
+            'x-account-bytes-used',
+            'x-account-meta-quota-bytes'] + exclude_policy_headers)))
 
     # line up the items nicely
     offset = max(len(item) for item, value in items)
