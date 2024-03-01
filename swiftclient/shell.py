@@ -227,7 +227,7 @@ def st_delete(parser, args, output_manager, return_parser=False):
                         output_manager.error('Error Deleting: {0}: {1}'
                                              .format(p, r['error']))
         except SwiftError as err:
-            output_manager.error(err.value)
+            output_manager.error_with_txn_id(err)
 
 
 st_download_options = '''[--all] [--marker <marker>] [--prefix <prefix>]
@@ -484,11 +484,13 @@ def st_download(parser, args, output_manager, return_parser=False):
                                     "Object '%s/%s' not found", container, obj)
                                 continue
                         output_manager.error(
-                            "Error downloading object '%s/%s': %s",
-                            container, obj, error)
+                            "Error downloading object '%s/%s': %s\n"
+                            "Failed Transaction ID: %s",
+                            container, obj, error,
+                            getattr(error, 'transaction_id', 'unknown'))
 
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
         except Exception as e:
             output_manager.error(e)
 
@@ -670,7 +672,7 @@ def st_list(parser, args, output_manager, return_parser=False):
                         prt_bytes(totals['bytes'], human))
 
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
 
 
 st_stat_options = '''[--lh] [--header <header:value>]
@@ -761,7 +763,7 @@ def st_stat(parser, args, output_manager, return_parser=False):
                             st_stat_options, st_stat_help)
 
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
 
 
 st_post_options = '''[--read-acl <acl>] [--write-acl <acl>] [--sync-to <sync-to>]
@@ -867,7 +869,7 @@ def st_post(parser, args, output_manager, return_parser=False):
                 raise result["error"]
 
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
 
 
 st_copy_options = '''[--destination </container/object>] [--fresh-metadata]
@@ -972,7 +974,7 @@ def st_copy(parser, args, output_manager, return_parser=False):
                 return
 
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
 
 
 st_upload_options = '''[--changed] [--skip-identical] [--segment-size <size>]
@@ -1270,7 +1272,7 @@ def st_upload(parser, args, output_manager, return_parser=False):
                                 "to chunk the object")
 
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
 
 
 st_capabilities_options = '''[--json] [<proxy_url>]
@@ -1332,7 +1334,7 @@ def st_capabilities(parser, args, output_manager, return_parser=False):
                 del capabilities['swift']
                 _print_compo_cap('Additional middleware', capabilities)
         except SwiftError as e:
-            output_manager.error(e.value)
+            output_manager.error_with_txn_id(e)
 
 
 st_info = st_capabilities

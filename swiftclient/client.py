@@ -19,10 +19,13 @@ OpenStack Swift client library used internally
 import socket
 import re
 import logging
+from urllib3.exceptions import HTTPError as urllib_http_error
+
 import warnings
 
 from requests.exceptions import RequestException, SSLError
 import http.client as http_client
+from requests.structures import CaseInsensitiveDict
 from urllib.parse import quote, unquote
 from urllib.parse import urljoin, urlparse, urlunparse
 from time import sleep, time
@@ -287,7 +290,7 @@ class _RetryBody(_ObjectBody):
         try:
             buf = self.resp.read(length)
             self.bytes_read += len(buf)
-        except (socket.error, RequestException):
+        except (socket.error, urllib_http_error, RequestException):
             if self.conn.attempts > self.conn.retries:
                 raise
         if (not buf and self.bytes_read < self.expected_length and
@@ -735,9 +738,9 @@ def get_auth(auth_url, user, key, **kwargs):
 
 
 def resp_header_dict(resp):
-    resp_headers = {}
+    resp_headers = CaseInsensitiveDict()
     for header, value in resp.getheaders():
-        header = parse_header_string(header).lower()
+        header = parse_header_string(header)
         resp_headers[header] = parse_header_string(value)
     return resp_headers
 
@@ -1926,6 +1929,7 @@ class Connection:
             is_not_range_request and resp_chunk_size and
             self.attempts <= self.retries and
             rheaders.get('transfer-encoding') is None)
+
         if retry_is_possible:
             body = _RetryBody(body.resp, self, container, obj,
                               resp_chunk_size=resp_chunk_size,

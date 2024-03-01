@@ -1118,6 +1118,14 @@ class TestGetObject(MockHttpTest):
         self.assertEqual('%ff', headers.get('x-non-utf-8-header', ''))
         self.assertEqual('%FF', headers.get('x-binary-header', ''))
 
+        self.assertEqual('t\xe9st', headers.get('X-Utf-8-Header', ''))
+        self.assertEqual('%ff', headers.get('X-Non-Utf-8-Header', ''))
+        self.assertEqual('%FF', headers.get('X-Binary-Header', ''))
+
+        self.assertEqual('t\xe9st', headers.get('X-UTF-8-HEADER', ''))
+        self.assertEqual('%ff', headers.get('X-NON-UTF-8-HEADER', ''))
+        self.assertEqual('%FF', headers.get('X-BINARY-HEADER', ''))
+
     def test_chunk_size_read_method(self):
         conn = c.Connection('http://auth.url/', 'some_user', 'some_key')
         with mock.patch('swiftclient.client.get_auth_1_0') as mock_get_auth:
