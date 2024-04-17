@@ -27,12 +27,13 @@ from unittest import mock
 from concurrent.futures import Future
 from hashlib import md5
 from queue import Queue, Empty as QueueEmptyError
-from requests.structures import CaseInsensitiveDict
 from time import sleep
 
 import swiftclient
 import swiftclient.utils as utils
-from swiftclient.client import Connection, ClientException
+from swiftclient.client import (
+    Connection, ClientException, LowerKeyCaseInsensitiveDict
+)
 from swiftclient.service import (
     SwiftService, SwiftError, SwiftUploadObject, SwiftDeleteObject
 )
@@ -241,6 +242,26 @@ class TestSwiftReader(unittest.TestCase):
         self.assertEqual(sr._actual_read, 9)
         self.assertEqual(sr._actual_md5.hexdigest(),
                          md5('abc'.encode() * 3).hexdigest())
+
+    def test_swift_reader_knows_slo_etag_is_not_md5(self):
+        segment_bodies = [b'abc', b'def', b'ghi']
+        # slo etag is md5 of the sum of md5 of segments
+        slo_etag = md5(b''.join(
+            md5(b).hexdigest().encode()
+            for b in segment_bodies
+        )).hexdigest()
+        headers = LowerKeyCaseInsensitiveDict({
+            'Content-Length': len(b''.join(segment_bodies)),
+            'X-Static-Large-Object': 'true',
+            'ETag': '"%s"' % slo_etag
+        })
+        sr = self.sr('path', segment_bodies, headers)
+        # x-static-large-object; so no exception is raised!
+        actual_md5 = md5(b''.join(sr)).hexdigest()
+        self.assertEqual(sr._actual_read, 9)
+        self.assertIsNone(sr._actual_md5)
+        self.assertEqual(actual_md5,
+                         md5(b''.join(segment_bodies)).hexdigest())
 
 
 class _TestServiceBase(unittest.TestCase):
@@ -674,7 +695,7 @@ class TestSwiftError(unittest.TestCase):
     def test_swifterror_clientexception_creation(self):
         test_exc = ClientException(
             Exception('test exc'),
-            http_response_headers=CaseInsensitiveDict({
+            http_response_headers=LowerKeyCaseInsensitiveDict({
                 'x-trans-id': 'someTransId'})
         )
         se = SwiftError(5, 'con', 'obj', 'seg', test_exc)

@@ -18,6 +18,7 @@ import unittest
 from unittest import mock
 
 from swiftclient import command_helpers as h
+from swiftclient.client import LowerKeyCaseInsensitiveDict
 from swiftclient.multithreading import OutputManager
 
 
@@ -230,6 +231,33 @@ Content-Encoding: gzip
             'etag': '68b329da9893e34099c7d8ad5cb9c940',
             'content-encoding': 'gzip',
         }
+        self.conn.head_object.return_value = stub_headers
+        args = ('c', 'o')
+        with self.output_manager as output_manager:
+            items, headers = h.stat_object(self.conn, self.options, *args)
+            h.print_object_stats(items, headers, output_manager)
+        expected = """
+             URL: http://storage/v1/a/c/o
+      Auth Token: tk12345
+         Account: a
+       Container: c
+          Object: o
+  Content Length: 1048576
+            ETag: 68b329da9893e34099c7d8ad5cb9c940
+      Meta Color: blue
+Content-Encoding: gzip
+"""
+        self.assertOut(expected)
+
+    def test_stat_object_case_insensitive_headers(self):
+        self.options['verbose'] += 1
+        # stub head object request
+        stub_headers = LowerKeyCaseInsensitiveDict({
+            'content-length': 2 ** 20,
+            'x-object-meta-color': 'blue',
+            'ETag': '68b329da9893e34099c7d8ad5cb9c940',
+            'content-encoding': 'gzip',
+        })
         self.conn.head_object.return_value = stub_headers
         args = ('c', 'o')
         with self.output_manager as output_manager:

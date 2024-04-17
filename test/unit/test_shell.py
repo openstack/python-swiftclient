@@ -22,7 +22,6 @@ import hashlib
 import json
 import logging
 import os
-from requests.structures import CaseInsensitiveDict
 import tempfile
 import unittest
 from unittest import mock
@@ -32,6 +31,7 @@ from requests.exceptions import RequestException
 from urllib3.exceptions import HTTPError
 
 import swiftclient
+from swiftclient.client import LowerKeyCaseInsensitiveDict
 from swiftclient.service import SwiftError
 import swiftclient.shell
 import swiftclient.utils
@@ -245,7 +245,7 @@ class TestShell(unittest.TestCase):
             swiftclient.ClientException(
                 'test',
                 http_status=404,
-                http_response_headers=CaseInsensitiveDict({
+                http_response_headers=LowerKeyCaseInsensitiveDict({
                     'x-trans-id': 'someTransId'})
             )
         argv = ["", "stat", "container"]
@@ -344,7 +344,7 @@ class TestShell(unittest.TestCase):
         connection.return_value.head_object.side_effect = \
             swiftclient.ClientException(
                 'test', http_status=404,
-                http_response_headers=CaseInsensitiveDict({
+                http_response_headers=LowerKeyCaseInsensitiveDict({
                     'x-trans-id': 'someTransId'})
             )
         argv = ["", "stat", "container", "object"]
@@ -791,7 +791,7 @@ class TestShell(unittest.TestCase):
 
             body = mock.MagicMock()
             body.resp.read.side_effect = RequestException('test_exc')
-            return (CaseInsensitiveDict({
+            return (LowerKeyCaseInsensitiveDict({
                 'content-type': 'text/plain',
                 'etag': '2cbbfe139a744d6abbe695e17f3c1991',
                 'x-trans-id': 'someTransId'}),
@@ -841,7 +841,7 @@ class TestShell(unittest.TestCase):
 
             body = mock.MagicMock()
             body.__iter__.side_effect = RequestException('test_exc')
-            return (CaseInsensitiveDict({
+            return (LowerKeyCaseInsensitiveDict({
                 'content-type': 'text/plain',
                 'etag': '2cbbfe139a744d6abbe695e17f3c1991',
                 'x-trans-id': 'someTransId'}),
@@ -871,7 +871,7 @@ class TestShell(unittest.TestCase):
     def test_download_bad_content_length(self, connection):
         objcontent = io.BytesIO(b'objcontent')
         connection.return_value.get_object.side_effect = [
-            (CaseInsensitiveDict({
+            (LowerKeyCaseInsensitiveDict({
                 'content-type': 'text/plain',
                 'content-length': 'BAD',
                 'etag': '2cbbfe139a744d6abbe695e17f3c1991',

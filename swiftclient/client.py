@@ -212,6 +212,15 @@ def encode_meta_headers(headers):
     return ret
 
 
+class LowerKeyCaseInsensitiveDict(CaseInsensitiveDict):
+    """
+    CaseInsensitiveDict returning lower case keys for items()
+    """
+
+    def __iter__(self):
+        return iter(self._store.keys())
+
+
 class _ObjectBody:
     """
     Readable and iterable object body response wrapper.
@@ -738,7 +747,7 @@ def get_auth(auth_url, user, key, **kwargs):
 
 
 def resp_header_dict(resp):
-    resp_headers = CaseInsensitiveDict()
+    resp_headers = LowerKeyCaseInsensitiveDict()
     for header, value in resp.getheaders():
         header = parse_header_string(header)
         resp_headers[header] = parse_header_string(value)

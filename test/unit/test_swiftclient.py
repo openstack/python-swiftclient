@@ -1117,6 +1117,17 @@ class TestGetObject(MockHttpTest):
         self.assertEqual('t\xe9st', headers.get('x-utf-8-header', ''))
         self.assertEqual('%ff', headers.get('x-non-utf-8-header', ''))
         self.assertEqual('%FF', headers.get('x-binary-header', ''))
+        for k, v in headers.items():
+            # N.B. k is always lower case!
+            self.assertTrue(k.islower())
+        for k in headers.keys():
+            # N.B. k is always lower case!
+            self.assertTrue(k.islower())
+        self.assertTrue(set([
+            'x-utf-8-header',
+            'x-non-utf-8-header',
+            'x-binary-header',
+        ]).intersection(headers))
 
         self.assertEqual('t\xe9st', headers.get('X-Utf-8-Header', ''))
         self.assertEqual('%ff', headers.get('X-Non-Utf-8-Header', ''))
