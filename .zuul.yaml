@@ -42,7 +42,7 @@
       jobs:
         - openstack-tox-py36
         - openstack-tox-py37
-        - openstack-tox-py39
+        - openstack-tox-py38
         - openstack-tox-py310
     check:
       jobs:
