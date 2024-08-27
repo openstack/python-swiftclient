@@ -1,3 +1,13 @@
+4.6.0
+-----
+
+* Transaction IDs are included with more errors.
+
+* Now tested under Python 3.12.
+
+* Various other minor bug fixes and improvements.
+
+
 4.5.0
 -----
 

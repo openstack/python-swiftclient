@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Now tested under Python 3.12.
+
+fixes:
+  - |
+    Transaction IDs are included with more errors.
+
+  - |
+    Various other minor bug fixes and improvements.
