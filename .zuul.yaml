@@ -58,12 +58,16 @@
         - openstack-tox-py311
         - openstack-tox-py312:
             voting: true
+        - openstack-tox-py313:
+            voting: true
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
         - openstack-tox-py311
         - openstack-tox-py312:
+            voting: true
+        - openstack-tox-py313:
             voting: true
     post:
       jobs:
