@@ -1638,14 +1638,17 @@ def prompt_for_password():
 def parse_args(parser, args, enforce_requires=True):
     options, args = parser.parse_known_args(args or ['-h'])
     options = vars(options)
-    if enforce_requires and (options.get('debug') or options.get('info')):
+    if enforce_requires and (options.get('debug') or
+                             options.get('debug_with_secrets') or
+                             options.get('info')):
         logging.getLogger("swiftclient")
-        if options.get('debug'):
+        if options.get('debug') or options.get('debug_with_secrets'):
             logging.basicConfig(level=logging.DEBUG)
             logging.getLogger('iso8601').setLevel(logging.WARNING)
-            client_logger_settings['redact_sensitive_headers'] = False
         elif options.get('info'):
             logging.basicConfig(level=logging.INFO)
+    client_logger_settings['redact_sensitive_headers'] = not (
+        enforce_requires and options.get('debug_with_secrets'))
 
     if args and options.get('help'):
         _help = globals().get('st_%s_help' % args[0])
@@ -1732,6 +1735,11 @@ def add_default_args(parser):
                         default=False, help='Show the curl commands and '
                         'results of all http queries regardless of result '
                         'status.')
+    parser.add_argument('--debug-with-secrets', action='store_true',
+                        dest='debug_with_secrets', default=False,
+                        help='Show the curl commands and '
+                        'results of all http queries regardless of result '
+                        'status (without truncating auth tokens).')
     parser.add_argument('--info', action='store_true', dest='info',
                         default=False, help='Show the curl commands and '
                         'results of all http queries which return an error.')
@@ -1958,8 +1966,8 @@ def main(arguments=None):
     parser = argparse.ArgumentParser(
         add_help=False, formatter_class=HelpFormatter, usage='''
 %(prog)s [--version] [--help] [--os-help] [--snet] [--verbose]
-             [--debug] [--info] [--quiet] [--auth <auth_url>]
-             [--auth-version <auth_version> |
+             [--debug] [--debug-with-secrets] [--info] [--quiet]
+             [--auth <auth_url>] [--auth-version <auth_version> |
                  --os-identity-api-version <auth_version> ]
              [--user <username>]
              [--key <api_key>] [--retries <num_retries>]

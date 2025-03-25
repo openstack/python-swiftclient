@@ -2647,10 +2647,23 @@ class TestDebugAndInfoOptions(unittest.TestCase):
         argv = ["", "stat", "--info"]
         swiftclient.shell.main(argv)
         mock_logging.assert_called_with(level=logging.INFO)
+        self.assertTrue(
+            swiftclient.logger_settings.get('redact_sensitive_headers')
+        )
 
         argv = ["", "stat", "--debug"]
         swiftclient.shell.main(argv)
         mock_logging.assert_called_with(level=logging.DEBUG)
+        self.assertTrue(
+            swiftclient.logger_settings.get('redact_sensitive_headers')
+        )
+
+        argv = ["", "stat", "--debug-with-secrets"]
+        swiftclient.shell.main(argv)
+        mock_logging.assert_called_with(level=logging.DEBUG)
+        self.assertFalse(
+            swiftclient.logger_settings.get('redact_sensitive_headers')
+        )
 
     @mock.patch('logging.basicConfig')
     @mock.patch('swiftclient.service.Connection')
@@ -2660,7 +2673,13 @@ class TestDebugAndInfoOptions(unittest.TestCase):
                           ["", "--info", "stat", "--debug"],
                           ["", "--debug", "stat", "--info"],
                           ["", "--info", "--debug", "stat"],
-                          ["", "--debug", "--info", "stat"])
+                          ["", "--debug", "--info", "stat"],
+                          ["", "stat", "--info", "--debug-with-secrets"],
+                          ["", "stat", "--debug-with-secrets", "--info"],
+                          ["", "--info", "stat", "--debug-with-secrets"],
+                          ["", "--debug-with-secrets", "stat", "--info"],
+                          ["", "--info", "--debug-with-secrets", "stat"],
+                          ["", "--debug-with-secrets", "--info", "stat"])
         for argv in argv_scenarios:
             mock_logging.reset_mock()
             swiftclient.shell.main(argv)
