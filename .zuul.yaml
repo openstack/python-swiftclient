@@ -43,7 +43,8 @@
         - openstack-tox-py36
         - openstack-tox-py37
         - openstack-tox-py38
-        - openstack-tox-py310
+        - openstack-tox-py39
+        - openstack-tox-py311
     check:
       jobs:
         - swiftclient-functional:
@@ -55,18 +56,12 @@
             irrelevant-files: *functest-irrelevant-files
         - tempest-full-py3:
             irrelevant-files: *functest-irrelevant-files
-        - openstack-tox-py311
-        - openstack-tox-py312:
-            voting: true
         - openstack-tox-py313:
             voting: true
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
-        - openstack-tox-py311
-        - openstack-tox-py312:
-            voting: true
         - openstack-tox-py313:
             voting: true
     post:
