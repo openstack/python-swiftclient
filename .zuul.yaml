@@ -40,7 +40,6 @@
       # on-demand pipeline used to test older (but still supported) versions of python,
       # as well as intermediate releases that the openstack-python3-jobs might skip
       jobs:
-        - openstack-tox-py36
         - openstack-tox-py37
         - openstack-tox-py38
         - openstack-tox-py39
