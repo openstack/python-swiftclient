@@ -1,3 +1,22 @@
+4.8.0
+-----
+
+* Auth tokens are now truncated when running with `--debug`. Added
+  `--debug-with-secrets` flag to enable previous, less-secure behavior.
+
+* Dropped support for Python 3.6.
+
+* Now tested under Python 3.13.
+
+* Various other minor bug fixes and improvements.
+
+
+4.7.0
+-----
+
+* Various minor bug fixes and improvements.
+
+
 4.6.0
 -----
 
