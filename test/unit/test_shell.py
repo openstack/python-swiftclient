@@ -3365,7 +3365,7 @@ class TestKeystoneOptions(MockHttpTest):
     # options that are given default values in code if missing from CLI
     defaults = {'auth-version': '2.0',
                 'service-type': 'object-store',
-                'endpoint-type': 'publicURL'}
+                'endpoint-type': 'public'}
 
     def _build_os_opts(self, keys):
         os_opts = {}

@@ -577,7 +577,7 @@ variables to be set or overridden with -A, -U, or -K.''')
 
     filter_kwargs = {}
     service_type = os_options.get('service_type') or 'object-store'
-    endpoint_type = os_options.get('endpoint_type') or 'publicURL'
+    endpoint_type = os_options.get('endpoint_type') or 'public'
     if os_options.get('region_name'):
         filter_kwargs['attr'] = 'region'
         filter_kwargs['filter_value'] = os_options['region_name']

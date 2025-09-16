@@ -70,13 +70,15 @@ class ServiceCatalogV1:
         # openstackclient wants this for the `catalog list` and
         # `catalog show` commands
         endpoints = [{
+            'interface': 'public',
             'region': 'default',
-            'publicURL': self._storage_url,
+            'url': self._storage_url,
         }]
         if self.storage_url != self._storage_url:
             endpoints.insert(0, {
+                'interface': 'public',
                 'region': 'override',
-                'publicURL': self.storage_url,
+                'url': self.storage_url,
             })
 
         return [
@@ -89,8 +91,9 @@ class ServiceCatalogV1:
                 'name': 'auth',
                 'type': 'identity',
                 'endpoints': [{
+                    'interface': 'public',
                     'region': 'default',
-                    'publicURL': self.auth_url,
+                    'url': self.auth_url,
                 }],
             }
         ]
@@ -151,6 +154,8 @@ class AccessInfoV1:
             self._expires = None
         # following is used by openstackclient
         self.project_id = None
+        self.domain_id = 'default'
+        self.system_scoped = False
 
     @property
     def expires(self):

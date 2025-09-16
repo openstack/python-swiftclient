@@ -163,7 +163,7 @@ class TestPlugin(TestDataNoAccount, unittest.TestCase):
         self.assertEqual('object-store', catalog[0].get('type'))
         self.assertIn('endpoints', catalog[0])
         self.assertIn(self.storage_url, [
-            e.get('publicURL') for e in catalog[0]['endpoints']])
+            e.get('url') for e in catalog[0]['endpoints']])
 
     def test_get_access_with_expiry(self):
         auth_plugin = authv1.PasswordPlugin(**self.options)
