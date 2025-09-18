@@ -37,6 +37,7 @@ or https://identity.api.rackspacecloud.com/v1.0
 """
 
 import datetime
+from datetime import timezone
 import json
 import time
 
@@ -50,22 +51,6 @@ from keystoneauth1 import plugin
 from keystoneauth1 import exceptions
 from keystoneauth1 import loading
 from keystoneauth1.identity import base
-
-
-# stupid stdlib...
-class _UTC(datetime.tzinfo):
-    def utcoffset(self, dt):
-        return datetime.timedelta(0)
-
-    def tzname(self, dt):
-        return "UTC"
-
-    def dst(self, dt):
-        return datetime.timedelta(0)
-
-
-UTC = _UTC()
-del _UTC
 
 
 class ServiceCatalogV1:
@@ -171,11 +156,11 @@ class AccessInfoV1:
     def expires(self):
         if self._expires is None:
             return None
-        return datetime.datetime.fromtimestamp(self._expires, UTC)
+        return datetime.datetime.fromtimestamp(self._expires, timezone.utc)
 
     @property
     def issued(self):
-        return datetime.datetime.fromtimestamp(self._issued, UTC)
+        return datetime.datetime.fromtimestamp(self._issued, timezone.utc)
 
     @property
     def user_id(self):
