@@ -601,7 +601,7 @@ variables to be set or overridden with -A, -U, or -K.''')
                     'application_credential_secret'),
                 application_credential_id=os_options.get(
                     'application_credential_id'))
-            sess = ksa_session.Session(auth=auth)
+            sess = ksa_session.Session(auth=auth, timeout=timeout)
             token = sess.get_token()
         except ksauthexceptions.Unauthorized:
             msg = 'Unauthorized. Check application credential id and secret.'

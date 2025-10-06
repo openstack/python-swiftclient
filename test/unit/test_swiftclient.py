@@ -594,8 +594,11 @@ class TestGetAuth(MockHttpTest):
 
         class FakeKeystoneuth1v3Session:
 
-            def __init__(self, auth):
+            def __init__(self, auth, timeout=None):
                 self.auth = auth
+                self.timeout = None
+                if timeout is not None:
+                    self.timeout = float(timeout)
                 self.token = 'token'
 
             def get_token(self):
