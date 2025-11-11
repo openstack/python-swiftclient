@@ -1,3 +1,11 @@
+4.9.0
+-----
+
+* The ``timeout`` parameter is now included when creating Keystoneauth Sessions.
+
+* Various other minor improvements.
+
+
 4.8.0
 -----
 
