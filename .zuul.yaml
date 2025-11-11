@@ -37,10 +37,14 @@
       # on-demand pipeline used to test older (but still supported) versions of python,
       # as well as intermediate releases that the openstack-python3-jobs might skip
       jobs:
-        - openstack-tox-py37
+        - openstack-tox-py37:
+            nodeset: ubuntu-jammy
+            vars:
+              python_use_pyenv: True
         - openstack-tox-py38
         - openstack-tox-py39
         - openstack-tox-py311
+        - openstack-tox-py312
     check:
       jobs:
         - swiftclient-functional:
