@@ -441,7 +441,7 @@ class HTTPConnection:
     def getresponse(self):
         """Adapt requests response to httplib interface"""
         self.resp.status = self.resp.status_code
-        old_getheader = self.resp.raw.getheader
+        old_getheader = self.resp.headers.get
 
         def _decode_header(string):
             if string is None:
