@@ -2003,6 +2003,7 @@ class TestHTTPConnection(MockHttpTest):
         self.assertEqual(
             '\u062a-value', resp.getheader('\u062a-UNICODE'))
         self.assertEqual('', resp.getheader('empty-header'))
+        self.assertEqual('"%s"' % EMPTY_ETAG, resp.getheader('etag'))
         self.assertEqual(
             dict([('\u062a-unicode', '\u062a-value'),
                   ('empty-header', ''),
