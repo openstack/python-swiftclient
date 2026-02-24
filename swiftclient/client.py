@@ -490,7 +490,7 @@ def http_connection(*arg, **kwarg):
     return conn.parsed_url, conn
 
 
-def get_auth_1_0(url, user, key, snet, **kwargs):
+def get_auth_1_0(url, user, key, **kwargs):
     cacert = kwargs.get('cacert', None)
     insecure = kwargs.get('insecure', False)
     cert = kwargs.get('cert')
@@ -514,12 +514,6 @@ def get_auth_1_0(url, user, key, snet, **kwargs):
     # if we don't have a x-storage-url header and if we get a body.
     if resp.status < 200 or resp.status >= 300 or (body and not url):
         raise ClientException.from_response(resp, 'Auth GET failed', body)
-    if snet:
-        parsed = list(urlparse(url))
-        # Second item in the list is the netloc
-        netloc = parsed[1]
-        parsed[1] = 'snet-' + netloc
-        url = urlunparse(parsed)
 
     token = resp.getheader('x-storage-token', resp.getheader('x-auth-token'))
     return url, token
@@ -671,12 +665,6 @@ def get_auth(auth_url, user, key, **kwargs):
     N.B. if the optional os_options parameter includes a non-empty
     'object_storage_url' key it will override the default storage url returned
     by the auth service.
-
-    The snet parameter is used for Rackspace's ServiceNet internal network
-    implementation. In this function, it simply adds *snet-* to the beginning
-    of the host name for the returned storage URL. With Rackspace Cloud Files,
-    use of this network path causes no bandwidth charges but requires the
-    client to be running on Rackspace's ServiceNet network.
     """
     session = kwargs.get('session', None)
     auth_version = kwargs.get('auth_version', '1')
@@ -700,7 +688,6 @@ def get_auth(auth_url, user, key, **kwargs):
         storage_url, token = get_auth_1_0(auth_url,
                                           user,
                                           key,
-                                          kwargs.get('snet'),
                                           cacert=cacert,
                                           insecure=insecure,
                                           cert=cert,
@@ -1654,7 +1641,7 @@ class Connection:
     """
 
     def __init__(self, authurl=None, user=None, key=None, retries=5,
-                 preauthurl=None, preauthtoken=None, snet=False,
+                 preauthurl=None, preauthtoken=None,
                  starting_backoff=1, max_backoff=64, tenant_name=None,
                  os_options=None, auth_version="1", cacert=None,
                  insecure=False, cert=None, cert_key=None,
@@ -1669,7 +1656,6 @@ class Connection:
         :param preauthtoken: authentication token (if you have already
                              authenticated) note authurl/user/key/tenant_name
                              are not required when specifying preauthtoken
-        :param snet: use SERVICENET internal network default is False
         :param starting_backoff: initial delay between retries (seconds)
         :param max_backoff: maximum delay between retries (seconds)
         :param auth_version: OpenStack auth version, default is 1.0
@@ -1705,7 +1691,6 @@ class Connection:
         self.retries = retries
         self.http_conn = None
         self.attempts = 0
-        self.snet = snet
         self.starting_backoff = starting_backoff
         self.max_backoff = max_backoff
         self.auth_version = auth_version
@@ -1740,7 +1725,7 @@ class Connection:
 
     def get_auth(self):
         self.url, self.token = get_auth(self.authurl, self.user, self.key,
-                                        session=self.session, snet=self.snet,
+                                        session=self.session,
                                         auth_version=self.auth_version,
                                         os_options=self.os_options,
                                         cacert=self.cacert,
@@ -1761,7 +1746,6 @@ class Connection:
         service_key = opts.get('service_key', None)
         return get_auth(self.authurl, service_user, service_key,
                         session=self.session,
-                        snet=self.snet,
                         auth_version=self.auth_version,
                         os_options=service_options,
                         cacert=self.cacert,

@@ -163,7 +163,6 @@ def process_options(options):
 
 def _build_default_global_options():
     return {
-        "snet": False,
         "verbose": 1,
         "debug": False,
         "info": False,
@@ -298,7 +297,6 @@ def get_conn(options):
                       retries=options['retries'],
                       auth_version=options['auth_version'],
                       os_options=options['os_options'],
-                      snet=options['snet'],
                       cacert=options['os_cacert'],
                       insecure=options['insecure'],
                       cert=options['os_cert'],

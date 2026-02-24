@@ -20,7 +20,7 @@ swift usage
 
 .. code-block:: console
 
-   Usage: swift [--version] [--help] [--os-help] [--snet] [--verbose]
+   Usage: swift [--version] [--help] [--os-help] [--verbose]
                 [--debug] [--info] [--quiet] [--auth <auth_url>]
                 [--auth-version <auth_version> |
                     --os-identity-api-version <auth_version> ]
@@ -94,9 +94,6 @@ swift optional arguments
 
 ``--os-help``
   Show OpenStack authentication options.
-
-``-s, --snet``
-  Use SERVICENET internal network.
 
 ``-v, --verbose``
   Print more info.
