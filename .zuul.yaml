@@ -56,13 +56,15 @@
             irrelevant-files: *functest-irrelevant-files
         - tempest-full-py3:
             irrelevant-files: *functest-irrelevant-files
-        - openstack-tox-py313:
+        - openstack-tox-py313
+        - openstack-tox-py314:
             voting: true
     gate:
       jobs:
         - swiftclient-swift-functional
         - swiftclient-functional
-        - openstack-tox-py313:
+        - openstack-tox-py313
+        - openstack-tox-py314:
             voting: true
     post:
       jobs:
