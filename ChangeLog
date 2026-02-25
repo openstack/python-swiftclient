@@ -1,4 +1,4 @@
-4.9.1
+4.10.0
 -----
 
 * The "v1password" plugin for keystoneauth now returns v3-compatible service
