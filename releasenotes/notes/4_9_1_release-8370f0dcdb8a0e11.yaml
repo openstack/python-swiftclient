@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Now tested under Python 3.14.
+
+upgrade:
+  - |
+    Removed support for the provider-specific SERVICENET. Explicitly override
+    your storage URLs if you were previously using this feature.
+
+fixes:
+  - |
+    The "v1password" plugin for keystoneauth now returns v3-compatible service
+    catalogs, fixing some issues seen when using v1 auth with openstackclient.
+
+  - |
+    Various other minor improvements.

@@ -1,3 +1,17 @@
+4.9.1
+-----
+
+* The "v1password" plugin for keystoneauth now returns v3-compatible service
+  catalogs, fixing some issues seen when using v1 auth with openstackclient.
+
+* Now tested under Python 3.14.
+
+* Removed support for the provider-specific SERVICENET. Explicitly override
+  your storage URLs if you were previously using this feature.
+
+* Various other minor improvements.
+
+
 4.9.0
 -----
 
