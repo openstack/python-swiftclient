@@ -1533,7 +1533,6 @@ def st_bash_completion(parser, args, thread_manager, return_parser=False):
     if return_parser:
         return parser
 
-    global commands
     com = args[1] if len(args) > 1 else None
 
     if com:
