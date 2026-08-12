@@ -19,6 +19,7 @@ import getpass
 import io
 import json
 import logging
+from shlex import quote
 import signal
 import socket
 import warnings
@@ -41,11 +42,6 @@ from swiftclient.service import SwiftService, SwiftError, \
     SwiftUploadObject, get_conn, process_options
 from swiftclient.command_helpers import print_account_stats, \
     print_container_stats, print_object_stats
-
-try:
-    from shlex import quote as sh_quote
-except ImportError:
-    from pipes import quote as sh_quote
 
 BASENAME = 'swift'
 commands = ('delete', 'download', 'list', 'post', 'copy', 'stat', 'upload',
@@ -1365,24 +1361,24 @@ def st_auth(parser, args, thread_manager, return_parser=False):
     (options, args) = parse_args(parser, args)
     if options['verbose'] > 1:
         if options['auth_version'] in ('1', '1.0'):
-            print('export ST_AUTH=%s' % sh_quote(options['auth']))
-            print('export ST_USER=%s' % sh_quote(options['user']))
-            print('export ST_KEY=%s' % sh_quote(options['key']))
+            print('export ST_AUTH=%s' % quote(options['auth']))
+            print('export ST_USER=%s' % quote(options['user']))
+            print('export ST_KEY=%s' % quote(options['key']))
         else:
-            print('export OS_IDENTITY_API_VERSION=%s' % sh_quote(
+            print('export OS_IDENTITY_API_VERSION=%s' % quote(
                 options['auth_version']))
-            print('export OS_AUTH_VERSION=%s' % sh_quote(
+            print('export OS_AUTH_VERSION=%s' % quote(
                 options['auth_version']))
-            print('export OS_AUTH_URL=%s' % sh_quote(options['auth']))
+            print('export OS_AUTH_URL=%s' % quote(options['auth']))
             for k, v in sorted(options.items()):
                 if v and k.startswith('os_') and \
                         k not in ('os_auth_url', 'os_options'):
-                    print('export %s=%s' % (k.upper(), sh_quote(v)))
+                    print('export %s=%s' % (k.upper(), quote(v)))
     else:
         conn = get_conn(options)
         url, token = conn.get_auth()
-        print('export OS_STORAGE_URL=%s' % sh_quote(url))
-        print('export OS_AUTH_TOKEN=%s' % sh_quote(token))
+        print('export OS_STORAGE_URL=%s' % quote(url))
+        print('export OS_AUTH_TOKEN=%s' % quote(token))
 
 
 st_tempurl_options = '''[--absolute] [--prefix-based] [--iso8601]
