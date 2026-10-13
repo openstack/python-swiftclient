@@ -26,6 +26,17 @@
       # swift can use different tox env names
       tox_envlist: func
 
+- job:
+    name: swiftclient-tox-py311-centos-9-stream-fips
+    parent: openstack-tox-py311
+    nodeset: centos-9-stream
+    voting: false
+    description: |
+      Run the unit tests on a CentOS 9 Stream node with FIPS mode on.
+    vars:
+      nslookup_target: 'opendev.org'
+      enable_fips: true
+
 - project:
     templates:
       - check-requirements
@@ -58,6 +69,10 @@
             irrelevant-files: *functest-irrelevant-files
         - tempest-full-py3:
             irrelevant-files: *functest-irrelevant-files
+        - swiftclient-tox-py311-centos-9-stream-fips:
+            irrelevant-files:
+              - ^(doc|releasenotes)/.*$
+              - ^(.gitreview|.mailmap|AUTHORS|ChangeLog|.*\.rst)$
     gate:
       jobs:
         - swiftclient-swift-functional
