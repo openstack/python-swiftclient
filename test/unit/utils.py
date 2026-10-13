@@ -28,6 +28,12 @@ from urllib.parse import urlparse, ParseResult
 from swiftclient import client as c
 from swiftclient import shell as s
 from swiftclient.utils import EMPTY_ETAG
+from swiftclient.utils import md5 as _md5
+
+
+def md5(string=b''):
+    """MD5 for test checksums, which FIPS-enabled systems allow."""
+    return _md5(string, usedforsecurity=False)
 
 
 def fake_get_auth_keystone(expected_os_options=None, exc=None,

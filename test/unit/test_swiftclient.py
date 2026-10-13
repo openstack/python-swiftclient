@@ -23,11 +23,10 @@ import unittest
 from unittest import mock
 import warnings
 import tempfile
-from hashlib import md5
 from urllib.parse import urlparse
 from requests.exceptions import RequestException, SSLError
 
-from .utils import (MockHttpTest, fake_get_auth_keystone, StubResponse,
+from .utils import (md5, MockHttpTest, fake_get_auth_keystone, StubResponse,
                     FakeKeystone)
 
 from swiftclient.utils import EMPTY_ETAG

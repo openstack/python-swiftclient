@@ -18,7 +18,6 @@ import contextlib
 import socket
 from genericpath import getmtime
 import getpass
-import hashlib
 import json
 import logging
 import os
@@ -39,7 +38,7 @@ import swiftclient.utils
 from os.path import basename, dirname
 from .utils import (
     CaptureOutput, fake_get_auth_keystone,
-    FakeKeystone, StubResponse, MockHttpTest)
+    FakeKeystone, md5, StubResponse, MockHttpTest)
 from swiftclient.utils import (
     EMPTY_ETAG, EXPIRES_ISO8601_FORMAT,
     SHORT_EXPIRES_ISO8601_FORMAT, TIME_ERRMSG)
@@ -4129,7 +4128,7 @@ class TestCrossAccountObjectAccess(TestBase, MockHttpTest):
         req_handler = self._fake_cross_account_auth(True, False)
         resp_body = b'{}'
         resp = StubResponse(403, resp_body, {
-            'etag': hashlib.md5(resp_body).hexdigest()})
+            'etag': md5(resp_body).hexdigest()})
         fake_conn = self.fake_http_connection(resp, on_request=req_handler)
 
         args, env = self._make_cmd('download', cmd_args=[self.cont])

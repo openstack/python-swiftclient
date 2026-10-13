@@ -26,6 +26,20 @@ import logging
 import time
 import traceback
 
+
+def md5(string=b'', usedforsecurity=True):
+    """Return an md5 hashlib object, passing usedforsecurity where supported
+
+    The usedforsecurity keyword lets FIPS-enabled systems allow MD5 for
+    non-security purposes; see https://bugs.python.org/issue9216. It is
+    dropped on interpreters that do not support it (python < 3.9).
+    """
+    try:
+        return hashlib.md5(string, usedforsecurity=usedforsecurity)  # nosec
+    except TypeError:
+        return hashlib.md5(string)  # nosec
+
+
 TRUE_VALUES = set(('true', '1', 'yes', 'on', 't', 'y'))
 EMPTY_ETAG = 'd41d8cd98f00b204e9800998ecf8427e'
 EXPIRES_ISO8601_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
@@ -324,6 +338,12 @@ class NoopMD5:
         return ''
 
 
+def _content_md5(enabled):
+    # ReadableToIterable and LengthWrapper take an "md5" flag, which shadows
+    # md5() in their __init__. The MD5 checks the ETag; it is not security.
+    return md5(usedforsecurity=False) if enabled else NoopMD5()
+
+
 class ReadableToIterable:
     """
     Wrap a filelike object and act as an iterator.
@@ -342,7 +362,7 @@ class ReadableToIterable:
         :param md5: Flag to enable calculating the MD5 of the content
                     as it is yielded.
         """
-        self.md5sum = hashlib.md5() if md5 else NoopMD5()
+        self.md5sum = _content_md5(md5)
         self.content = content
         self.chunk_size = chunk_size
 
@@ -402,7 +422,7 @@ class LengthWrapper:
         return self._length
 
     def _reset_md5(self):
-        self.md5sum = hashlib.md5() if self._md5 else NoopMD5()
+        self.md5sum = _content_md5(self._md5)
 
     def get_md5sum(self):
         return self.md5sum.hexdigest()

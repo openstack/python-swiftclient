@@ -24,6 +24,8 @@ import hashlib
 
 from swiftclient import utils as u
 
+from .utils import md5
+
 
 class TestConfigTrueValue(unittest.TestCase):
 
@@ -534,12 +536,34 @@ class TestTempURLInfoPath(TestTempURL):
                            u'&swiftinfo_expires=1400003600')
 
 
+class TestMD5(unittest.TestCase):
+
+    @mock.patch('swiftclient.utils.hashlib.md5')
+    def test_usedforsecurity_passed_through(self, mock_md5):
+        self.assertIs(mock_md5.return_value,
+                      u.md5(b'abc', usedforsecurity=False))
+        mock_md5.assert_called_once_with(b'abc', usedforsecurity=False)
+
+    @mock.patch('swiftclient.utils.hashlib.md5')
+    def test_usedforsecurity_defaults_to_true(self, mock_md5):
+        self.assertIs(mock_md5.return_value, u.md5(b'abc'))
+        mock_md5.assert_called_once_with(b'abc', usedforsecurity=True)
+
+    @mock.patch('swiftclient.utils.hashlib.md5')
+    def test_usedforsecurity_unsupported(self, mock_md5):
+        # python < 3.9 rejects the keyword
+        mock_md5.side_effect = [TypeError, mock.sentinel.md5]
+        self.assertIs(mock.sentinel.md5, u.md5(b'abc', usedforsecurity=False))
+        self.assertEqual([mock.call(b'abc', usedforsecurity=False),
+                          mock.call(b'abc')], mock_md5.mock_calls)
+
+
 class TestReadableToIterable(unittest.TestCase):
 
     def test_iter(self):
         chunk_size = 4
         write_data = tuple(x.encode() for x in ('a', 'b', 'c', 'd'))
-        actual_md5sum = hashlib.md5()
+        actual_md5sum = md5()
 
         with tempfile.TemporaryFile() as f:
             for x in write_data:
@@ -557,17 +581,22 @@ class TestReadableToIterable(unittest.TestCase):
     def test_md5_creation(self):
         # Check creation with a real and noop md5 class
         data = u.ReadableToIterable(None, None, md5=True)
-        self.assertEqual(hashlib.md5().hexdigest(), data.get_md5sum())
-        self.assertIs(type(hashlib.md5()), type(data.md5sum))
+        self.assertEqual(md5().hexdigest(), data.get_md5sum())
+        self.assertIs(type(md5()), type(data.md5sum))
 
         data = u.ReadableToIterable(None, None, md5=False)
         self.assertEqual('', data.get_md5sum())
         self.assertIs(u.NoopMD5, type(data.md5sum))
 
+    @mock.patch('swiftclient.utils.hashlib.md5')
+    def test_md5_not_used_for_security(self, mock_md5):
+        u.ReadableToIterable(None, None, md5=True)
+        mock_md5.assert_called_once_with(b'', usedforsecurity=False)
+
     def test_unicode(self):
         # Check no errors are raised if unicode data is feed in.
         unicode_data = 'abc'
-        actual_md5sum = hashlib.md5(unicode_data.encode()).hexdigest()
+        actual_md5sum = md5(unicode_data.encode()).hexdigest()
         chunk_size = 2
 
         with tempfile.TemporaryFile(mode='w+') as f:
@@ -588,6 +617,11 @@ class TestReadableToIterable(unittest.TestCase):
 
 class TestLengthWrapper(unittest.TestCase):
 
+    @mock.patch('swiftclient.utils.hashlib.md5')
+    def test_md5_not_used_for_security(self, mock_md5):
+        u.LengthWrapper(io.BytesIO(b'abc'), 3, md5=True)
+        mock_md5.assert_called_once_with(b'', usedforsecurity=False)
+
     def test_stringio(self):
         contents = io.StringIO('a' * 50 + 'b' * 50)
         contents.seek(22)
@@ -598,16 +632,16 @@ class TestLengthWrapper(unittest.TestCase):
         self.assertEqual(42, len(data))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
-        self.assertEqual(hashlib.md5(s.encode()).hexdigest(),
+        self.assertEqual(md5(s.encode()).hexdigest(),
                          data.get_md5sum())
 
         data.reset()
-        self.assertEqual(hashlib.md5().hexdigest(), data.get_md5sum())
+        self.assertEqual(md5().hexdigest(), data.get_md5sum())
 
         read_data = ''.join(iter(data.read, ''))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
-        self.assertEqual(hashlib.md5(s.encode()).hexdigest(),
+        self.assertEqual(md5(s.encode()).hexdigest(),
                          data.get_md5sum())
 
     def test_bytesio(self):
@@ -620,7 +654,7 @@ class TestLengthWrapper(unittest.TestCase):
         self.assertEqual(42, len(data))
         self.assertEqual(42, len(read_data))
         self.assertEqual(s, read_data)
-        self.assertEqual(hashlib.md5(s).hexdigest(), data.get_md5sum())
+        self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
 
     def test_tempfile(self):
         with tempfile.NamedTemporaryFile(mode='wb') as f:
@@ -634,7 +668,7 @@ class TestLengthWrapper(unittest.TestCase):
                 self.assertEqual(42, len(data))
                 self.assertEqual(42, len(read_data))
                 self.assertEqual(s, read_data)
-                self.assertEqual(hashlib.md5(s).hexdigest(), data.get_md5sum())
+                self.assertEqual(md5(s).hexdigest(), data.get_md5sum())
 
     def test_segmented_file(self):
         with tempfile.NamedTemporaryFile(mode='wb') as f:
@@ -653,17 +687,17 @@ class TestLengthWrapper(unittest.TestCase):
                     self.assertEqual(segment_length, len(data))
                     self.assertEqual(segment_length, len(read_data))
                     self.assertEqual(s, read_data)
-                    self.assertEqual(hashlib.md5(s).hexdigest(),
+                    self.assertEqual(md5(s).hexdigest(),
                                      data.get_md5sum())
 
                     data.reset()
-                    self.assertEqual(hashlib.md5().hexdigest(),
+                    self.assertEqual(md5().hexdigest(),
                                      data.get_md5sum())
                     read_data = b''.join(iter(data.read, ''))
                     self.assertEqual(segment_length, len(data))
                     self.assertEqual(segment_length, len(read_data))
                     self.assertEqual(s, read_data)
-                    self.assertEqual(hashlib.md5(s).hexdigest(),
+                    self.assertEqual(md5(s).hexdigest(),
                                      data.get_md5sum())
 
 

@@ -20,7 +20,6 @@ from collections import defaultdict
 from concurrent.futures import as_completed, CancelledError, TimeoutError
 from copy import deepcopy
 from errno import EEXIST, ENOENT
-from hashlib import md5
 from io import StringIO
 from os import environ, makedirs, stat, utime
 from os.path import (
@@ -47,7 +46,7 @@ from swiftclient.command_helpers import (
 from swiftclient.utils import (
     config_true_value, ReadableToIterable, LengthWrapper, EMPTY_ETAG,
     parse_api_response, report_traceback, n_groups, split_request_headers,
-    n_at_a_time, normalize_manifest_path
+    n_at_a_time, normalize_manifest_path, md5
 )
 from swiftclient.exceptions import ClientException
 from swiftclient.multithreading import MultiThreadingManager
@@ -458,7 +457,7 @@ class _SwiftReader:
             self._expected_md5 = ''
 
         if self._expected_md5 and checksum:
-            self._actual_md5 = md5()
+            self._actual_md5 = md5(usedforsecurity=False)
 
         if 'content-length' in headers:
             try:
@@ -1210,7 +1209,7 @@ class SwiftService:
                 pass
             else:
                 with fp:
-                    md5sum = md5()
+                    md5sum = md5(usedforsecurity=False)
                     while True:
                         data = fp.read(DISK_BUFFER)
                         if not data:
@@ -1974,7 +1973,7 @@ class SwiftService:
                     - segment_etag - the ETag for the segment
         """
         buf = []
-        dgst = md5()
+        dgst = md5(usedforsecurity=False)
         bytes_read = 0
         while bytes_read < segment_size:
             data = fd.read(segment_size - bytes_read)
@@ -2051,7 +2050,7 @@ class SwiftService:
         with fp:
             for chunk in chunk_data:
                 to_read = chunk['bytes']
-                md5sum = md5()
+                md5sum = md5(usedforsecurity=False)
                 while to_read:
                     data = fp.read(min(DISK_BUFFER, to_read))
                     if not data:

@@ -25,7 +25,6 @@ from io import BytesIO
 from unittest import mock
 
 from concurrent.futures import Future
-from hashlib import md5
 from queue import Queue, Empty as QueueEmptyError
 from time import sleep
 
@@ -39,6 +38,7 @@ from swiftclient.service import (
 )
 
 from test.unit import utils as test_utils
+from test.unit.utils import md5
 
 
 clean_os_environ = {}
